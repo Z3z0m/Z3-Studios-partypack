@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Z3 Party Pack</title>
+
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- LOGIN SCREEN -->
+
+    <div id="loginScreen">
+
+      <h1>Z3 Party Pack</h1>
+
+      <input
+        type="text"
+        id="roomCode"
+        placeholder="Código da sala"
+        maxlength="4"
+      />
+
+      <input
+        type="text"
+        id="playerName"
+        placeholder="Seu nome"
+        maxlength="16"
+      />
+
+      <button onclick="joinRoom()">
+        Entrar
+      </button>
+
+      <p id="status"></p>
+
+    </div>
+
+    <!-- GAME SCREEN -->
+
+    <div id="gameScreen">
+
+      <h2 id="promptText">
+        Esperando prompt...
+      </h2>
+
+      <input
+        type="text"
+        id="answerInput"
+        placeholder="Sua resposta..."
+      />
+
+      <button onclick="sendAnswer()">
+        Enviar Resposta
+      </button>
+
+    </div>
+
+  </div>
+
+  <script
+    type="module"
+    src="app.js">
+  </script>
+
+</body>
+
+</html>
