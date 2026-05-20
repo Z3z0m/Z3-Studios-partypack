@@ -62,9 +62,19 @@
         placeholder="Sua resposta..."
       />
 
-      <button onclick="sendAnswer()">
+      <button id="sendButton" onclick="sendAnswer()">
         Enviar Resposta
       </button>
+      
+      <div id="votingContainer">
+
+        <h2>Vote na melhor resposta</h2>
+
+        <div id="votingAnswers"></div>
+
+      </div>
+
+      <p id="waitingText"></p>
 
     </div>
 

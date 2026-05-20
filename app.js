@@ -59,6 +59,9 @@ let currentPlayerName = "";
 
 let currentPlayerId = "";
 
+let alreadyAnswered = false;
+let alreadyVoted = false;
+
 
 // =========================
 // JOIN ROOM
@@ -149,6 +152,7 @@ window.joinRoom = async function()
     // COMEÇA LISTENER
 
     ListenForPrompt();
+    ListenForGameState();
   }
   catch(error)
   {
@@ -181,7 +185,41 @@ function ListenForPrompt()
       document
         .getElementById("promptText")
         .innerText = prompt;
+
+        alreadyAnswered = false;
+
+      document
+        .getElementById("answerInput")
+        .disabled = false;
+
+      document
+        .getElementById("sendButton")
+        .disabled = false;
+
+      document
+        .getElementById("waitingText")
+        .innerText = "";
+
+      document
+        .getElementById("answerInput")
+        .value = "";
     }
+
+    document
+    .getElementById("promptText")
+    .style.display = "block";
+
+    document
+      .getElementById("answerInput")
+      .style.display = "block";
+
+    document
+      .getElementById("sendButton")
+      .style.display = "block";
+
+    document
+      .getElementById("votingContainer")
+      .style.display = "none";
   });
 }
 
@@ -192,11 +230,14 @@ function ListenForPrompt()
 
 window.sendAnswer = async function()
 {
-  const answerText =
-    document
-    .getElementById("answerInput")
-    .value
-    .trim();
+  if(alreadyAnswered)
+  {
+    return;
+  }
+  const answerText = document
+      .getElementById("answerInput")
+      .value
+      .trim();
 
   if(answerText.length <= 0)
   {
@@ -204,6 +245,135 @@ window.sendAnswer = async function()
   }
 
   // GET CURRENT ROUND
+
+  const roundSnapshot = await get(ref(db,`rooms/${currentRoomCode}/currentState/round`));
+
+  const currentRound = roundSnapshot.val();
+
+  // SAVE ANSWER
+
+  await set(ref(db,`rooms/${currentRoomCode}/history/round_${currentRound}/answers/${currentPlayerId}`),
+    {
+      playerName: currentPlayerName,
+      playerId: currentPlayerId,
+      text: answerText
+    }
+  );
+
+  console.log("Resposta enviada!");
+
+  alreadyAnswered = true;
+
+  document
+    .getElementById("answerInput")
+    .disabled = true;
+
+  document
+    .getElementById("sendButton")
+    .disabled = true;
+
+  document
+    .getElementById("waitingText")
+    .innerText =
+    "Esperando outros jogadores...";
+}
+
+function ListenForGameState()
+{
+  const stateRef =
+    ref(
+      db,
+      `rooms/${currentRoomCode}/currentState/gameState`
+    );
+
+  onValue(stateRef, (snapshot) =>
+  {
+    const gameState = snapshot.val();
+
+    if(gameState == "Voting")
+    {
+      OpenVoting();
+    }
+  });
+}
+async function OpenVoting()
+{
+  alreadyVoted = false;
+
+  document
+    .getElementById("promptText")
+    .style.display = "none";
+
+  // ESCONDE INPUT RESPOSTA
+
+  document
+    .getElementById("answerInput")
+    .style.display = "none";
+
+  document
+    .getElementById("sendButton")
+    .style.display = "none";
+
+  document
+    .getElementById("waitingText")
+    .innerText = "";
+
+  // MOSTRA VOTAÇÃO
+
+  document
+    .getElementById("votingContainer")
+    .style.display = "flex";
+
+  const votingAnswersDiv =
+    document.getElementById("votingAnswers");
+
+  votingAnswersDiv.innerHTML = "";
+
+  // GET VOTING ANSWERS
+
+  const votingRef =
+  ref(
+    db,
+    `rooms/${currentRoomCode}/currentState/votingAnswers`
+  );
+
+onValue(votingRef,(snapshot)=>
+{
+  votingAnswersDiv.innerHTML = "";
+
+  if(!snapshot.exists())
+  {
+    return;
+  }
+
+  snapshot.forEach((child)=>
+  {
+        const answerData = child.val();
+
+    const button =
+      document.createElement("button");
+
+    button.className = "voteButton";
+
+    button.innerText = answerData.text;
+
+    button.onclick = () =>
+      Vote(child.key);
+
+    votingAnswersDiv.appendChild(button);
+  });
+});
+
+async function Vote(answerId)
+{
+  if(alreadyVoted)
+  {
+    return;
+  }
+
+  alreadyVoted = true;
+
+  // GET ROUND
 
   const roundSnapshot =
     await get(
@@ -216,22 +386,26 @@ window.sendAnswer = async function()
   const currentRound =
     roundSnapshot.val();
 
-  // SAVE ANSWER
+  // SAVE VOTE
 
   await set(
     ref(
       db,
-      `rooms/${currentRoomCode}/history/round_${currentRound}/answers/${currentPlayerId}`
+      `rooms/${currentRoomCode}/history/round_${currentRound}/votes/${currentPlayerId}`
     ),
     {
-      playerName: currentPlayerName,
-      text: answerText
+      votedAnswer: answerId,
+      playerName: currentPlayerName
     }
   );
 
-  console.log("Resposta enviada!");
+  // UI
 
   document
-    .getElementById("answerInput")
-    .value = "";
+    .getElementById("votingContainer")
+    .innerHTML =
+    "<h2>Esperando outros votos...</h2>";
+
+  console.log("Voto enviado!");
+}
 }

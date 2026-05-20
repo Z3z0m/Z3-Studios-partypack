@@ -91,3 +91,47 @@ button:hover{
   text-align:center;
   opacity:0.8;
 }
+
+#votingContainer{
+  display:none;
+
+  flex-direction:column;
+
+  gap:15px;
+}
+
+.voteButton{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:12px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+.voteButton:hover{
+  transform:scale(1.02);
+
+  background:#3a3a3a;
+}
+
+#votingAnswers{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
