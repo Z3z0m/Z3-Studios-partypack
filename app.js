@@ -61,6 +61,7 @@ let currentPlayerId = "";
 
 let alreadyAnswered = false;
 let alreadyVoted = false;
+let currentGameState = "Lobby";
 
 
 // =========================
@@ -289,16 +290,73 @@ function ListenForGameState()
   onValue(stateRef, (snapshot) =>
   {
     const gameState = snapshot.val();
+    currentGameState = gameState;
+
+    if(gameState == "Lobby")
+    { 
+      document
+        .getElementById("promptText")
+        .innerText =
+        "Aguardando partida começar...";
+
+      document
+  .getElementById("promptText")
+  .style.display = "block";
+
+document
+  .getElementById("votingContainer")
+  .style.display = "none";
+
+if(currentGameState == "Prompt")
+{
+      document
+        .getElementById("answerInput")
+        .style.display = "block";
+
+      document
+        .getElementById("sendButton")
+        .style.display = "block";
+    }
+    else
+    {
+      document
+        .getElementById("answerInput")
+        .style.display = "none";
+
+      document
+        .getElementById("sendButton")
+        .style.display = "none";
+    }
+
+      document
+        .getElementById("resultContainer")
+        .style.display = "none";
+    }
+
+    if(gameState == "Prompt")
+    {
+      document
+        .getElementById("resultContainer")
+        .style.display = "none";
+    }
 
     if(gameState == "Voting")
     {
       OpenVoting();
+    }
+
+    if(gameState == "Result")
+    {
+      OpenResult();
     }
   });
 }
 async function OpenVoting()
 {
   alreadyVoted = false;
+  document
+    .getElementById("votingStatus")
+    .innerText = "";
 
   document
     .getElementById("promptText")
@@ -357,14 +415,13 @@ onValue(votingRef,(snapshot)=>
 
     button.innerText = answerData.text;
 
-    button.onclick = () =>
-      Vote(child.key);
+    button.onclick = () => Vote(child.key, event);
 
     votingAnswersDiv.appendChild(button);
   });
 });
 
-async function Vote(answerId)
+async function Vote(answerId, event)
 {
   if(alreadyVoted)
   {
@@ -372,6 +429,14 @@ async function Vote(answerId)
   }
 
   alreadyVoted = true;
+  document
+    .querySelectorAll(".voteButton")
+    .forEach(button =>
+    {
+      button.classList.remove("selected");
+    });
+
+  event.target.classList.add("selected");
 
   // GET ROUND
 
@@ -402,10 +467,65 @@ async function Vote(answerId)
   // UI
 
   document
-    .getElementById("votingContainer")
+    .getElementById("votingStatus")
     .innerHTML =
     "<h2>Esperando outros votos...</h2>";
 
   console.log("Voto enviado!");
 }
+}
+
+function OpenResult()
+{
+  document
+    .getElementById("promptText")
+    .style.display = "none";
+
+  document
+    .getElementById("answerInput")
+    .style.display = "none";
+
+  document
+    .getElementById("sendButton")
+    .style.display = "none";
+
+  document
+    .getElementById("votingContainer")
+    .style.display = "none";
+
+  document
+    .getElementById("resultContainer")
+    .style.display = "flex";
+
+  const resultRef =
+    ref(
+      db,
+      `rooms/${currentRoomCode}/players`
+    );
+
+  onValue(resultRef,(snapshot)=>
+  {
+    const resultDiv =
+      document.getElementById("resultScores");
+
+    resultDiv.innerHTML = "";
+
+    snapshot.forEach((child)=>
+    {
+      const data = child.val();
+
+      const score =
+        data.score || 0;
+
+      const item =
+        document.createElement("div");
+
+      item.className = "scoreItem";
+
+      item.innerText =
+        `${data.name} - ${score}`;
+
+      resultDiv.appendChild(item);
+    });
+  });
 }

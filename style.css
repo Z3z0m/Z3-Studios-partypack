@@ -135,3 +135,36 @@ button:hover{
 
   width:100%;
 }
+
+.voteButton.selected
+{
+  background:#5c8dff;
+
+  border:2px solid white;
+
+  transform:scale(1.03);
+}
+
+#resultContainer
+{
+  display:none;
+
+  flex-direction:column;
+
+  gap:15px;
+}
+
+.scoreItem
+{
+  background:#2c2c2c;
+
+  padding:15px;
+
+  border-radius:12px;
+
+  font-size:18px;
+
+  font-weight:bold;
+
+  text-align:center;
+}
