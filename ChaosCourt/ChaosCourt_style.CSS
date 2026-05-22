@@ -1,0 +1,198 @@
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body{
+  width:100vw;
+  height:100vh;
+
+  background:#111;
+
+  display:flex;
+
+  justify-content:center;
+  align-items:center;
+
+  color:white;
+}
+
+.container{
+  width:90%;
+  max-width:700px;
+
+  padding:40px;
+
+  border-radius:25px;
+
+  background:#1e1e1e;
+
+  display:flex;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  gap:25px;
+}
+
+h1{
+  font-size:42px;
+
+  letter-spacing:4px;
+}
+
+#subtitle{
+  opacity:0.8;
+}
+
+/* =========================
+   GRID
+========================= */
+
+#avatarGrid{
+  width:100%;
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap:20px;
+}
+
+/* =========================
+   AVATAR
+========================= */
+
+.avatarItem{
+  aspect-ratio:1/1;
+
+  border-radius:50%;
+
+  overflow:hidden;
+
+  border:4px solid transparent;
+
+  cursor:pointer;
+
+  transition:0.2s;
+
+  background:#2a2a2a;
+}
+
+.avatarItem img{
+  width:100%;
+  height:100%;
+
+  object-fit:cover;
+}
+
+/* HOVER */
+
+.avatarItem:hover{
+  transform:scale(1.05);
+}
+
+/* SELECTED BY YOU */
+
+.avatarItem.selected{
+  border:4px solid #4dff88;
+
+  box-shadow:
+    0 0 20px rgba(77,255,136,0.5);
+}
+
+/* TAKEN */
+
+.avatarItem.taken{
+  filter:grayscale(1);
+
+  opacity:0.35;
+
+  cursor:not-allowed;
+}
+
+/* =========================
+   SHOW PLAYERS
+========================= */
+
+#showPlayersScreen{
+  display:none;
+
+  width:100%;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  gap:30px;
+}
+
+/* DEFENDANT */
+
+#defendantContainer{
+  display:flex;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  gap:20px;
+}
+
+#defendantImage{
+  width:180px;
+  height:180px;
+
+  border-radius:50%;
+}
+
+#crimeText{
+  font-size:28px;
+
+  text-align:center;
+
+  max-width:600px;
+}
+
+/* DEFENSE / PROSECUTION */
+
+#defenseContainer,
+#prosecutionContainer{
+  position:absolute;
+
+  bottom:80px;
+
+  display:flex;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  gap:15px;
+
+  transition:1s;
+}
+
+#defenseContainer{
+  left:-400px;
+}
+
+#prosecutionContainer{
+  right:-400px;
+}
+
+#defenseContainer img,
+#prosecutionContainer img{
+  width:140px;
+  height:140px;
+
+  border-radius:50%;
+}

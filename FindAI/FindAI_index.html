@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>FindAI</title>
+
+  <link
+    rel="stylesheet"
+    href="FindAI_style.css"
+  />
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- GAME SCREEN -->
+
+    <div id="gameScreen">
+
+      <!-- PROMPT -->
+
+      <h2 id="promptText">
+        Aguardando partida começar...
+      </h2>
+
+      <!-- ANSWER INPUT -->
+
+      <input
+        type="text"
+        id="answerInput"
+        placeholder="Sua resposta..."
+      />
+
+      <!-- SEND BUTTON -->
+
+      <button
+        id="sendButton"
+        onclick="sendAnswer()"
+      >
+        Enviar Resposta
+      </button>
+
+      <!-- VOTING -->
+
+      <div id="votingContainer">
+
+        <h2>
+          Vote na resposta que parece ser feita por IA
+        </h2>
+
+        <p id="votingStatus"></p>
+
+        <div id="votingAnswers"></div>
+
+      </div>
+
+      <!-- RESULTS -->
+
+      <div id="resultContainer">
+
+        <h2>PLACAR</h2>
+
+        <div id="resultScores"></div>
+
+      </div>
+
+      <!-- WAITING -->
+
+      <p id="waitingText"></p>
+
+    </div>
+
+  </div>
+
+  <script
+    type="module"
+    src="FindAI_app.js"
+  ></script>
+
+</body>
+
+</html>

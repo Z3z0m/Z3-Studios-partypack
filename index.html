@@ -1,67 +1,68 @@
-<!DOCTYPE html> <html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-BR">
 
 <head>
+
   <meta charset="UTF-8" />
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   />
 
   <title>Z3 Party Pack</title>
-  <link rel="stylesheet" href="style.css">
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  />
+
 </head>
 
 <body>
+
   <div class="container">
+
     <div id="loginScreen">
+
       <h1>Z3 Party Pack</h1>
-      <input type="text" id="roomCode" placeholder="Código da sala" maxlength="4"/>
 
-      <input type="text" id="playerName" placeholder="Seu nome" maxlength="16"/>
-
-      <button onclick="joinRoom()">
-        Entrar
-      </button>
-
-      <p id="status"></p>
-
-    </div>
-
-    <!-- GAME SCREEN -->
-
-    <div id="gameScreen">
-
-      <h2 id="promptText"> 
-        Aguardando partida começar...
-      </h2>
+      <!-- ROOM CODE -->
 
       <input
         type="text"
-        id="answerInput"
-        placeholder="Sua resposta..."
+        id="roomCode"
+        placeholder="Código da sala"
+        maxlength="4"
+        oninput="CheckRoomCode()"
       />
 
-      <button id="sendButton" onclick="sendAnswer()">
-        Enviar Resposta
+      <!-- GAME MODE -->
+
+      <p id="gameModeText"></p>
+
+      <!-- PLAYER NAME -->
+
+      <input
+        type="text"
+        id="playerName"
+        placeholder="Seu nome"
+        maxlength="16"
+      />
+
+      <!-- JOIN BUTTON -->
+
+      <button
+        id="joinButton"
+        onclick="joinRoom()"
+        disabled
+      >
+        Entrar
       </button>
-      
-      <div id="votingContainer">
 
-        <h2> Vote na resposta que parece ser feita por IA </h2>
-        <p id="votingStatus"></p>
-        <div id="votingAnswers"></div>
+      <!-- STATUS -->
 
-      </div>
-
-      <div id="resultContainer">
-
-        <h2>PLACAR</h2>
-
-        <div id="resultScores"></div>
-
-      </div>
-
-      <p id="waitingText"></p>
+      <p id="status"></p>
 
     </div>
 
@@ -69,8 +70,8 @@
 
   <script
     type="module"
-    src="app.js">
-  </script>
+    src="app.js"
+  ></script>
 
 </body>
 

@@ -1,0 +1,458 @@
+// =========================
+// FIREBASE IMPORTS
+// =========================
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  onValue
+}
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+
+// =========================
+// FIREBASE CONFIG
+// =========================
+
+const firebaseConfig = {
+
+  apiKey: "AIza....",
+
+  authDomain: "z3-partypack.firebaseapp.com",
+
+  databaseURL:
+  "https://z3-partypack-default-rtdb.firebaseio.com",
+
+  projectId: "z3-partypack",
+
+  storageBucket:
+  "z3-partypack.firebasestorage.app",
+
+  messagingSenderId: "...",
+
+  appId: "..."
+
+};
+
+
+// =========================
+// INIT FIREBASE
+// =========================
+
+const app = initializeApp(firebaseConfig);
+
+const db = getDatabase(app);
+
+
+// =========================
+// URL PARAMS
+// =========================
+
+const params =
+  new URLSearchParams(window.location.search);
+
+const currentRoomCode =
+  params.get("room");
+
+const currentPlayerName =
+  params.get("name");
+
+const currentPlayerId =
+  params.get("id");
+
+
+// =========================
+// GAME STATE
+// =========================
+
+let alreadyAnswered = false;
+let alreadyVoted = false;
+let currentGameState = "Lobby";
+
+
+// =========================
+// START
+// =========================
+
+window.onload = function()
+{
+  ListenForPrompt();
+
+  ListenForGameState();
+};
+
+
+// =========================
+// LISTEN PROMPT
+// =========================
+
+function ListenForPrompt()
+{
+  const promptRef =
+    ref(
+      db,
+      `rooms/${currentRoomCode}/currentState/prompt`
+    );
+
+  onValue(promptRef, (snapshot) =>
+  {
+    const prompt = snapshot.val();
+
+    if(prompt)
+    {
+      document
+        .getElementById("promptText")
+        .innerText = prompt;
+
+      alreadyAnswered = false;
+
+      document
+        .getElementById("answerInput")
+        .disabled = false;
+
+      document
+        .getElementById("sendButton")
+        .disabled = false;
+
+      document
+        .getElementById("waitingText")
+        .innerText = "";
+
+      document
+        .getElementById("answerInput")
+        .value = "";
+    }
+
+    document
+      .getElementById("promptText")
+      .style.display = "block";
+
+    document
+      .getElementById("answerInput")
+      .style.display = "block";
+
+    document
+      .getElementById("sendButton")
+      .style.display = "block";
+
+    document
+      .getElementById("votingContainer")
+      .style.display = "none";
+  });
+}
+
+
+// =========================
+// SEND ANSWER
+// =========================
+
+window.sendAnswer = async function()
+{
+  if(alreadyAnswered)
+  {
+    return;
+  }
+
+  const answerText =
+    document
+    .getElementById("answerInput")
+    .value
+    .trim();
+
+  if(answerText.length <= 0)
+  {
+    return;
+  }
+
+  // GET ROUND
+
+  const roundSnapshot =
+    await get(
+      ref(
+        db,
+        `rooms/${currentRoomCode}/currentState/round`
+      )
+    );
+
+  const currentRound =
+    roundSnapshot.val();
+
+  // SAVE ANSWER
+
+  await set(
+    ref(
+      db,
+      `rooms/${currentRoomCode}/history/round_${currentRound}/answers/${currentPlayerId}`
+    ),
+    {
+      playerName: currentPlayerName,
+      playerId: currentPlayerId,
+      text: answerText
+    }
+  );
+
+  console.log("Resposta enviada!");
+
+  alreadyAnswered = true;
+
+  document
+    .getElementById("answerInput")
+    .disabled = true;
+
+  document
+    .getElementById("sendButton")
+    .disabled = true;
+
+  document
+    .getElementById("waitingText")
+    .innerText =
+      "Esperando outros jogadores...";
+};
+
+
+// =========================
+// LISTEN GAME STATE
+// =========================
+
+function ListenForGameState()
+{
+  const stateRef =
+    ref(
+      db,
+      `rooms/${currentRoomCode}/currentState/gameState`
+    );
+
+  onValue(stateRef, (snapshot) =>
+  {
+    const gameState = snapshot.val();
+
+    currentGameState = gameState;
+
+    if(gameState == "Lobby")
+    {
+      document
+        .getElementById("promptText")
+        .innerText =
+          "Aguardando partida começar...";
+
+      document
+        .getElementById("promptText")
+        .style.display = "block";
+
+      document
+        .getElementById("votingContainer")
+        .style.display = "none";
+
+      document
+        .getElementById("resultContainer")
+        .style.display = "none";
+    }
+
+    if(gameState == "Prompt")
+    {
+      document
+        .getElementById("resultContainer")
+        .style.display = "none";
+    }
+
+    if(gameState == "Voting")
+    {
+      OpenVoting();
+    }
+
+    if(gameState == "Result")
+    {
+      OpenResult();
+    }
+  });
+}
+
+
+// =========================
+// OPEN VOTING
+// =========================
+
+async function OpenVoting()
+{
+  alreadyVoted = false;
+
+  document
+    .getElementById("votingStatus")
+    .innerText = "";
+
+  document
+    .getElementById("promptText")
+    .style.display = "none";
+
+  document
+    .getElementById("answerInput")
+    .style.display = "none";
+
+  document
+    .getElementById("sendButton")
+    .style.display = "none";
+
+  document
+    .getElementById("waitingText")
+    .innerText = "";
+
+  document
+    .getElementById("votingContainer")
+    .style.display = "flex";
+
+  const votingAnswersDiv =
+    document.getElementById("votingAnswers");
+
+  votingAnswersDiv.innerHTML = "";
+
+  const votingRef =
+    ref(
+      db,
+      `rooms/${currentRoomCode}/currentState/votingAnswers`
+    );
+
+  onValue(votingRef, (snapshot) =>
+  {
+    votingAnswersDiv.innerHTML = "";
+
+    if(!snapshot.exists())
+    {
+      return;
+    }
+
+    snapshot.forEach((child) =>
+    {
+      const answerData = child.val();
+
+      const button =
+        document.createElement("button");
+
+      button.className = "voteButton";
+
+      button.innerText = answerData.text;
+
+      button.onclick =
+        (event) => Vote(child.key, event);
+
+      votingAnswersDiv.appendChild(button);
+    });
+  });
+}
+
+
+// =========================
+// VOTE
+// =========================
+
+async function Vote(answerId, event)
+{
+  if(alreadyVoted)
+  {
+    return;
+  }
+
+  alreadyVoted = true;
+
+  document
+    .querySelectorAll(".voteButton")
+    .forEach(button =>
+    {
+      button.classList.remove("selected");
+    });
+
+  event.target.classList.add("selected");
+
+  const roundSnapshot =
+    await get(
+      ref(
+        db,
+        `rooms/${currentRoomCode}/currentState/round`
+      )
+    );
+
+  const currentRound =
+    roundSnapshot.val();
+
+  await set(
+    ref(
+      db,
+      `rooms/${currentRoomCode}/history/round_${currentRound}/votes/${currentPlayerId}`
+    ),
+    {
+      votedAnswer: answerId,
+      playerName: currentPlayerName
+    }
+  );
+
+  document
+    .getElementById("votingStatus")
+    .innerHTML =
+      "<h2>Esperando outros votos...</h2>";
+
+  console.log("Voto enviado!");
+}
+
+
+// =========================
+// OPEN RESULT
+// =========================
+
+function OpenResult()
+{
+  document
+    .getElementById("promptText")
+    .style.display = "none";
+
+  document
+    .getElementById("answerInput")
+    .style.display = "none";
+
+  document
+    .getElementById("sendButton")
+    .style.display = "none";
+
+  document
+    .getElementById("votingContainer")
+    .style.display = "none";
+
+  document
+    .getElementById("resultContainer")
+    .style.display = "flex";
+
+  const resultRef =
+    ref(
+      db,
+      `rooms/${currentRoomCode}/players`
+    );
+
+  onValue(resultRef, (snapshot) =>
+  {
+    const resultDiv =
+      document.getElementById("resultScores");
+
+    resultDiv.innerHTML = "";
+
+    snapshot.forEach((child) =>
+    {
+      const data = child.val();
+
+      const score =
+        data.score || 0;
+
+      const item =
+        document.createElement("div");
+
+      item.className = "scoreItem";
+
+      item.innerText =
+        `${data.name} - ${score}`;
+
+      resultDiv.appendChild(item);
+    });
+  });
+}

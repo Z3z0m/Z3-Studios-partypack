@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8"/>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>ChaosCourt</title>
+
+  <link
+    rel="stylesheet"
+    href="ChaosCourt_style.css"
+  />
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h1>CHAOS COURT</h1>
+
+    <p id="subtitle">
+      Escolha sua identidade jurídica.
+    </p>
+
+    <!-- AVATAR GRID -->
+
+    <div id="avatarGrid"></div>
+    
+    <!-- SHOW PLAYERS -->
+    <div id="showPlayersScreen">
+      <!-- DEFENDANT -->
+      <div id="defendantContainer">
+        <img id="defendantImage" />
+        <p id="crimeText"></p>
+      </div>
+      <!-- DEFENSE -->
+      <div id="defenseContainer">
+        <img id="defenseImage" />
+        <h2 id="defenseName"></h2>
+      </div>
+      <!-- PROSECUTION -->
+      <div id="prosecutionContainer">
+        <img id="prosecutionImage" />
+        <h2 id="prosecutionName"></h2>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script
+    type="module"
+    src="ChaosCourt_app.js"
+  ></script>
+
+</body>
+
+</html>

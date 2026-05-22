@@ -9,8 +9,7 @@ import {
   getDatabase,
   ref,
   set,
-  get,
-  onValue
+  get
 }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -50,18 +49,92 @@ const db = getDatabase(app);
 
 
 // =========================
-// PLAYER DATA
+// GLOBALS
 // =========================
 
-let currentRoomCode = "";
+let detectedGameMode = "";
 
-let currentPlayerName = "";
+let roomExists = false;
 
-let currentPlayerId = "";
 
-let alreadyAnswered = false;
-let alreadyVoted = false;
-let currentGameState = "Lobby";
+// =========================
+// CHECK ROOM CODE
+// =========================
+
+async function CheckRoomCode()
+{
+  const roomCode =
+    document
+    .getElementById("roomCode")
+    .value
+    .toUpperCase()
+    .trim();
+
+  const gameModeText =
+    document.getElementById("gameModeText");
+
+  const joinButton =
+    document.getElementById("joinButton");
+
+  // RESET
+
+  joinButton.disabled = true;
+
+  roomExists = false;
+
+  // INVALID CODE
+
+  if(roomCode.length < 4)
+  {
+    gameModeText.innerText = "";
+
+    return;
+  }
+
+  try
+  {
+    const roomRef =
+      ref(db, `rooms/${roomCode}`);
+
+    const snapshot =
+      await get(roomRef);
+
+    // ROOM NOT FOUND
+
+    if(!snapshot.exists())
+    {
+      gameModeText.innerText =
+        "Sala não encontrada";
+
+      return;
+    }
+
+    // GET GAME MODE
+
+    const data = snapshot.val();
+
+    detectedGameMode =
+      data.game || "Desconhecido";
+
+    roomExists = true;
+
+    // ENABLE BUTTON
+
+    joinButton.disabled = false;
+
+    // UI
+
+    gameModeText.innerText =
+      `Modo encontrado: ${detectedGameMode}`;
+  }
+  catch(error)
+  {
+    console.error(error);
+
+    gameModeText.innerText =
+      "Erro ao verificar sala";
+  }
+}
 
 
 // =========================
@@ -86,47 +159,40 @@ window.joinRoom = async function()
   const status =
     document.getElementById("status");
 
+  // VALIDATIONS
+
   if(roomCode.length < 4)
   {
-    status.innerText = "Código inválido";
+    status.innerText =
+      "Código inválido";
 
     return;
   }
 
   if(playerName.length < 2)
   {
-    status.innerText = "Nome inválido";
+    status.innerText =
+      "Nome inválido";
 
     return;
   }
 
-  const playerId = crypto.randomUUID();
+  if(!roomExists)
+  {
+    status.innerText =
+      "Sala inválida";
 
-  currentRoomCode = roomCode;
+    return;
+  }
 
-  currentPlayerName = playerName;
+  // PLAYER DATA
 
-  currentPlayerId = playerId;
+  const playerId =
+    crypto.randomUUID();
 
   try
   {
-    // VERIFICA SE SALA EXISTE
-
-    const roomRef =
-      ref(db, `rooms/${roomCode}`);
-
-    const snapshot =
-      await get(roomRef);
-
-    if(!snapshot.exists())
-    {
-      status.innerText =
-        "Sala não encontrada";
-
-      return;
-    }
-
-    // ENTRA NA SALA
+    // ADD PLAYER
 
     await set(
       ref(
@@ -140,20 +206,25 @@ window.joinRoom = async function()
 
     console.log("Jogador conectado!");
 
-    // TROCA TELA
+    // REDIRECT
 
-    document
-      .getElementById("loginScreen")
-      .style.display = "none";
+    if(detectedGameMode == "FindAI")
+    {
+      window.location.href =
+        `FindAI/FindAI_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
 
-    document
-      .getElementById("gameScreen")
-      .style.display = "flex";
+    else if(detectedGameMode == "ChaosCourt")
+    {
+      window.location.href =
+        `ChaosCourt/ChaosCourt_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
 
-    // COMEÇA LISTENER
-
-    ListenForPrompt();
-    ListenForGameState();
+    else
+    {
+      status.innerText =
+        "Modo de jogo desconhecido";
+    }
   }
   catch(error)
   {
@@ -166,366 +237,8 @@ window.joinRoom = async function()
 
 
 // =========================
-// LISTEN PROMPT
+// GLOBAL EXPORTS
 // =========================
 
-function ListenForPrompt()
-{
-  const promptRef =
-    ref(
-      db,
-      `rooms/${currentRoomCode}/currentState/prompt`
-    );
-
-  onValue(promptRef, (snapshot) =>
-  {
-    const prompt = snapshot.val();
-
-    if(prompt)
-    {
-      document
-        .getElementById("promptText")
-        .innerText = prompt;
-
-        alreadyAnswered = false;
-
-      document
-        .getElementById("answerInput")
-        .disabled = false;
-
-      document
-        .getElementById("sendButton")
-        .disabled = false;
-
-      document
-        .getElementById("waitingText")
-        .innerText = "";
-
-      document
-        .getElementById("answerInput")
-        .value = "";
-    }
-
-    document
-    .getElementById("promptText")
-    .style.display = "block";
-
-    document
-      .getElementById("answerInput")
-      .style.display = "block";
-
-    document
-      .getElementById("sendButton")
-      .style.display = "block";
-
-    document
-      .getElementById("votingContainer")
-      .style.display = "none";
-  });
-}
-
-
-// =========================
-// SEND ANSWER
-// =========================
-
-window.sendAnswer = async function()
-{
-  if(alreadyAnswered)
-  {
-    return;
-  }
-  const answerText = document
-      .getElementById("answerInput")
-      .value
-      .trim();
-
-  if(answerText.length <= 0)
-  {
-    return;
-  }
-
-  // GET CURRENT ROUND
-
-  const roundSnapshot = await get(ref(db,`rooms/${currentRoomCode}/currentState/round`));
-
-  const currentRound = roundSnapshot.val();
-
-  // SAVE ANSWER
-
-  await set(ref(db,`rooms/${currentRoomCode}/history/round_${currentRound}/answers/${currentPlayerId}`),
-    {
-      playerName: currentPlayerName,
-      playerId: currentPlayerId,
-      text: answerText
-    }
-  );
-
-  console.log("Resposta enviada!");
-
-  alreadyAnswered = true;
-
-  document
-    .getElementById("answerInput")
-    .disabled = true;
-
-  document
-    .getElementById("sendButton")
-    .disabled = true;
-
-  document
-    .getElementById("waitingText")
-    .innerText =
-    "Esperando outros jogadores...";
-}
-
-function ListenForGameState()
-{
-  const stateRef =
-    ref(
-      db,
-      `rooms/${currentRoomCode}/currentState/gameState`
-    );
-
-  onValue(stateRef, (snapshot) =>
-  {
-    const gameState = snapshot.val();
-    currentGameState = gameState;
-
-    if(gameState == "Lobby")
-    { 
-      document
-        .getElementById("promptText")
-        .innerText =
-        "Aguardando partida começar...";
-
-      document
-  .getElementById("promptText")
-  .style.display = "block";
-
-document
-  .getElementById("votingContainer")
-  .style.display = "none";
-
-if(currentGameState == "Prompt")
-{
-      document
-        .getElementById("answerInput")
-        .style.display = "block";
-
-      document
-        .getElementById("sendButton")
-        .style.display = "block";
-    }
-    else
-    {
-      document
-        .getElementById("answerInput")
-        .style.display = "none";
-
-      document
-        .getElementById("sendButton")
-        .style.display = "none";
-    }
-
-      document
-        .getElementById("resultContainer")
-        .style.display = "none";
-    }
-
-    if(gameState == "Prompt")
-    {
-      document
-        .getElementById("resultContainer")
-        .style.display = "none";
-    }
-
-    if(gameState == "Voting")
-    {
-      OpenVoting();
-    }
-
-    if(gameState == "Result")
-    {
-      OpenResult();
-    }
-  });
-}
-async function OpenVoting()
-{
-  alreadyVoted = false;
-  document
-    .getElementById("votingStatus")
-    .innerText = "";
-
-  document
-    .getElementById("promptText")
-    .style.display = "none";
-
-  // ESCONDE INPUT RESPOSTA
-
-  document
-    .getElementById("answerInput")
-    .style.display = "none";
-
-  document
-    .getElementById("sendButton")
-    .style.display = "none";
-
-  document
-    .getElementById("waitingText")
-    .innerText = "";
-
-  // MOSTRA VOTAÇÃO
-
-  document
-    .getElementById("votingContainer")
-    .style.display = "flex";
-
-  const votingAnswersDiv =
-    document.getElementById("votingAnswers");
-
-  votingAnswersDiv.innerHTML = "";
-
-  // GET VOTING ANSWERS
-
-  const votingRef =
-  ref(
-    db,
-    `rooms/${currentRoomCode}/currentState/votingAnswers`
-  );
-
-onValue(votingRef,(snapshot)=>
-{
-  votingAnswersDiv.innerHTML = "";
-
-  if(!snapshot.exists())
-  {
-    return;
-  }
-
-  snapshot.forEach((child)=>
-  {
-        const answerData = child.val();
-
-    const button =
-      document.createElement("button");
-
-    button.className = "voteButton";
-
-    button.innerText = answerData.text;
-
-    button.onclick = () => Vote(child.key, event);
-
-    votingAnswersDiv.appendChild(button);
-  });
-});
-
-async function Vote(answerId, event)
-{
-  if(alreadyVoted)
-  {
-    return;
-  }
-
-  alreadyVoted = true;
-  document
-    .querySelectorAll(".voteButton")
-    .forEach(button =>
-    {
-      button.classList.remove("selected");
-    });
-
-  event.target.classList.add("selected");
-
-  // GET ROUND
-
-  const roundSnapshot =
-    await get(
-      ref(
-        db,
-        `rooms/${currentRoomCode}/currentState/round`
-      )
-    );
-
-  const currentRound =
-    roundSnapshot.val();
-
-  // SAVE VOTE
-
-  await set(
-    ref(
-      db,
-      `rooms/${currentRoomCode}/history/round_${currentRound}/votes/${currentPlayerId}`
-    ),
-    {
-      votedAnswer: answerId,
-      playerName: currentPlayerName
-    }
-  );
-
-  // UI
-
-  document
-    .getElementById("votingStatus")
-    .innerHTML =
-    "<h2>Esperando outros votos...</h2>";
-
-  console.log("Voto enviado!");
-}
-}
-
-function OpenResult()
-{
-  document
-    .getElementById("promptText")
-    .style.display = "none";
-
-  document
-    .getElementById("answerInput")
-    .style.display = "none";
-
-  document
-    .getElementById("sendButton")
-    .style.display = "none";
-
-  document
-    .getElementById("votingContainer")
-    .style.display = "none";
-
-  document
-    .getElementById("resultContainer")
-    .style.display = "flex";
-
-  const resultRef =
-    ref(
-      db,
-      `rooms/${currentRoomCode}/players`
-    );
-
-  onValue(resultRef,(snapshot)=>
-  {
-    const resultDiv =
-      document.getElementById("resultScores");
-
-    resultDiv.innerHTML = "";
-
-    snapshot.forEach((child)=>
-    {
-      const data = child.val();
-
-      const score =
-        data.score || 0;
-
-      const item =
-        document.createElement("div");
-
-      item.className = "scoreItem";
-
-      item.innerText =
-        `${data.name} - ${score}`;
-
-      resultDiv.appendChild(item);
-    });
-  });
-}
+window.CheckRoomCode =
+  CheckRoomCode;
