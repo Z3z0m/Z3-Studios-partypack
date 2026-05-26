@@ -24,6 +24,16 @@ body{
   color:white;
 }
 
+.screen{
+  display:none;
+  flex-direction:column;
+  gap:15px;
+}
+
+.screen.active{
+  display:flex;
+}
+
 .container{
   width:90%;
   max-width:400px;
@@ -37,14 +47,6 @@ body{
   box-shadow:
     0 0 20px
     rgba(0,0,0,0.4);
-}
-
-#gameScreen{
-  display:flex;
-
-  flex-direction:column;
-
-  gap:15px;
 }
 
 h2{
@@ -112,14 +114,6 @@ button:hover{
    VOTING
 ========================= */
 
-#votingContainer{
-  display:none;
-
-  flex-direction:column;
-
-  gap:15px;
-}
-
 #votingAnswers{
   display:flex;
 
@@ -128,6 +122,16 @@ button:hover{
   gap:10px;
 
   width:100%;
+}
+
+#votingPrompt{
+  text-align:center;
+
+  opacity:0.7;
+
+  font-size:16px;
+
+  line-height:1.4;
 }
 
 .voteButton{
@@ -169,14 +173,6 @@ button:hover{
    RESULTS
 ========================= */
 
-#resultContainer{
-  display:none;
-
-  flex-direction:column;
-
-  gap:15px;
-}
-
 .scoreItem{
   background:#2c2c2c;
 
@@ -189,4 +185,14 @@ button:hover{
   font-weight:bold;
 
   text-align:center;
+}
+
+#resultScores{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
 }

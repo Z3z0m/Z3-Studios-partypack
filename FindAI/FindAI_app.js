@@ -74,6 +74,23 @@ let alreadyAnswered = false;
 let alreadyVoted = false;
 let currentGameState = "Lobby";
 
+// =========================
+// SCREEN SYSTEM
+// =========================
+
+function ShowScreen(screenId)
+{
+  document
+    .querySelectorAll(".screen")
+    .forEach(screen =>
+    {
+      screen.classList.remove("active");
+    });
+
+  document
+    .getElementById(screenId)
+    .classList.add("active");
+}
 
 // =========================
 // START
@@ -81,9 +98,8 @@ let currentGameState = "Lobby";
 
 window.onload = function()
 {
-  ListenForPrompt();
-
   ListenForGameState();
+  ListenForPrompt();
 };
 
 
@@ -112,6 +128,10 @@ function ListenForPrompt()
       alreadyAnswered = false;
 
       document
+        .getElementById("votingPrompt")
+        .innerText = prompt;
+
+      document
         .getElementById("answerInput")
         .disabled = false;
 
@@ -130,20 +150,23 @@ function ListenForPrompt()
 
     document
       .getElementById("promptText")
-      .style.display = "block";
+      
 
-    document
-      .getElementById("answerInput")
-      .style.display = "block";
+    if(currentGameState == "Prompt")
+    {
+      document
+        .getElementById("answerInput")
+        
 
-    document
-      .getElementById("sendButton")
-      .style.display = "block";
+      document
+        .getElementById("sendButton")
+        
+    }
 
     document
       .getElementById("votingContainer")
-      .style.display = "none";
-  });
+      
+      });
 }
 
 
@@ -233,42 +256,23 @@ function ListenForGameState()
 
     currentGameState = gameState;
 
-    if(gameState == "Lobby")
-    {
-      document
-        .getElementById("promptText")
-        .innerText =
-          "Aguardando partida começar...";
+    if(gameState == "Lobby") { ShowScreen("lobbyScreen") }
 
-      document
-        .getElementById("promptText")
-        .style.display = "block";
-
-      document
-        .getElementById("votingContainer")
-        .style.display = "none";
-
-      document
-        .getElementById("resultContainer")
-        .style.display = "none";
-    }
-
-    if(gameState == "Prompt")
-    {
-      document
-        .getElementById("resultContainer")
-        .style.display = "none";
-    }
+    if(gameState == "Prompt") { ShowScreen("promptScreen"); }
 
     if(gameState == "Voting")
     {
+      ShowScreen("votingScreen");
       OpenVoting();
+
     }
 
-    if(gameState == "Result")
-    {
-      OpenResult();
-    }
+    if(gameState == "ShowAnswers") { ShowScreen("showAnswersScreen"); }
+
+    if(gameState == "Result") 
+      { ShowScreen("resultScreen"); 
+        OpenResult(); 
+      }
   });
 }
 
@@ -282,28 +286,8 @@ async function OpenVoting()
   alreadyVoted = false;
 
   document
-    .getElementById("votingStatus")
-    .innerText = "";
-
-  document
-    .getElementById("promptText")
-    .style.display = "none";
-
-  document
-    .getElementById("answerInput")
-    .style.display = "none";
-
-  document
-    .getElementById("sendButton")
-    .style.display = "none";
-
-  document
-    .getElementById("waitingText")
-    .innerText = "";
-
-  document
-    .getElementById("votingContainer")
-    .style.display = "flex";
+  .getElementById("votingWaitingText")
+  .innerText = "";
 
   const votingAnswersDiv =
     document.getElementById("votingAnswers");
@@ -389,10 +373,10 @@ async function Vote(answerId, event)
     }
   );
 
-  document
-    .getElementById("votingStatus")
-    .innerHTML =
-      "<h2>Esperando outros votos...</h2>";
+document
+  .getElementById("votingWaitingText")
+  .innerText = 
+    "Esperando outros votos...";
 
   console.log("Voto enviado!");
 }
@@ -404,26 +388,6 @@ async function Vote(answerId, event)
 
 function OpenResult()
 {
-  document
-    .getElementById("promptText")
-    .style.display = "none";
-
-  document
-    .getElementById("answerInput")
-    .style.display = "none";
-
-  document
-    .getElementById("sendButton")
-    .style.display = "none";
-
-  document
-    .getElementById("votingContainer")
-    .style.display = "none";
-
-  document
-    .getElementById("resultContainer")
-    .style.display = "flex";
-
   const resultRef =
     ref(
       db,

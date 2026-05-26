@@ -23,25 +23,44 @@
 
   <div class="container">
 
-    <!-- GAME SCREEN -->
+    <!-- =========================
+         LOBBY SCREEN
+    ========================== -->
 
-    <div id="gameScreen">
+    <div
+      id="lobbyScreen"
+      class="screen active"
+    >
 
-      <!-- PROMPT -->
+      <h1>
+        FindAI
+      </h1>
+
+      <p>
+        Esperando o anfitrião começar...
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         PROMPT SCREEN
+    ========================== -->
+
+    <div
+      id="promptScreen"
+      class="screen"
+    >
 
       <h2 id="promptText">
-        Aguardando partida começar...
+        Prompt aqui...
       </h2>
-
-      <!-- ANSWER INPUT -->
 
       <input
         type="text"
         id="answerInput"
         placeholder="Sua resposta..."
       />
-
-      <!-- SEND BUTTON -->
 
       <button
         id="sendButton"
@@ -50,33 +69,69 @@
         Enviar Resposta
       </button>
 
-      <!-- VOTING -->
+      <p id="waitingText">
+      </p>
 
-      <div id="votingContainer">
+    </div>
 
-        <h2>
-          Vote na resposta que parece ser feita por IA
-        </h2>
 
-        <p id="votingStatus"></p>
+    <!-- =========================
+         VOTING SCREEN
+    ========================== -->
 
-        <div id="votingAnswers"></div>
+    <div
+      id="votingScreen"
+      class="screen"
+    >
 
+      <p id="votingPrompt">
+        Prompt aqui...
+      </p>
+
+      <h2>
+        Vote na resposta que parece IA
+      </h2>
+
+      <div id="votingAnswers">
       </div>
 
-      <!-- RESULTS -->
+      <p id="votingWaitingText">
+      </p>
 
-      <div id="resultContainer">
+    </div>
 
-        <h2>PLACAR</h2>
 
-        <div id="resultScores"></div>
+    <!-- =========================
+         SHOW ANSWERS SCREEN
+    ========================== -->
 
+    <div
+      id="showAnswersScreen"
+      class="screen"
+    >
+
+      <h2>
+        Mostrando respostas no Host
+      </h2>
+
+    </div>
+
+
+    <!-- =========================
+         RESULT SCREEN
+    ========================== -->
+
+    <div
+      id="resultScreen"
+      class="screen"
+    >
+
+      <h2>
+        PLACAR
+      </h2>
+
+      <div id="resultScores">
       </div>
-
-      <!-- WAITING -->
-
-      <p id="waitingText"></p>
 
     </div>
 
