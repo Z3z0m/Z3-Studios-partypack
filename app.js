@@ -219,6 +219,11 @@ window.joinRoom = async function()
       window.location.href =
         `ChaosCourt/ChaosCourt_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
+    else if(detectedGameMode == "ColorsIn")
+    {
+      window.location.href =
+        `ColorsIn/ColorsIn_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
 
     else
     {
