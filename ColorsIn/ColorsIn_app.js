@@ -64,11 +64,20 @@ let selectedAvatar = "0";
 // AVATARS
 // =========================
 
-const avatars = [];
-  for(let i = 0; i < 16; i++)
-  {
-    avatars.push(`${i}.png`);
-  }
+const avatars =
+[
+    "Bege",
+    "Black",
+    "Blue",
+
+    "Metal",
+    "Orange",
+    "Pink",
+
+    "Red",
+    "Silver",
+    "Yellow"
+];
 
 
 // =========================
@@ -104,7 +113,7 @@ function RenderAvatars()
       document.createElement("img");
 
     img.src =
-      `imgs/${avatarName}`;
+    `imgs/${avatarName}.png`;
 
     div.appendChild(img);
 
