@@ -16,7 +16,8 @@
 
   <div class="container">
 
-    <h1 id="gameTitle">
+    <div id="LobbyScreen">
+      <h1 id="gameTitle">
       <span class="c1">C</span>
       <span class="c2">O</span>
       <span class="c3">L</span>
@@ -28,19 +29,59 @@
 
       <span class="c7">I</span>
       <span class="c8">N</span>
-    </h1>
+      </h1>
 
-    <p id="subtitle">
-      Escolha seu avatar
-    </p>
+      <p id="subtitle">
+        Escolha seu avatar
+      </p>
 
-    <div id="avatarGrid"></div>
+      <div id="avatarGrid"></div>
 
-    <h2 id="waitingText">
-      Aguardando host iniciar...
-    </h2>
+      <h2 id="lobbyWaitingText">
+        Aguardando host iniciar...
+      </h2>
+    </div>
+    
+
+    <div id="hintScreen">
+      <h2 id="myColorTitle"> 
+        Essa é a sua cor
+      </h2>
+      <div id="myColorPreview"></div>
+
+      <p>Digite uma dica para sua cor.</p>
+
+      <input
+          id="hintInput"
+          maxlength="60"
+          placeholder="Ex: Pôr do sol"/>
+
+      <button id="sendHintButton">
+          Enviar Dica
+      </button>
+    </div>
+
+    <div id="waitingHintScreen">
+          <h2 id="hintWaitingText">
+              
+          </h2>
+      </div>
+
+      <div id="guessScreen">
+
+      <h2 id="guessHintText"> DICA </h2>
+
+      <div id="guessGrid"></div>
+
+      <button id="confirmGuessButton">
+          Confirmar Escolha
+      </button>
 
   </div>
+
+  </div>
+
+  
 
   <script
     type="module"
