@@ -418,6 +418,37 @@ async function SubmitGuess(x,y)
 
 async function OpenGuessColor()
 {
+    const hinterSnapshot =
+        await get(
+                ref(
+                    db,
+                    `rooms/${currentRoomCode}/currentHinter`
+                )
+            );
+
+    const hinter = hinterSnapshot.val();
+    if(hinter.playerId === currentPlayerId)
+    {
+        document
+            .getElementById("waitingGuessScreen")
+            .style.display =
+            "flex";
+
+        return;
+    }
+
+    
+    if(hinter.playerId === currentPlayerId)
+    {
+        document
+            .getElementById("waitingGuessScreen")
+            .style.display =
+            "flex";
+
+        return;
+    }
+
+
       document
         .getElementById("LobbyScreen")
         .style.display =
