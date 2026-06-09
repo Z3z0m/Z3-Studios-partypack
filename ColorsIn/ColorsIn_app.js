@@ -205,7 +205,7 @@ async function OpenGiveHint()
     const hinter =
         hinterSnapshot.val();
 
-    if(hinter.playerId === currentPlayerId)
+    if(hinter.PlayerId === currentPlayerId)
     {
         document
             .getElementById("hintScreen")
@@ -256,8 +256,8 @@ async function OpenGiveHint()
             .getElementById("hintWaitingText")
             .innerHTML =
             `Esperando ${GetColoredPlayerName(
-                hinter.playerName,
-                hinter.colorName
+                hinter.PlayerName,
+                hinter.ColorName
             )} escrever a dica...`;
     }
 
@@ -312,14 +312,14 @@ function GetColorHex(colorName)
     return "white";
 }
 
-function GetColoredPlayerName(playerName,colorName)
+function GetColoredPlayerName(PlayerName,ColorName)
 {
     return `
     <span style="
-        color:${GetColorHex(colorName)};
+        color:${GetColorHex(ColorName)};
         font-weight:bold;
     ">
-        ${playerName}
+        ${PlayerName}
     </span>`;
 }
 
@@ -427,18 +427,19 @@ async function OpenGuessColor()
             );
 
     const hinter = hinterSnapshot.val();
-    if(hinter.playerId === currentPlayerId)
+    if(hinter.PlayerId === currentPlayerId)
     {
-        document
-            .getElementById("waitingGuessScreen")
-            .style.display =
-            "flex";
+        document.getElementById("hintScreen").style.display = "none";
+        document.getElementById("guessScreen").style.display = "none";
+        document.getElementById("waitingHintScreen").style.display = "none";
+
+        document.getElementById("waitingGuessScreen").style.display = "flex";
 
         return;
     }
 
     
-    if(hinter.playerId === currentPlayerId)
+    if(hinter.PlayerId === currentPlayerId)
     {
         document
             .getElementById("waitingGuessScreen")
