@@ -189,10 +189,7 @@ async function ListenForStage()
 
 async function OpenGiveHint()
 {
-  document
-    .getElementById("LobbyScreen")
-    .style.display =
-    "none";
+    HideAllScreens();
 
     const hinterSnapshot =
         await get(
@@ -429,9 +426,7 @@ async function OpenGuessColor()
     const hinter = hinterSnapshot.val();
     if(hinter.PlayerId === currentPlayerId)
     {
-        document.getElementById("hintScreen").style.display = "none";
-        document.getElementById("guessScreen").style.display = "none";
-        document.getElementById("waitingHintScreen").style.display = "none";
+        HideAllScreens();
 
         document.getElementById("waitingGuessScreen").style.display = "flex";
 
@@ -447,33 +442,8 @@ async function OpenGuessColor()
             "flex";
 
         return;
-    }
-
-
-      document
-        .getElementById("LobbyScreen")
-        .style.display =
-        "none";
-
-    document
-        .getElementById("hintScreen")
-        .style.display =
-        "none";
-
-    document
-        .getElementById("waitingHintScreen")
-        .style.display =
-        "none";
-    document
-        .getElementById("hintScreen")
-        .style.display =
-        "none";
-
-    document
-        .getElementById("waitingHintScreen")
-        .style.display =
-        "none";
-
+    }  
+    HideAllScreens();
     document
         .getElementById("guessScreen")
         .style.display =
@@ -526,3 +496,11 @@ async function OpenGuessColor()
     };
 }
 
+function HideAllScreens()
+{
+    document.getElementById("LobbyScreen").style.display = "none";
+    document.getElementById("hintScreen").style.display = "none";
+    document.getElementById("waitingHintScreen").style.display = "none";
+    document.getElementById("guessScreen").style.display = "none";
+    document.getElementById("waitingGuessScreen").style.display = "none";
+}
