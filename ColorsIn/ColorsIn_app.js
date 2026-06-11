@@ -69,17 +69,17 @@ let selectedGuessY = -1;
 
 const avatars =
 [
-    "Bege",
-    "Black",
-    "Blue",
+    "bege",
+    "black",
+    "blue",
 
-    "Metal",
-    "Orange",
-    "Pink",
+    "metal",
+    "orange",
+    "pink",
 
-    "Red",
-    "Silver",
-    "Yellow"
+    "red",
+    "silver",
+    "yellow"
 ];
 
 
