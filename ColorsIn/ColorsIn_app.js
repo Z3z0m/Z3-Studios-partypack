@@ -191,6 +191,19 @@ async function OpenGiveHint()
 {
     HideAllScreens();
 
+    document
+        .getElementById("hintInput")
+        .value = "";
+
+    document
+        .getElementById("sendHintButton")
+        .disabled = false;
+
+    document
+        .getElementById("sendHintButton")
+        .innerText =
+        "Enviar Dica";
+
     const hinterSnapshot =
         await get(
             ref(
@@ -415,6 +428,15 @@ async function SubmitGuess(x,y)
 
 async function OpenGuessColor()
 {
+    document
+        .getElementById("confirmGuessButton")
+        .disabled = false;
+
+    document
+        .getElementById("confirmGuessButton")
+        .innerText =
+        "Confirmar Escolha";
+
     const hinterSnapshot =
         await get(
                 ref(
@@ -464,6 +486,9 @@ async function OpenGuessColor()
           .innerText =
           `A dica é "${hintSnapshot.val()}"`;
     }
+
+    selectedGuessX = -1;
+    selectedGuessY = -1;
 
     GenerateGuessGrid();
 
