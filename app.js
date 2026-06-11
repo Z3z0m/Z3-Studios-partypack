@@ -169,14 +169,6 @@ window.joinRoom = async function()
     return;
   }
 
-  if(playerName.length < 2)
-  {
-    status.innerText =
-      "Nome inválido";
-
-    return;
-  }
-
   if(!roomExists)
   {
     status.innerText =
