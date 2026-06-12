@@ -90,6 +90,7 @@ const avatars =
 window.onload = function()
 {
   RenderAvatars();
+  ListenForTakenAvatars();
   ListenForStage();
 };
 
@@ -131,11 +132,59 @@ function RenderAvatars()
 
 
 // =========================
+// TAKEN AVATARS LISTENER
+// =========================
+
+function ListenForTakenAvatars()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/players`),
+    (snapshot) =>
+    {
+      const players = snapshot.val() || {};
+      const taken = new Set();
+
+      Object.entries(players).forEach(([playerId, data]) =>
+      {
+        if (playerId !== currentPlayerId && data.avatar)
+          taken.add(data.avatar);
+      });
+
+      UpdateAvatarAvailability(taken);
+    }
+  );
+}
+
+function UpdateAvatarAvailability(taken)
+{
+  document.querySelectorAll(".avatarItem").forEach((item) =>
+  {
+    const avatarName = item.dataset.avatar;
+    const isTaken = taken.has(avatarName);
+
+    if (isTaken)
+    {
+      item.classList.add("taken");
+      item.onclick = null;
+    }
+    else
+    {
+      item.classList.remove("taken");
+      item.onclick = () => SelectAvatar(item, avatarName);
+    }
+  });
+}
+
+
+// =========================
 // SELECT
 // =========================
 
 async function SelectAvatar(element, avatarName)
 {
+  if (element.classList.contains("taken"))
+    return;
+
   // REMOVE OLD
 
   document

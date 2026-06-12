@@ -119,6 +119,10 @@ h1{
   cursor:not-allowed;
 }
 
+.avatarItem.taken:hover{
+  transform:none;
+}
+
 /* =========================
    SHOW PLAYERS
 ========================= */
@@ -315,6 +319,7 @@ h1{
     transform:scale(1.08);
 }
 
+#sendHintButton,
 #confirmGuessButton
 {
     width:100%;
@@ -370,4 +375,24 @@ h1{
     gap:20px;
 
     text-align:center;
+}
+
+input{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+}
+
+input:focus{
+  outline:2px solid #5c8dff;
 }
