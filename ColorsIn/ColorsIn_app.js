@@ -224,14 +224,24 @@ async function ListenForStage()
             const state =
                 snapshot.val().gameState;
 
+            if(state === "Tutorial")
+            {
+                OpenTutorial();
+            }
+
             if(state === "GiveHint")
             {
                 OpenGiveHint();
             }
-            
+
             if(state === "GuessColor")
             {
                 OpenGuessColor();
+            }
+
+            if(state === "RoundScore")
+            {
+                OpenRoundScore();
             }
         });
 }
@@ -570,9 +580,81 @@ async function OpenGuessColor()
     };
 }
 
+function OpenTutorial()
+{
+    HideAllScreens();
+
+    document
+        .getElementById("tutorialScreen")
+        .style.display =
+        "flex";
+}
+
+async function OpenRoundScore()
+{
+    HideAllScreens();
+
+    const list =
+        document.getElementById("scoreList");
+
+    list.innerHTML = "";
+
+    const snapshot =
+        await get(
+            ref(db, `rooms/${currentRoomCode}/players`)
+        );
+
+    if (!snapshot.exists())
+        return;
+
+    const players =
+        Object.values(snapshot.val());
+
+    players.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    players.forEach((player) =>
+    {
+        const card =
+            document.createElement("div");
+
+        card.className = "scoreCard";
+
+        const img =
+            document.createElement("img");
+
+        img.src =
+            `imgs/${player.avatar}.png`;
+
+        const name =
+            document.createElement("span");
+
+        name.className = "scoreCardName";
+        name.textContent = player.name;
+
+        const pts =
+            document.createElement("span");
+
+        pts.className = "scoreCardPoints";
+        pts.textContent = `${player.score || 0} pts`;
+
+        card.appendChild(img);
+        card.appendChild(name);
+        card.appendChild(pts);
+
+        list.appendChild(card);
+    });
+
+    document
+        .getElementById("roundScoreScreen")
+        .style.display =
+        "flex";
+}
+
 function HideAllScreens()
 {
     document.getElementById("LobbyScreen").style.display = "none";
+    document.getElementById("tutorialScreen").style.display = "none";
+    document.getElementById("roundScoreScreen").style.display = "none";
     document.getElementById("hintScreen").style.display = "none";
     document.getElementById("waitingHintScreen").style.display = "none";
     document.getElementById("guessScreen").style.display = "none";
