@@ -44,8 +44,18 @@
 
     <div id="tutorialScreen">
       <h2 id="tutorialText">
-        Veja o tutorial no host
+        Veja o tutorial na tela!
       </h2>
+
+      <div id="tutorialControls" style="display:none">
+        <button onclick="SendTutorialAction('prev')">← Anterior</button>
+        <button onclick="SendTutorialAction('next')">Próxima →</button>
+        <button id="skipTutorialBtn" onclick="SendTutorialAction('skip')">Pular Tutorial</button>
+      </div>
+    </div>
+
+    <div id="roundResultScreen">
+      <h2>Veja o resultado na tela!</h2>
     </div>
 
     <div id="roundScoreScreen">
@@ -93,6 +103,13 @@
             Aguardando os jogadores escolherem uma cor...
         </h2>
       </div>
+
+      <button
+        id="hostButton"
+        style="display:none"
+        onclick="SendHostCommand()">
+        Começar Jogo
+      </button>
 
   </div>
 

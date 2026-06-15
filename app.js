@@ -192,6 +192,17 @@ window.joinRoom = async function()
 
   try
   {
+    // CHECK IF FIRST PLAYER (HOST)
+
+    const playersSnapshot =
+      await get(
+        ref(db, `rooms/${roomCode}/players`)
+      );
+
+    const isHost =
+      !playersSnapshot.exists() ||
+      Object.keys(playersSnapshot.val() ?? {}).length === 0;
+
     // ADD PLAYER
 
     await set(
@@ -200,7 +211,8 @@ window.joinRoom = async function()
         `rooms/${roomCode}/players/${playerId}`
       ),
       {
-        name: playerName
+        name: playerName,
+        isHost: isHost
       }
     );
 
@@ -223,6 +235,12 @@ window.joinRoom = async function()
     {
       window.location.href =
         `ColorsIn/ColorsIn_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
+    else if(detectedGameMode == "Trivia" || detectedGameMode == "2000ner")
+    {
+      window.location.href =
+        `Trivia/Trivia_index.html?room=${roomCode}&id=${playerId}`;
     }
 
     else

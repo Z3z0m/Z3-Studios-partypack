@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Trivia</title>
+
+  <link
+    rel="stylesheet"
+    href="Trivia_style.css"
+  />
+
+</head>
+
+<body>
+
+  <div class="container">
+
+
+    <!-- =========================
+         LOBBY SCREEN
+    ========================== -->
+
+    <div
+      id="lobbyScreen"
+      class="screen active"
+    >
+
+      <h1 id="gameTitle">
+        <span class="t1">T</span>
+        <span class="t2">R</span>
+        <span class="t3">I</span>
+        <span class="t4">V</span>
+        <span class="t5">I</span>
+        <span class="t6">A</span>
+      </h1>
+
+      <h2 id="lobbyWaitingText">
+        Aguardando host iniciar...
+      </h2>
+
+    </div>
+
+
+    <!-- =========================
+         QUESTION SCREEN
+    ========================== -->
+
+    <div
+      id="questionScreen"
+      class="screen"
+    >
+
+      <div id="roundBadge">
+        <span id="roundText">Pergunta 1</span>
+      </div>
+
+      <h2 id="questionText">
+        Carregando pergunta...
+      </h2>
+
+      <div id="answerGrid">
+
+        <button
+          class="answerButton"
+          onclick="AnswerQuestion(0)"
+        >
+          A. ...
+        </button>
+
+        <button
+          class="answerButton"
+          onclick="AnswerQuestion(1)"
+        >
+          B. ...
+        </button>
+
+        <button
+          class="answerButton"
+          onclick="AnswerQuestion(2)"
+        >
+          C. ...
+        </button>
+
+        <button
+          class="answerButton"
+          onclick="AnswerQuestion(3)"
+        >
+          D. ...
+        </button>
+
+      </div>
+
+      <p id="waitingAnswerText"></p>
+
+    </div>
+
+
+    <!-- =========================
+         RESULT SCREEN
+    ========================== -->
+
+    <div
+      id="resultScreen"
+      class="screen"
+    >
+
+      <h2 id="resultTitle">
+        Resposta enviada!
+      </h2>
+
+      <p id="resultSubtitle">
+        Aguardando o resultado...
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         SCOREBOARD SCREEN
+    ========================== -->
+
+    <div
+      id="scoreboardScreen"
+      class="screen"
+    >
+
+      <h2 id="scoreboardTitle">PLACAR</h2>
+
+      <div id="scoreList"></div>
+
+    </div>
+
+
+    <!-- =========================
+         FINAL SCORE SCREEN
+    ========================== -->
+
+    <div
+      id="finalScoreScreen"
+      class="screen"
+    >
+
+      <h2 id="finalScoreTitle">RESULTADO FINAL</h2>
+
+      <div id="finalList"></div>
+
+    </div>
+
+
+  </div>
+
+  <script
+    type="module"
+    src="Trivia_app.js"
+  ></script>
+
+</body>
+
+</html>

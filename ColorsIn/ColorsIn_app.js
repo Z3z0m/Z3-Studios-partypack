@@ -61,6 +61,7 @@ let selectedAvatar = "0";
 
 let selectedGuessX = -1;
 let selectedGuessY = -1;
+let isHost = false;
 
 
 // =========================
@@ -87,10 +88,11 @@ const avatars =
 // RENDER
 // =========================
 
-window.onload = function()
+window.onload = async function()
 {
   RenderAvatars();
   ListenForTakenAvatars();
+  await CheckIfHost();
   ListenForStage();
 };
 
@@ -209,6 +211,69 @@ async function SelectAvatar(element, avatarName)
   // salvar firebase
 }
 
+async function CheckIfHost()
+{
+    const snapshot = await get(
+        ref(
+            db,
+            `rooms/${currentRoomCode}/players/${currentPlayerId}/isHost`
+        )
+    );
+
+    isHost = snapshot.val() === true;
+
+    if (isHost)
+        UpdateHostButton("Lobby");
+}
+
+window.SendHostCommand = async function()
+{
+    await set(
+        ref(db, `rooms/${currentRoomCode}/hostCommand`),
+        Date.now()
+    );
+};
+
+window.SendTutorialAction = async function(action)
+{
+    await set(
+        ref(db, `rooms/${currentRoomCode}/tutorialAction`),
+        { action: action, t: Date.now() }
+    );
+};
+
+function UpdateHostButton(state)
+{
+    if (!isHost) return;
+
+    const btn =
+        document.getElementById("hostButton");
+
+    const hidden =
+        state === "GiveHint" ||
+        state === "GuessColor" ||
+        state === "Tutorial";
+
+    if (hidden)
+    {
+        btn.style.display = "none";
+        return;
+    }
+
+    btn.style.display = "block";
+
+    const labels =
+    {
+        "Lobby":       "Começar Jogo",
+        "RoundResult": "Ver Placar",
+        "RoundScore":  "Próxima Rodada",
+        "FinalResult": "Encerrar Jogo",
+    };
+
+    btn.innerText =
+        labels[state] ?? "Próxima Etapa";
+}
+
 async function ListenForStage()
 {
     onValue(
@@ -224,6 +289,8 @@ async function ListenForStage()
             const state =
                 snapshot.val().gameState;
 
+            UpdateHostButton(state);
+
             if(state === "Tutorial")
             {
                 OpenTutorial();
@@ -237,6 +304,11 @@ async function ListenForStage()
             if(state === "GuessColor")
             {
                 OpenGuessColor();
+            }
+
+            if(state === "RoundResult")
+            {
+                OpenRoundResult();
             }
 
             if(state === "RoundScore")
@@ -404,6 +476,16 @@ function GenerateGuessGrid()
     const width = 12;
     const height = 6;
 
+    const rowProfiles =
+    [
+        { sat: 0.15, val: 1.00 },
+        { sat: 0.40, val: 1.00 },
+        { sat: 0.70, val: 1.00 },
+        { sat: 1.00, val: 1.00 },
+        { sat: 1.00, val: 0.60 },
+        { sat: 1.00, val: 0.30 },
+    ];
+
     for(let y=0;y<height;y++)
     {
         for(let x=0;x<width;x++)
@@ -417,18 +499,14 @@ function GenerateGuessGrid()
             const hue =
                 x / width;
 
-            const saturation =
-                1 - (
-                    (1 - 0.25)
-                    *
-                    (y / (height - 1))
-                );
+            const { sat, val } =
+                rowProfiles[y];
 
             const rgb =
                 HSVtoRGB(
                     hue,
-                    saturation,
-                    1
+                    sat,
+                    val
                 );
 
             cell.style.background =
@@ -580,6 +658,16 @@ async function OpenGuessColor()
     };
 }
 
+function OpenRoundResult()
+{
+    HideAllScreens();
+
+    document
+        .getElementById("roundResultScreen")
+        .style.display =
+        "flex";
+}
+
 function OpenTutorial()
 {
     HideAllScreens();
@@ -588,6 +676,14 @@ function OpenTutorial()
         .getElementById("tutorialScreen")
         .style.display =
         "flex";
+
+    if (isHost)
+    {
+        document
+            .getElementById("tutorialControls")
+            .style.display =
+            "flex";
+    }
 }
 
 async function OpenRoundScore()
@@ -654,6 +750,8 @@ function HideAllScreens()
 {
     document.getElementById("LobbyScreen").style.display = "none";
     document.getElementById("tutorialScreen").style.display = "none";
+    document.getElementById("tutorialControls").style.display = "none";
+    document.getElementById("roundResultScreen").style.display = "none";
     document.getElementById("roundScoreScreen").style.display = "none";
     document.getElementById("hintScreen").style.display = "none";
     document.getElementById("waitingHintScreen").style.display = "none";

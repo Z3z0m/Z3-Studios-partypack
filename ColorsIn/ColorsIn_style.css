@@ -378,8 +378,71 @@ h1{
 }
 
 /* =========================
+   ROUND RESULT SCREEN
+========================= */
+
+#roundResultScreen{
+  display:none;
+
+  width:100%;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  justify-content:center;
+
+  gap:20px;
+
+  text-align:center;
+
+  font-size:24px;
+
+  opacity:0.75;
+}
+
+/* =========================
    TUTORIAL SCREEN
 ========================= */
+
+#tutorialControls{
+  display:none;
+
+  width:100%;
+
+  flex-direction:column;
+
+  gap:12px;
+}
+
+#tutorialControls button{
+  width:100%;
+
+  padding:14px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#5c8dff;
+
+  color:white;
+
+  font-size:15px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+#skipTutorialBtn{
+  background:#444 !important;
+
+  color:#aaa !important;
+
+  font-size:13px !important;
+}
 
 #tutorialScreen{
   display:none;
@@ -496,4 +559,37 @@ input{
 
 input:focus{
   outline:2px solid #5c8dff;
+}
+
+/* =========================
+   HOST BUTTON
+========================= */
+
+#hostButton{
+  width:100%;
+
+  padding:18px;
+
+  border:none;
+
+  border-radius:14px;
+
+  background:#f59e0b;
+
+  color:#111;
+
+  font-size:17px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+
+  letter-spacing:1px;
+}
+
+#hostButton:hover{
+  background:#fbbf24;
+
+  transform:scale(1.02);
 }
