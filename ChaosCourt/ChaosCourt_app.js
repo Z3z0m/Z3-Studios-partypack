@@ -57,6 +57,7 @@ const db =
 const params = new URLSearchParams(window.location.search);
 const currentRoomCode = params.get("room");
 const currentPlayerId = params.get("id");
+const currentPlayerName = params.get("name");
 let selectedAvatar = "0";
 
 
@@ -177,6 +178,20 @@ function ListenForStage()
     {
       OpenShowPlayers();
     }
+
+    // DEBATE / VOTING
+
+    if(stage == "ChaosDebate")
+    {
+      OpenDebate();
+    }
+
+    // RESULT
+
+    if(stage == "Result")
+    {
+      OpenResult();
+    }
   });
 }
 // =========================
@@ -185,11 +200,9 @@ function ListenForStage()
 
 async function OpenShowPlayers()
 {
-  // HIDE AVATAR SELECT
+  // HIDE OTHER SCREENS
 
-  document
-    .getElementById("avatarGrid")
-    .style.display = "none";
+  HideAllScreens();
 
   // SHOW SCREEN
 
@@ -295,4 +308,309 @@ async function fetchCurrentCourtData()
   }
 
   return snapshot.val();
+}
+// =========================
+// HIDE ALL SCREENS
+// =========================
+
+function HideAllScreens()
+{
+  document.getElementById("avatarGrid").style.display = "none";
+  document.getElementById("showPlayersScreen").style.display = "none";
+  document.getElementById("defenseRoleScreen").style.display = "none";
+  document.getElementById("prosecutionRoleScreen").style.display = "none";
+  document.getElementById("votingScreen").style.display = "none";
+  document.getElementById("resultScreen").style.display = "none";
+}
+
+
+// =========================
+// FETCH CURRENT ROUND
+// =========================
+
+async function fetchCurrentRound()
+{
+  const snapshot =
+    await get(
+      ref(
+        db,
+        `rooms/${currentRoomCode}/currentState/round`
+      )
+    );
+
+  return snapshot.exists() ? snapshot.val() : 0;
+}
+
+
+// =========================
+// OPEN DEBATE
+// =========================
+
+async function OpenDebate()
+{
+  HideAllScreens();
+
+  const data =
+    await fetchCurrentCourtData();
+
+  if(data == null)
+  {
+    return;
+  }
+
+  const defendant = data.defendant;
+  const defense = data.defense;
+  const prosecution = data.prosecution;
+  const crime = data.crime;
+
+  // DEFENSE LAWYER
+
+  if(currentPlayerId == defense.id)
+  {
+    document
+      .getElementById("defenseRoleCrime")
+      .innerText = crime;
+
+    document
+      .getElementById("defenseRoleTitle")
+      .innerText =
+        `Defenda ${defendant.name}`;
+
+    document
+      .getElementById("defenseRoleScreen")
+      .style.display = "flex";
+
+    return;
+  }
+
+  // PROSECUTION LAWYER
+
+  if(currentPlayerId == prosecution.id)
+  {
+    document
+      .getElementById("prosecutionRoleCrime")
+      .innerText = crime;
+
+    document
+      .getElementById("prosecutionRoleTitle")
+      .innerText =
+        `Acuse ${defendant.name}`;
+
+    document
+      .getElementById("prosecutionRoleScreen")
+      .style.display = "flex";
+
+    return;
+  }
+
+  // EVERYONE ELSE VOTES
+
+  OpenVotingScreen(defense.id, prosecution.id);
+}
+
+
+// =========================
+// OPEN VOTING SCREEN
+// =========================
+
+async function OpenVotingScreen(defenseId, prosecutionId)
+{
+  document
+    .getElementById("votingScreen")
+    .style.display = "flex";
+
+  const round =
+    await fetchCurrentRound();
+
+  const innocentButton =
+    document.getElementById("innocentButton");
+
+  const guiltyButton =
+    document.getElementById("guiltyButton");
+
+  // RESTORE PREVIOUS VOTE
+
+  const myVoteSnapshot =
+    await get(
+      ref(
+        db,
+        `rooms/${currentRoomCode}/history/round_${round}/votes/${currentPlayerId}`
+      )
+    );
+
+  UpdateVoteButtons(
+    myVoteSnapshot.exists() ? myVoteSnapshot.val().vote : null
+  );
+
+  // VOTE HANDLERS
+
+  innocentButton.onclick =
+    () => CastVote(round, "innocent", defenseId, prosecutionId);
+
+  guiltyButton.onclick =
+    () => CastVote(round, "guilty", defenseId, prosecutionId);
+}
+
+function UpdateVoteButtons(myVote)
+{
+  document
+    .getElementById("innocentButton")
+    .classList.toggle("selected", myVote == "innocent");
+
+  document
+    .getElementById("guiltyButton")
+    .classList.toggle("selected", myVote == "guilty");
+}
+
+
+// =========================
+// CAST VOTE
+// =========================
+
+async function CastVote(round, vote, defenseId, prosecutionId)
+{
+  UpdateVoteButtons(vote);
+
+  await set(
+    ref(
+      db,
+      `rooms/${currentRoomCode}/history/round_${round}/votes/${currentPlayerId}`
+    ),
+    {
+      playerName: currentPlayerName,
+      vote: vote
+    }
+  );
+
+  await CheckVotingComplete(round, defenseId, prosecutionId);
+}
+
+
+// =========================
+// CHECK IF EVERYONE VOTED
+// =========================
+
+async function CheckVotingComplete(round, defenseId, prosecutionId)
+{
+  const playersSnapshot =
+    await get(
+      ref(db, `rooms/${currentRoomCode}/players`)
+    );
+
+  if(!playersSnapshot.exists())
+  {
+    return;
+  }
+
+  const eligibleVoterIds =
+    Object.keys(playersSnapshot.val())
+      .filter(id => id != defenseId && id != prosecutionId);
+
+  const votesSnapshot =
+    await get(
+      ref(
+        db,
+        `rooms/${currentRoomCode}/history/round_${round}/votes`
+      )
+    );
+
+  const votes =
+    votesSnapshot.exists() ? votesSnapshot.val() : {};
+
+  const allVoted =
+    eligibleVoterIds.every(id => votes[id] != null);
+
+  if(!allVoted)
+  {
+    return;
+  }
+
+  // TALLY VOTES
+
+  let innocentCount = 0;
+  let guiltyCount = 0;
+
+  Object.values(votes).forEach((entry) =>
+  {
+    if(entry.vote == "innocent")
+    {
+      innocentCount++;
+    }
+    else if(entry.vote == "guilty")
+    {
+      guiltyCount++;
+    }
+  });
+
+  const verdict =
+    guiltyCount > innocentCount
+      ? "guilty"
+      : innocentCount > guiltyCount
+        ? "innocent"
+        : "tie";
+
+  // SAVE RESULT
+
+  await set(
+    ref(db, `rooms/${currentRoomCode}/currentState/voteResult`),
+    {
+      innocentCount: innocentCount,
+      guiltyCount: guiltyCount,
+      verdict: verdict
+    }
+  );
+
+  // GO TO RESULT STAGE
+
+  await set(
+    ref(db, `rooms/${currentRoomCode}/currentState/stage`),
+    "Result"
+  );
+}
+
+
+// =========================
+// OPEN RESULT
+// =========================
+
+async function OpenResult()
+{
+  HideAllScreens();
+
+  document
+    .getElementById("resultScreen")
+    .style.display = "flex";
+
+  const snapshot =
+    await get(
+      ref(db, `rooms/${currentRoomCode}/currentState/voteResult`)
+    );
+
+  if(!snapshot.exists())
+  {
+    return;
+  }
+
+  const result =
+    snapshot.val();
+
+  document
+    .getElementById("innocentCount")
+    .innerText = result.innocentCount;
+
+  document
+    .getElementById("guiltyCount")
+    .innerText = result.guiltyCount;
+
+  const verdictLabels =
+  {
+    guilty: "CULPADO",
+    innocent: "INOCENTE",
+    tie: "EMPATE"
+  };
+
+  document
+    .getElementById("verdictText")
+    .innerText =
+      verdictLabels[result.verdict] ?? "";
 }

@@ -267,7 +267,7 @@ function UpdateHostButton(state)
         "Lobby":       "Começar Jogo",
         "RoundResult": "Ver Placar",
         "RoundScore":  "Próxima Rodada",
-        "FinalResult": "Encerrar Jogo",
+        "FinalResult": "Jogar de Novo",
     };
 
     btn.innerText =
@@ -290,6 +290,11 @@ async function ListenForStage()
                 snapshot.val().gameState;
 
             UpdateHostButton(state);
+
+            if(state === "Lobby")
+            {
+                OpenLobby();
+            }
 
             if(state === "Tutorial")
             {
@@ -656,6 +661,16 @@ async function OpenGuessColor()
             .innerText =
             "Escolha enviada!";
     };
+}
+
+function OpenLobby()
+{
+    HideAllScreens();
+
+    document
+        .getElementById("LobbyScreen")
+        .style.display =
+        "flex";
 }
 
 function OpenRoundResult()

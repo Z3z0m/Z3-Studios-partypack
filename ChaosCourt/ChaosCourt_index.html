@@ -53,6 +53,33 @@
 
     </div>
 
+    <!-- DEBATE: DEFENSE ROLE -->
+    <div id="defenseRoleScreen" class="roleScreen">
+      <p id="defenseRoleCrime" class="roleCrime"></p>
+      <h1 id="defenseRoleTitle"></h1>
+    </div>
+
+    <!-- DEBATE: PROSECUTION ROLE -->
+    <div id="prosecutionRoleScreen" class="roleScreen">
+      <p id="prosecutionRoleCrime" class="roleCrime"></p>
+      <h1 id="prosecutionRoleTitle"></h1>
+    </div>
+
+    <!-- RESULT -->
+    <div id="resultScreen">
+      <h1 id="verdictText"></h1>
+      <div id="voteTally">
+        <p>Inocente: <span id="innocentCount">0</span></p>
+        <p>Culpado: <span id="guiltyCount">0</span></p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DEBATE: VOTING -->
+  <div id="votingScreen">
+    <button id="innocentButton" class="voteButton innocentButton">INOCENTE</button>
+    <button id="guiltyButton" class="voteButton guiltyButton">CULPADO</button>
   </div>
 
   <script
