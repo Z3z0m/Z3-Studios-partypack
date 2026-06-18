@@ -100,6 +100,7 @@ window.onload = function()
 {
   ListenForGameState();
   ListenForPrompt();
+  ListenForCategory();
 };
 
 
@@ -165,8 +166,40 @@ function ListenForPrompt()
 
     document
       .getElementById("votingContainer")
-      
+
       });
+}
+
+
+// =========================
+// LISTEN CATEGORY
+// =========================
+
+function ListenForCategory()
+{
+  const categoryRef =
+    ref(
+      db,
+      `rooms/${currentRoomCode}/currentState/category`
+    );
+
+  onValue(categoryRef, (snapshot) =>
+  {
+    const category = snapshot.val();
+
+    if(!category)
+    {
+      return;
+    }
+
+    document
+      .getElementById("categoryText")
+      .innerText = `Escreva como se fosse ${category}`;
+
+    document
+      .getElementById("voteCategoryText")
+      .innerText = `Vote na resposta que parece ${category}`;
+  });
 }
 
 
@@ -255,6 +288,14 @@ function ListenForGameState()
     const gameState = snapshot.val();
 
     currentGameState = gameState;
+
+    document
+      .getElementById("categoryText")
+      .classList.toggle("active", gameState == "Prompt");
+
+    document
+      .getElementById("voteCategoryText")
+      .classList.toggle("active", gameState == "Voting");
 
     if(gameState == "Lobby") { ShowScreen("lobbyScreen") }
 

@@ -17,9 +17,11 @@ body{
   background:#111;
 
   display:flex;
+  flex-direction:column;
 
   justify-content:center;
   align-items:center;
+  gap:15px;
 
   color:white;
 }
@@ -96,6 +98,26 @@ button{
 
 button:hover{
   transform:scale(1.02);
+}
+
+
+/* =========================
+   CATEGORY BANNER
+========================= */
+
+.categoryBanner{
+  display:none;
+
+  width:90%;
+  max-width:400px;
+
+  text-align:center;
+
+  opacity:0.6;
+}
+
+.categoryBanner.active{
+  display:block;
 }
 
 
