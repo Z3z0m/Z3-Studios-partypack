@@ -65,6 +65,7 @@ const currentPlayerId =
   params.get("id");
 
 let alreadyAnswered = false;
+let isHost = false;
 
 
 // =========================
@@ -90,11 +91,79 @@ function ShowScreen(screenId)
 // START
 // =========================
 
-window.onload = function()
+window.onload = async function()
 {
+    await CheckIfHost();
     ListenForGameState();
     ListenForQuestion();
 };
+
+
+// =========================
+// HOST
+// =========================
+
+async function CheckIfHost()
+{
+    const snapshot = await get(
+        ref(
+            db,
+            `rooms/${currentRoomCode}/players/${currentPlayerId}/isHost`
+        )
+    );
+
+    isHost = snapshot.val() === true;
+
+    if (isHost)
+        UpdateHostButton("Lobby");
+}
+
+window.SendHostCommand = async function()
+{
+    await set(
+        ref(db, `rooms/${currentRoomCode}/hostCommand`),
+        Date.now()
+    );
+};
+
+window.SendTutorialAction = async function(action)
+{
+    await set(
+        ref(db, `rooms/${currentRoomCode}/tutorialAction`),
+        { action: action, t: Date.now() }
+    );
+};
+
+function UpdateHostButton(state)
+{
+    if (!isHost) return;
+
+    const btn =
+        document.getElementById("hostButton");
+
+    const hidden =
+        state === "Question" ||
+        state === "Tutorial";
+
+    if (hidden)
+    {
+        btn.style.display = "none";
+        return;
+    }
+
+    btn.style.display = "block";
+
+    const labels =
+    {
+        "Lobby":      "Começar Jogo",
+        "Result":     "Ver Placar",
+        "Scoreboard": "Próxima Pergunta",
+        "FinalScore": "Jogar de Novo",
+    };
+
+    btn.innerText =
+        labels[state] ?? "Próxima Etapa";
+}
 
 
 // =========================
@@ -113,9 +182,21 @@ function ListenForGameState()
             const state = snapshot.val();
             if (!state) return;
 
+            UpdateHostButton(state);
+
             if (state === "Lobby")
             {
                 ShowScreen("lobbyScreen");
+            }
+
+            if (state === "Tutorial")
+            {
+                ShowScreen("tutorialScreen");
+
+                document
+                    .getElementById("tutorialControls")
+                    .style.display =
+                    isHost ? "flex" : "none";
             }
 
             if (state === "Question")

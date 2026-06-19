@@ -50,6 +50,45 @@
 
 
     <!-- =========================
+         TUTORIAL SCREEN
+    ========================== -->
+
+    <div
+      id="tutorialScreen"
+      class="screen"
+    >
+
+      <h2 id="tutorialText">
+        Veja o tutorial na tela!
+      </h2>
+
+      <div id="tutorialControls">
+
+        <div class="tutorialNavRow">
+
+          <button onclick="SendTutorialAction('prev')">
+            ← Anterior
+          </button>
+
+          <button onclick="SendTutorialAction('next')">
+            Próxima →
+          </button>
+
+        </div>
+
+        <button
+          id="skipTutorialBtn"
+          onclick="SendTutorialAction('skip')"
+        >
+          Pular Tutorial
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
          QUESTION SCREEN
     ========================== -->
 
@@ -154,6 +193,14 @@
 
     </div>
 
+
+    <button
+      id="hostButton"
+      style="display:none"
+      onclick="SendHostCommand()"
+    >
+      Começar Jogo
+    </button>
 
   </div>
 

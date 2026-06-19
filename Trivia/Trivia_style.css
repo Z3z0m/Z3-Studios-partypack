@@ -93,6 +93,74 @@ body{
 
 
 /* =========================
+   TUTORIAL SCREEN
+========================= */
+
+#tutorialText{
+  font-size:18px;
+
+  text-align:center;
+
+  line-height:1.5;
+
+  min-height:120px;
+}
+
+#tutorialControls{
+  display:none;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow{
+  display:flex;
+
+  gap:10px;
+
+  width:100%;
+}
+
+#tutorialControls button{
+  flex:1;
+
+  padding:14px 12px;
+
+  border:none;
+
+  border-radius:14px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:14px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+#tutorialControls button:hover{
+  background:#3a3a3a;
+}
+
+#skipTutorialBtn{
+  width:100%;
+
+  background:#7c3aed;
+}
+
+#skipTutorialBtn:hover{
+  background:#8b4ff0;
+}
+
+
+/* =========================
    QUESTION SCREEN
 ========================= */
 
@@ -303,4 +371,38 @@ body{
   font-weight:bold;
 
   color:#ffd93d;
+}
+
+
+/* =========================
+   HOST BUTTON
+========================= */
+
+#hostButton{
+  width:100%;
+
+  padding:18px;
+
+  border:none;
+
+  border-radius:14px;
+
+  background:#f59e0b;
+
+  color:#111;
+
+  font-size:17px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+
+  letter-spacing:1px;
+}
+
+#hostButton:hover{
+  background:#fbbf24;
+
+  transform:scale(1.02);
 }
