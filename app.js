@@ -260,6 +260,40 @@ window.joinRoom = async function()
 
 
 // =========================
+// PREFILL ROOM CODE FROM URL
+// (used when joining via QR code, e.g. ?room=ABCD)
+// =========================
+
+function PrefillRoomFromUrl()
+{
+  const params =
+    new URLSearchParams(window.location.search);
+
+  const roomFromUrl =
+    params.get("room");
+
+  if(!roomFromUrl) return;
+
+  const roomCodeInput =
+    document.getElementById("roomCode");
+
+  roomCodeInput.value =
+    roomFromUrl
+    .toUpperCase()
+    .trim()
+    .slice(0, 4);
+
+  CheckRoomCode();
+
+  document
+    .getElementById("playerName")
+    .focus();
+}
+
+PrefillRoomFromUrl();
+
+
+// =========================
 // GLOBAL EXPORTS
 // =========================
 
