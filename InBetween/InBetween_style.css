@@ -1,0 +1,308 @@
+*{
+  margin:0;
+  padding:0;
+
+  box-sizing:border-box;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body{
+  width:100vw;
+  height:100vh;
+
+  background:#111;
+
+  display:flex;
+  flex-direction:column;
+
+  justify-content:center;
+  align-items:center;
+  gap:15px;
+
+  color:white;
+}
+
+.screen{
+  display:none;
+  flex-direction:column;
+  gap:15px;
+}
+
+.screen.active{
+  display:flex;
+}
+
+.container{
+  width:90%;
+  max-width:400px;
+
+  background:#1e1e1e;
+
+  padding:30px;
+
+  border-radius:20px;
+
+  box-shadow:
+    0 0 20px
+    rgba(0,0,0,0.4);
+}
+
+h1, h2{
+  text-align:center;
+}
+
+p{
+  text-align:center;
+  line-height:1.4;
+}
+
+input{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+}
+
+input:focus{
+  outline:2px solid #5c8dff;
+}
+
+button{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#5c8dff;
+
+  color:white;
+
+  font-size:16px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+button:hover{
+  transform:scale(1.02);
+}
+
+button:disabled{
+  opacity:0.5;
+  cursor:default;
+  transform:none;
+}
+
+
+/* =========================
+   CATEGORY BANNER
+========================= */
+
+.categoryBanner{
+  text-align:center;
+
+  opacity:0.6;
+
+  font-size:14px;
+}
+
+
+/* =========================
+   WAITING TEXT
+========================= */
+
+#questionWaitingText,
+#votingWaitingText,
+#impostorGuessStatusText,
+#skipDiscussionStatusText{
+  text-align:center;
+
+  opacity:0.8;
+}
+
+
+/* =========================
+   ROLE REVEAL
+========================= */
+
+#roleRevealText{
+  line-height:1.6;
+}
+
+.impostorLabel{
+  color:#e74c3c;
+  font-weight:bold;
+}
+
+.secretWordLabel{
+  display:inline-block;
+
+  margin-top:6px;
+
+  padding:10px 20px;
+
+  background:#2c2c2c;
+
+  border-radius:10px;
+
+  font-size:22px;
+  font-weight:bold;
+
+  color:#5c8dff;
+}
+
+
+/* =========================
+   VOTING
+========================= */
+
+#votingOptions{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.voteButton{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:12px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+.voteButton:hover{
+  transform:scale(1.02);
+
+  background:#3a3a3a;
+}
+
+.voteButton.selected{
+  background:#5c8dff;
+
+  border:2px solid white;
+
+  transform:scale(1.03);
+}
+
+.voteButton.disabledSelf{
+  opacity:0.35;
+}
+
+
+/* =========================
+   VOTE RESULT
+========================= */
+
+#voteResultTitle.voteResultCaught{
+  color:#4caf50;
+}
+
+#voteResultTitle.voteResultEscaped{
+  color:#e74c3c;
+}
+
+
+/* =========================
+   IMPOSTOR GUESS
+========================= */
+
+.conditionalBlock{
+  display:none;
+  flex-direction:column;
+  gap:15px;
+}
+
+.conditionalBlock.active{
+  display:flex;
+}
+
+
+/* =========================
+   COUNTDOWN
+========================= */
+
+.countdownText{
+  text-align:center;
+
+  font-size:14px;
+
+  opacity:0.7;
+}
+
+.countdownText span{
+  font-size:20px;
+  font-weight:bold;
+
+  color:#ffb84d;
+}
+
+
+/* =========================
+   RESULTS / SCOREBOARD
+========================= */
+
+.scoreItem{
+  background:#2c2c2c;
+
+  padding:15px;
+
+  border-radius:12px;
+
+  font-size:18px;
+
+  font-weight:bold;
+
+  text-align:center;
+}
+
+#finalScoreList{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+#finalRevealText{
+  margin-top:10px;
+
+  opacity:0.8;
+
+  font-size:14px;
+}

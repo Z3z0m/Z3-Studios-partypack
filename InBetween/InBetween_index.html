@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>In Between</title>
+
+  <link
+    rel="stylesheet"
+    href="InBetween_style.css"
+  />
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- =========================
+         LOBBY SCREEN
+    ========================== -->
+
+    <div
+      id="lobbyScreen"
+      class="screen active"
+    >
+
+      <h1>
+        IN BETWEEN
+      </h1>
+
+      <p>
+        Esperando o anfitrião começar...
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         ROLE REVEAL SCREEN
+    ========================== -->
+
+    <div
+      id="roleRevealScreen"
+      class="screen"
+    >
+
+      <h2 id="roleRevealText">
+      </h2>
+
+    </div>
+
+
+    <!-- =========================
+         WRITE QUESTION SCREEN
+    ========================== -->
+
+    <div
+      id="writeQuestionScreen"
+      class="screen"
+    >
+
+      <div id="writeQuestionInputContainer" class="conditionalBlock">
+
+        <h2>
+          Crie uma pergunta!
+        </h2>
+
+        <p id="writeQuestionWordText">
+        </p>
+
+        <input
+          type="text"
+          id="writeQuestionInput"
+          placeholder="Digite sua pergunta..."
+        />
+
+        <button
+          id="sendQuestionButton"
+          onclick="sendCustomQuestion()"
+        >
+          Enviar Pergunta
+        </button>
+
+        <p id="writeQuestionStatusText">
+        </p>
+
+        <p class="countdownText">
+          Tempo restante: <span id="writeQuestionCountdown">20s</span>
+        </p>
+
+      </div>
+
+      <div id="writeQuestionWaitingContainer" class="conditionalBlock">
+
+        <h2>
+          Um jogador está criando a pergunta...
+        </h2>
+
+        <p class="countdownText">
+          Tempo restante: <span id="writeQuestionWaitingCountdown">20s</span>
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         QUESTION SCREEN
+    ========================== -->
+
+    <div
+      id="questionScreen"
+      class="screen"
+    >
+
+      <h2 id="questionText">
+        Pergunta aqui...
+      </h2>
+
+      <input
+        type="text"
+        id="answerInput"
+        placeholder="Sua resposta..."
+      />
+
+      <button
+        id="sendAnswerButton"
+        onclick="sendAnswer()"
+      >
+        Enviar Resposta
+      </button>
+
+      <p id="questionWaitingText">
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         REVEAL ANSWERS SCREEN
+    ========================== -->
+
+    <div
+      id="revealAnswersScreen"
+      class="screen"
+    >
+
+      <h2>
+        Respostas reveladas no telão!
+      </h2>
+
+      <p>
+        Acompanhe quem respondeu o quê.
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         DISCUSSION SCREEN
+    ========================== -->
+
+    <div
+      id="discussionScreen"
+      class="screen"
+    >
+
+      <h2>
+        Hora da discussão!
+      </h2>
+
+      <p>
+        Conversem sobre quem vocês acham que é o impostor.
+      </p>
+
+      <button
+        id="skipDiscussionButton"
+        onclick="callForVote()"
+      >
+        Chamar para Votação
+      </button>
+
+      <p id="skipDiscussionCountText" class="categoryBanner">
+      </p>
+
+      <p id="skipDiscussionStatusText">
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         VOTING SCREEN
+    ========================== -->
+
+    <div
+      id="votingScreen"
+      class="screen"
+    >
+
+      <h2>
+        Quem é o impostor?
+      </h2>
+
+      <div id="votingOptions">
+      </div>
+
+      <p id="votingWaitingText">
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         VOTE RESULT SCREEN
+    ========================== -->
+
+    <div
+      id="voteResultScreen"
+      class="screen"
+    >
+
+      <h2 id="voteResultTitle">
+        RESULTADO
+      </h2>
+
+    </div>
+
+
+    <!-- =========================
+         IMPOSTOR GUESS SCREEN
+    ========================== -->
+
+    <div
+      id="impostorGuessScreen"
+      class="screen"
+    >
+
+      <h2>
+        O impostor foi descoberto!
+      </h2>
+
+      <div id="impostorGuessInputContainer" class="conditionalBlock">
+
+        <p>
+          Última chance: tente adivinhar a palavra secreta.
+        </p>
+
+        <input
+          type="text"
+          id="impostorGuessInput"
+          placeholder="Qual era a palavra?"
+        />
+
+        <button
+          id="sendGuessButton"
+          onclick="sendImpostorGuess()"
+        >
+          Enviar Palpite
+        </button>
+
+        <p id="impostorGuessStatusText">
+        </p>
+
+      </div>
+
+      <div id="impostorGuessWaitingContainer" class="conditionalBlock">
+
+        <p>
+          O impostor está tentando adivinhar a palavra secreta...
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         FINAL SCORE SCREEN
+    ========================== -->
+
+    <div
+      id="finalScoreScreen"
+      class="screen"
+    >
+
+      <h2>
+        PLACAR FINAL
+      </h2>
+
+      <div id="finalScoreList">
+      </div>
+
+      <p id="finalRevealText">
+      </p>
+
+    </div>
+
+  </div>
+
+  <script
+    type="module"
+    src="InBetween_app.js"
+  ></script>
+
+</body>
+
+</html>

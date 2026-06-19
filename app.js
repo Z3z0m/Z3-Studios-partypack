@@ -243,6 +243,12 @@ window.joinRoom = async function()
         `Trivia/Trivia_index.html?room=${roomCode}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "InBetween")
+    {
+      window.location.href =
+        `InBetween/InBetween_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =
