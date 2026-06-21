@@ -71,6 +71,7 @@ const currentPlayerId =
 // =========================
 
 let currentGameState = "Lobby";
+let isHost = false;
 let isImpostor = false;
 let alreadyAnswered = false;
 let alreadyVoted = false;
@@ -130,8 +131,64 @@ window.onload = function()
   ListenForVisibilityRecovery();
   ListenForImpostor();
   ListenForWord();
-  ListenForQuestion();
+  CheckIfHost();
 };
+
+
+// =========================
+// HOST CONTROLS (começar jogo / pular etapa)
+// =========================
+
+async function CheckIfHost()
+{
+  const snapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}/isHost`));
+
+  isHost = snapshot.val() === true;
+
+  if(isHost)
+  {
+    UpdateHostButton(currentGameState);
+  }
+}
+
+window.SendHostCommand = async function()
+{
+  await set(
+    ref(db, `rooms/${currentRoomCode}/hostCommand`),
+    Date.now()
+  );
+};
+
+function UpdateHostButton(state)
+{
+  if(!isHost) return;
+
+  const btn = document.getElementById("hostButton");
+
+  // ESCONDE nos estados sem timer pra "pular" (RevealAnswers é uma
+  // animação automática, FinalScore já é o fim de jogo).
+  const hidden =
+    state === "RevealAnswers" ||
+    state === "FinalScore";
+
+  if(hidden)
+  {
+    btn.style.display = "none";
+    return;
+  }
+
+  btn.style.display = "block";
+
+  const labels =
+  {
+    "Lobby":      "Começar Jogo",
+    "RoundScore": "Próxima Rodada",
+  };
+
+  btn.innerText =
+    labels[state] ?? "Pular Etapa";
+}
 
 
 // =========================
@@ -178,6 +235,8 @@ function ApplyGameState(gameState)
 
   StopCountdown();
 
+  UpdateHostButton(gameState);
+
   if(gameState == "Lobby") { ShowScreen("lobbyScreen"); }
 
   if(gameState == "RoleReveal")
@@ -192,7 +251,11 @@ function ApplyGameState(gameState)
     OpenWriteQuestion();
   }
 
-  if(gameState == "Question") { ShowScreen("questionScreen"); }
+  if(gameState == "Question")
+  {
+    ShowScreen("questionScreen");
+    OpenQuestion();
+  }
 
   if(gameState == "RevealAnswers") { ShowScreen("revealAnswersScreen"); }
 
@@ -218,6 +281,12 @@ function ApplyGameState(gameState)
   {
     ShowScreen("impostorGuessScreen");
     OpenImpostorGuess();
+  }
+
+  if(gameState == "RoundScore")
+  {
+    ShowScreen("roundScoreScreen");
+    OpenRoundScore();
   }
 
   if(gameState == "FinalScore")
@@ -511,30 +580,27 @@ function UpdateRoleRevealScreen()
 
 
 // =========================
-// LISTEN QUESTION
+// OPEN QUESTION
 // =========================
 
-function ListenForQuestion()
+async function OpenQuestion()
 {
-  const questionRef =
-    ref(db, `rooms/${currentRoomCode}/currentState/question`);
+  alreadyAnswered = false;
 
-  onValue(questionRef, (snapshot) =>
+  document.getElementById("answerInput").disabled = false;
+  document.getElementById("answerInput").value = "";
+  document.getElementById("sendAnswerButton").disabled = false;
+  document.getElementById("questionWaitingText").innerText = "";
+
+  const questionSnapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/currentState/question`));
+
+  const question = questionSnapshot.val();
+
+  if(question)
   {
-    const question = snapshot.val();
-
-    if(!question) return;
-
     document.getElementById("questionText").innerText = question;
-
-    alreadyAnswered = false;
-
-    document.getElementById("answerInput").disabled = false;
-    document.getElementById("answerInput").value = "";
-    document.getElementById("sendAnswerButton").disabled = false;
-
-    document.getElementById("questionWaitingText").innerText = "";
-  });
+  }
 }
 
 
@@ -814,6 +880,49 @@ window.sendImpostorGuess = async function()
 
   console.log("Palpite enviado!");
 };
+
+
+// =========================
+// OPEN ROUND SCORE (placar parcial entre macro-rodadas)
+// =========================
+
+async function OpenRoundScore()
+{
+  const playersSnapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/players`));
+
+  const scoreListDiv =
+    document.getElementById("roundScoreList");
+
+  scoreListDiv.innerHTML = "";
+
+  if(!playersSnapshot.exists())
+  {
+    return;
+  }
+
+  const players = [];
+
+  playersSnapshot.forEach((child) =>
+  {
+    players.push({ id: child.key, ...child.val() });
+  });
+
+  players.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  players.forEach((player) =>
+  {
+    const item =
+      document.createElement("div");
+
+    item.className = "scoreItem";
+
+    item.innerText =
+      `${player.name} - ${player.score || 0}`;
+
+    scoreListDiv.appendChild(item);
+  });
+}
 
 
 // =========================
