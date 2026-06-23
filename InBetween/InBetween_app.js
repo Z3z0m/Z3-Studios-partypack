@@ -236,6 +236,7 @@ function ApplyGameState(gameState)
   StopCountdown();
 
   UpdateHostButton(gameState);
+  UpdateRoleBanner();
 
   if(gameState == "Lobby") { ShowScreen("lobbyScreen"); }
 
@@ -397,7 +398,7 @@ async function OpenWriteQuestion()
     document.getElementById("sendQuestionButton").disabled = false;
     document.getElementById("writeQuestionStatusText").innerText = "";
 
-    StartCountdown(20, "writeQuestionCountdown");
+    StartCountdown(30, "writeQuestionCountdown");
   }
   else
   {
@@ -405,7 +406,7 @@ async function OpenWriteQuestion()
     writeContainer.classList.remove("active");
     waitingContainer.classList.add("active");
 
-    StartCountdown(20, "writeQuestionWaitingCountdown");
+    StartCountdown(30, "writeQuestionWaitingCountdown");
   }
 }
 
@@ -529,6 +530,7 @@ function ListenForImpostor()
     isImpostor = (impostorId === currentPlayerId);
 
     UpdateRoleRevealScreen();
+    UpdateRoleBanner();
   });
 }
 
@@ -548,6 +550,7 @@ function ListenForWord()
       currentSecretWord = snapshot.val() || "";
 
       UpdateRoleRevealScreen();
+      UpdateRoleBanner();
     }
   );
 }
@@ -575,6 +578,53 @@ function UpdateRoleRevealScreen()
     roleText.innerHTML =
       `Sua palavra secreta é:<br>` +
       `<span class="secretWordLabel">${currentSecretWord}</span>`;
+  }
+}
+
+
+// =========================
+// ROLE REMINDER BANNER
+// (pedido dos playtests: jogadores esquecem a palavra/papel no meio da
+// rodada — esse aviso fica visível em toda tela de jogo, não só no
+// RoleReveal)
+// =========================
+
+const ROLE_BANNER_STATES =
+[
+  "RoleReveal",
+  "WriteQuestion",
+  "Question",
+  "RevealAnswers",
+  "Discussion",
+  "Voting",
+  "VoteResult",
+  "ImpostorGuess",
+  "RoundScore"
+];
+
+function UpdateRoleBanner()
+{
+  const banner =
+    document.getElementById("roleBanner");
+
+  if(!banner) return;
+
+  const shouldShow =
+    ROLE_BANNER_STATES.includes(currentGameState);
+
+  banner.classList.toggle("active", shouldShow);
+
+  if(!shouldShow) return;
+
+  if(isImpostor)
+  {
+    banner.innerText = "Você é o IMPOSTOR!";
+    banner.classList.add("impostor");
+  }
+  else
+  {
+    banner.innerText = `Palavra secreta: ${currentSecretWord}`;
+    banner.classList.remove("impostor");
   }
 }
 

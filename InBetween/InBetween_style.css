@@ -140,6 +140,41 @@ button:disabled{
 
 
 /* =========================
+   ROLE REMINDER BANNER
+========================= */
+
+.roleBanner{
+  display:none;
+
+  width:90%;
+  max-width:400px;
+
+  text-align:center;
+
+  padding:10px 15px;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  font-size:14px;
+  font-weight:bold;
+
+  color:#5c8dff;
+}
+
+.roleBanner.active{
+  display:block;
+}
+
+.roleBanner.impostor{
+  background:#3a1f1f;
+
+  color:#e74c3c;
+}
+
+
+/* =========================
    ROLE REVEAL
 ========================= */
 
