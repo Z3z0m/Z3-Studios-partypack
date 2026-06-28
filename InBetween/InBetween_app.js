@@ -240,6 +240,8 @@ function ApplyGameState(gameState)
 
   if(gameState == "Lobby") { ShowScreen("lobbyScreen"); }
 
+  if(gameState == "Tutorial") { ShowScreen("tutorialScreen"); }
+
   if(gameState == "RoleReveal")
   {
     ShowScreen("roleRevealScreen");
