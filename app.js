@@ -138,6 +138,37 @@ async function CheckRoomCode()
 
 
 // =========================
+// ENTER KEY NAVIGATION
+// =========================
+
+function HandleRoomCodeKeydown(event)
+{
+  if(event.key !== "Enter") return;
+
+  event.preventDefault();
+
+  document
+    .getElementById("playerName")
+    .focus();
+}
+
+function HandlePlayerNameKeydown(event)
+{
+  if(event.key !== "Enter") return;
+
+  event.preventDefault();
+
+  const joinButton =
+    document.getElementById("joinButton");
+
+  if(!joinButton.disabled)
+  {
+    joinRoom();
+  }
+}
+
+
+// =========================
 // JOIN ROOM
 // =========================
 
@@ -305,3 +336,9 @@ PrefillRoomFromUrl();
 
 window.CheckRoomCode =
   CheckRoomCode;
+
+window.HandleRoomCodeKeydown =
+  HandleRoomCodeKeydown;
+
+window.HandlePlayerNameKeydown =
+  HandlePlayerNameKeydown;

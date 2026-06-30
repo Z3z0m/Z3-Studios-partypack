@@ -102,6 +102,20 @@ function ShowScreen(screenId)
 
 
 // =========================
+// ENTER KEY SUBMIT
+// =========================
+
+window.HandleEnterKey = function(event, callback)
+{
+  if(event.key !== "Enter") return;
+
+  event.preventDefault();
+
+  callback();
+};
+
+
+// =========================
 // ROUND KEY (impostorRound_questionRound)
 // =========================
 
@@ -160,6 +174,14 @@ window.SendHostCommand = async function()
   );
 };
 
+window.SendTutorialAction = async function(action)
+{
+  await set(
+    ref(db, `rooms/${currentRoomCode}/tutorialAction`),
+    { action: action, t: Date.now() }
+  );
+};
+
 function UpdateHostButton(state)
 {
   if(!isHost) return;
@@ -170,7 +192,8 @@ function UpdateHostButton(state)
   // animação automática, FinalScore já é o fim de jogo).
   const hidden =
     state === "RevealAnswers" ||
-    state === "FinalScore";
+    state === "FinalScore" ||
+    state === "Tutorial";
 
   if(hidden)
   {
@@ -240,7 +263,15 @@ function ApplyGameState(gameState)
 
   if(gameState == "Lobby") { ShowScreen("lobbyScreen"); }
 
-  if(gameState == "Tutorial") { ShowScreen("tutorialScreen"); }
+  if(gameState == "Tutorial")
+  {
+    ShowScreen("tutorialScreen");
+
+    document
+      .getElementById("tutorialControls")
+      .style.display =
+      isHost ? "flex" : "none";
+  }
 
   if(gameState == "RoleReveal")
   {

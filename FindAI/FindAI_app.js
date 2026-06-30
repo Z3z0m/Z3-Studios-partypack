@@ -93,6 +93,19 @@ function ShowScreen(screenId)
 }
 
 // =========================
+// ENTER KEY SUBMIT
+// =========================
+
+window.HandleEnterKey = function(event, callback)
+{
+  if(event.key !== "Enter") return;
+
+  event.preventDefault();
+
+  callback();
+};
+
+// =========================
 // START
 // =========================
 

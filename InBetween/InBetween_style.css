@@ -345,6 +345,47 @@ button:disabled{
 
 
 /* =========================
+   TUTORIAL SCREEN
+========================= */
+
+#tutorialControls{
+  display:none;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow{
+  display:flex;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow button{
+  flex:1;
+}
+
+#skipTutorialBtn{
+  background:#444;
+
+  color:#aaa;
+
+  font-size:14px;
+}
+
+#skipTutorialBtn:hover{
+  background:#555;
+
+  transform:none;
+}
+
+
+/* =========================
    HOST BUTTON
 ========================= */
 

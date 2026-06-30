@@ -35,6 +35,7 @@
         placeholder="Código da sala"
         maxlength="4"
         oninput="CheckRoomCode()"
+        onkeydown="HandleRoomCodeKeydown(event)"
       />
 
       <!-- GAME MODE -->
@@ -48,6 +49,7 @@
         id="playerName"
         placeholder="Seu nome"
         maxlength="16"
+        onkeydown="HandlePlayerNameKeydown(event)"
       />
 
       <!-- JOIN BUTTON -->
