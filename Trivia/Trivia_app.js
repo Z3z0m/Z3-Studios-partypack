@@ -66,6 +66,7 @@ const currentPlayerId =
 
 let alreadyAnswered = false;
 let isHost = false;
+let isGamePaused = false;
 
 
 // =========================
@@ -96,7 +97,28 @@ window.onload = async function()
     await CheckIfHost();
     ListenForGameState();
     ListenForQuestion();
+    ListenForPause();
 };
+
+
+// =========================
+// LISTEN FOR PAUSE
+// =========================
+
+function ListenForPause()
+{
+    onValue(
+        ref(db, `rooms/${currentRoomCode}/gamePaused`),
+        (snapshot) =>
+        {
+            isGamePaused = snapshot.val() === true;
+
+            document
+                .getElementById("pauseOverlay")
+                .classList.toggle("active", isGamePaused);
+        }
+    );
+}
 
 
 // =========================
@@ -285,6 +307,7 @@ function ListenForQuestion()
 
 window.AnswerQuestion = async function(index)
 {
+    if (isGamePaused) return;
     if (alreadyAnswered) return;
 
     alreadyAnswered = true;

@@ -59,6 +59,7 @@ const currentRoomCode = params.get("room");
 const currentPlayerId = params.get("id");
 const currentPlayerName = params.get("name");
 let selectedAvatar = "0";
+let isGamePaused = false;
 
 
 // =========================
@@ -80,7 +81,28 @@ window.onload = function()
 {
   RenderAvatars();
   ListenForStage();
+  ListenForPause();
 };
+
+
+// =========================
+// LISTEN FOR PAUSE
+// =========================
+
+function ListenForPause()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/gamePaused`),
+    (snapshot) =>
+    {
+      isGamePaused = snapshot.val() === true;
+
+      document
+        .getElementById("pauseOverlay")
+        .classList.toggle("active", isGamePaused);
+    }
+  );
+}
 
 
 // =========================
@@ -469,6 +491,8 @@ function UpdateVoteButtons(myVote)
 
 async function CastVote(round, vote, defenseId, prosecutionId)
 {
+  if(isGamePaused) return;
+
   UpdateVoteButtons(vote);
 
   await set(

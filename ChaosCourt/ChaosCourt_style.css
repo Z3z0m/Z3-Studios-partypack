@@ -317,3 +317,35 @@ h1{
 
   font-size:20px;
 }
+
+/* =========================
+   PAUSE OVERLAY
+========================= */
+
+.pauseOverlay{
+  display:none;
+
+  position:fixed;
+  inset:0;
+
+  background:rgba(0,0,0,0.75);
+
+  z-index:9999;
+
+  align-items:center;
+  justify-content:center;
+
+  text-align:center;
+}
+
+.pauseOverlay.active{
+  display:flex;
+}
+
+.pauseOverlayCard{
+  background:#1e1e1e;
+
+  border-radius:20px;
+
+  padding:30px 40px;
+}

@@ -62,6 +62,7 @@ let selectedAvatar = "0";
 let selectedGuessX = -1;
 let selectedGuessY = -1;
 let isHost = false;
+let isGamePaused = false;
 
 
 // =========================
@@ -94,7 +95,28 @@ window.onload = async function()
   ListenForTakenAvatars();
   await CheckIfHost();
   ListenForStage();
+  ListenForPause();
 };
+
+
+// =========================
+// LISTEN FOR PAUSE
+// =========================
+
+function ListenForPause()
+{
+    onValue(
+        ref(db, `rooms/${currentRoomCode}/gamePaused`),
+        (snapshot) =>
+        {
+            isGamePaused = snapshot.val() === true;
+
+            document
+                .getElementById("pauseOverlay")
+                .classList.toggle("active", isGamePaused);
+        }
+    );
+}
 
 
 // =========================
@@ -320,6 +342,11 @@ async function ListenForStage()
             {
                 OpenRoundScore();
             }
+
+            if(state === "FinalResult")
+            {
+                OpenFinalResult();
+            }
         });
 }
 
@@ -412,6 +439,8 @@ async function OpenGiveHint()
       .onclick =
     async () =>
   {
+      if(isGamePaused) return;
+
       const hint =
           document
           .getElementById("hintInput")
@@ -639,6 +668,8 @@ async function OpenGuessColor()
         .onclick =
     async () =>
     {
+        if(isGamePaused) return;
+
         if(
             selectedGuessX < 0 ||
             selectedGuessY < 0
@@ -772,4 +803,65 @@ function HideAllScreens()
     document.getElementById("waitingHintScreen").style.display = "none";
     document.getElementById("guessScreen").style.display = "none";
     document.getElementById("waitingGuessScreen").style.display = "none";
+    document.getElementById("finalResultScreen").style.display = "none";
+}
+
+async function OpenFinalResult()
+{
+    HideAllScreens();
+
+    const list =
+        document.getElementById("finalScoreList");
+
+    list.innerHTML = "";
+
+    const snapshot =
+        await get(
+            ref(db, `rooms/${currentRoomCode}/players`)
+        );
+
+    if (!snapshot.exists())
+        return;
+
+    const players =
+        Object.values(snapshot.val());
+
+    players.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    players.forEach((player) =>
+    {
+        const card =
+            document.createElement("div");
+
+        card.className = "scoreCard";
+
+        const img =
+            document.createElement("img");
+
+        img.src =
+            `imgs/${player.avatar}.png`;
+
+        const name =
+            document.createElement("span");
+
+        name.className = "scoreCardName";
+        name.textContent = player.name;
+
+        const pts =
+            document.createElement("span");
+
+        pts.className = "scoreCardPoints";
+        pts.textContent = `${player.score || 0} pts`;
+
+        card.appendChild(img);
+        card.appendChild(name);
+        card.appendChild(pts);
+
+        list.appendChild(card);
+    });
+
+    document
+        .getElementById("finalResultScreen")
+        .style.display =
+        "flex";
 }

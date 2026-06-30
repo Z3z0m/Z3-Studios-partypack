@@ -218,3 +218,68 @@ button:hover{
 
   width:100%;
 }
+
+
+/* =========================
+   PAUSE OVERLAY
+========================= */
+
+.pauseOverlay{
+  display:none;
+
+  position:fixed;
+  inset:0;
+
+  background:rgba(0,0,0,0.75);
+
+  z-index:9999;
+
+  align-items:center;
+  justify-content:center;
+
+  text-align:center;
+}
+
+.pauseOverlay.active{
+  display:flex;
+}
+
+.pauseOverlayCard{
+  background:#1e1e1e;
+
+  border-radius:20px;
+
+  padding:30px 40px;
+}
+
+
+/* =========================
+   HOME BUTTON
+========================= */
+
+.homeButton{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+.homeButton:hover{
+  transform:scale(1.02);
+
+  background:#3a3a3a;
+}

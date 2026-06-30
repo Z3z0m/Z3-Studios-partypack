@@ -73,6 +73,7 @@ const currentPlayerId =
 let alreadyAnswered = false;
 let alreadyVoted = false;
 let currentGameState = "Lobby";
+let isGamePaused = false;
 
 // =========================
 // SCREEN SYSTEM
@@ -114,7 +115,28 @@ window.onload = function()
   ListenForGameState();
   ListenForPrompt();
   ListenForCategory();
+  ListenForPause();
 };
+
+
+// =========================
+// LISTEN FOR PAUSE
+// =========================
+
+function ListenForPause()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/gamePaused`),
+    (snapshot) =>
+    {
+      isGamePaused = snapshot.val() === true;
+
+      document
+        .getElementById("pauseOverlay")
+        .classList.toggle("active", isGamePaused);
+    }
+  );
+}
 
 
 // =========================
@@ -222,6 +244,8 @@ function ListenForCategory()
 
 window.sendAnswer = async function()
 {
+  if(isGamePaused) return;
+
   if(alreadyAnswered)
   {
     return;
@@ -323,9 +347,14 @@ function ListenForGameState()
 
     if(gameState == "ShowAnswers") { ShowScreen("showAnswersScreen"); }
 
-    if(gameState == "Result") 
-      { ShowScreen("resultScreen"); 
-        OpenResult(); 
+    if(gameState == "Result")
+      { ShowScreen("resultScreen");
+        OpenResult();
+      }
+
+    if(gameState == "FinalScore")
+      { ShowScreen("finalScoreScreen");
+        OpenFinalScore();
       }
   });
 }
@@ -389,6 +418,8 @@ async function OpenVoting()
 
 async function Vote(answerId, event)
 {
+  if(isGamePaused) return;
+
   if(alreadyVoted)
   {
     return;
@@ -472,5 +503,41 @@ function OpenResult()
 
       resultDiv.appendChild(item);
     });
+  });
+}
+
+
+// =========================
+// OPEN FINAL SCORE
+// =========================
+
+async function OpenFinalScore()
+{
+  const playersSnapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/players`));
+
+  const finalDiv =
+    document.getElementById("finalScores");
+
+  finalDiv.innerHTML = "";
+
+  if(!playersSnapshot.exists()) return;
+
+  const players =
+    Object.values(playersSnapshot.val());
+
+  players.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  players.forEach((player) =>
+  {
+    const item =
+      document.createElement("div");
+
+    item.className = "scoreItem";
+
+    item.innerText =
+      `${player.name} - ${player.score || 0}`;
+
+    finalDiv.appendChild(item);
   });
 }

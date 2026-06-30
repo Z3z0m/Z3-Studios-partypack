@@ -80,6 +80,7 @@ let alreadyCalledForVote = false;
 let alreadySubmittedQuestion = false;
 let countdownInterval = null;
 let currentSecretWord = "";
+let isGamePaused = false;
 
 
 // =========================
@@ -146,7 +147,28 @@ window.onload = function()
   ListenForImpostor();
   ListenForWord();
   CheckIfHost();
+  ListenForPause();
 };
+
+
+// =========================
+// LISTEN FOR PAUSE
+// =========================
+
+function ListenForPause()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/gamePaused`),
+    (snapshot) =>
+    {
+      isGamePaused = snapshot.val() === true;
+
+      document
+        .getElementById("pauseOverlay")
+        .classList.toggle("active", isGamePaused);
+    }
+  );
+}
 
 
 // =========================
@@ -374,6 +396,8 @@ function StartCountdown(seconds, elementId)
   {
     if(el) el.innerText = `${remaining}s`;
 
+    if(isGamePaused) return;
+
     if(remaining <= 0)
     {
       StopCountdown();
@@ -450,6 +474,8 @@ async function OpenWriteQuestion()
 
 window.sendCustomQuestion = async function()
 {
+  if(isGamePaused) return;
+
   if(alreadySubmittedQuestion)
   {
     return;
@@ -526,6 +552,8 @@ function OpenDiscussion()
 
 window.callForVote = async function()
 {
+  if(isGamePaused) return;
+
   if(alreadyCalledForVote)
   {
     return;
@@ -693,6 +721,8 @@ async function OpenQuestion()
 
 window.sendAnswer = async function()
 {
+  if(isGamePaused) return;
+
   if(alreadyAnswered)
   {
     return;
@@ -814,6 +844,8 @@ function OpenVoting()
 
 async function Vote(votedPlayerId, event)
 {
+  if(isGamePaused) return;
+
   if(alreadyVoted)
   {
     return;
@@ -932,6 +964,8 @@ function OpenImpostorGuess()
 
 window.sendImpostorGuess = async function()
 {
+  if(isGamePaused) return;
+
   if(alreadyGuessed)
   {
     return;
