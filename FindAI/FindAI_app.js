@@ -74,6 +74,7 @@ let alreadyAnswered = false;
 let alreadyVoted = false;
 let currentGameState = "Lobby";
 let isGamePaused = false;
+let isHost = false;
 
 // =========================
 // SCREEN SYSTEM
@@ -110,13 +111,58 @@ window.HandleEnterKey = function(event, callback)
 // START
 // =========================
 
-window.onload = function()
+window.onload = async function()
 {
+  await CheckIfHost();
   ListenForGameState();
   ListenForPrompt();
   ListenForCategory();
   ListenForPause();
 };
+
+
+// =========================
+// HOST (só usado hoje pro "Jogar de Novo" na tela final)
+// =========================
+
+async function CheckIfHost()
+{
+    const snapshot = await get(
+        ref(
+            db,
+            `rooms/${currentRoomCode}/players/${currentPlayerId}/isHost`
+        )
+    );
+
+    isHost = snapshot.val() === true;
+
+    if (isHost)
+        UpdateHostButton(currentGameState);
+}
+
+window.SendHostCommand = async function()
+{
+    await set(
+        ref(db, `rooms/${currentRoomCode}/hostCommand`),
+        Date.now()
+    );
+};
+
+function UpdateHostButton(state)
+{
+    if (!isHost) return;
+
+    const btn = document.getElementById("hostButton");
+
+    if (state !== "FinalScore")
+    {
+        btn.style.display = "none";
+        return;
+    }
+
+    btn.style.display = "block";
+    btn.innerText = "Jogar de Novo";
+}
 
 
 // =========================
@@ -325,6 +371,8 @@ function ListenForGameState()
     const gameState = snapshot.val();
 
     currentGameState = gameState;
+
+    UpdateHostButton(gameState);
 
     document
       .getElementById("categoryText")

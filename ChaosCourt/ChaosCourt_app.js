@@ -60,6 +60,7 @@ const currentPlayerId = params.get("id");
 const currentPlayerName = params.get("name");
 let selectedAvatar = "0";
 let isGamePaused = false;
+let isHost = false;
 
 
 // =========================
@@ -77,12 +78,57 @@ const avatars = [];
 // RENDER
 // =========================
 
-window.onload = function()
+window.onload = async function()
 {
   RenderAvatars();
+  await CheckIfHost();
   ListenForStage();
   ListenForPause();
 };
+
+
+// =========================
+// HOST (só usado hoje pro "Jogar de Novo" na tela final)
+// =========================
+
+async function CheckIfHost()
+{
+    const snapshot = await get(
+        ref(
+            db,
+            `rooms/${currentRoomCode}/players/${currentPlayerId}/isHost`
+        )
+    );
+
+    isHost = snapshot.val() === true;
+
+    if (isHost)
+        UpdateHostButton("Lobby");
+}
+
+window.SendHostCommand = async function()
+{
+    await set(
+        ref(db, `rooms/${currentRoomCode}/hostCommand`),
+        Date.now()
+    );
+};
+
+function UpdateHostButton(stage)
+{
+    if (!isHost) return;
+
+    const btn = document.getElementById("hostButton");
+
+    if (stage !== "FinalResult")
+    {
+        btn.style.display = "none";
+        return;
+    }
+
+    btn.style.display = "block";
+    btn.innerText = "Jogar de Novo";
+}
 
 
 // =========================
@@ -193,6 +239,16 @@ function ListenForStage()
       snapshot.val();
 
     console.log("Stage:", stage);
+
+    UpdateHostButton(stage);
+
+    // LOBBY (volta aqui depois de "Jogar de Novo")
+
+    if(stage == "Lobby")
+    {
+      HideAllScreens();
+      document.getElementById("avatarGrid").style.display = "grid";
+    }
 
     // SHOW PLAYERS
 

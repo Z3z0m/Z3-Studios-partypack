@@ -211,10 +211,9 @@ function UpdateHostButton(state)
   const btn = document.getElementById("hostButton");
 
   // ESCONDE nos estados sem timer pra "pular" (RevealAnswers é uma
-  // animação automática, FinalScore já é o fim de jogo).
+  // animação automática).
   const hidden =
     state === "RevealAnswers" ||
-    state === "FinalScore" ||
     state === "Tutorial";
 
   if(hidden)
@@ -229,6 +228,7 @@ function UpdateHostButton(state)
   {
     "Lobby":      "Começar Jogo",
     "RoundScore": "Próxima Rodada",
+    "FinalScore": "Jogar de Novo",
   };
 
   btn.innerText =
