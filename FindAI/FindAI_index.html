@@ -52,6 +52,49 @@
 
 
     <!-- =========================
+         TUTORIAL SCREEN
+    ========================== -->
+
+    <div
+      id="tutorialScreen"
+      class="screen"
+    >
+
+      <h2>
+        COMO JOGAR
+      </h2>
+
+      <p>
+        Acompanhem a explicação das regras na tela principal!
+      </p>
+
+      <div id="tutorialControls">
+
+        <div class="tutorialNavRow">
+
+          <button onclick="SendTutorialAction('prev')">
+            ← Anterior
+          </button>
+
+          <button onclick="SendTutorialAction('next')">
+            Próxima →
+          </button>
+
+        </div>
+
+        <button
+          id="skipTutorialBtn"
+          onclick="SendTutorialAction('skip')"
+        >
+          Pular Tutorial
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
          PROMPT SCREEN
     ========================== -->
 

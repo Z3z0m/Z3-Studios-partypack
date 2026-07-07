@@ -122,7 +122,7 @@ window.onload = async function()
 
 
 // =========================
-// HOST (só usado hoje pro "Jogar de Novo" na tela final)
+// HOST (botão genérico: "Jogar de Novo" na tela final)
 // =========================
 
 async function CheckIfHost()
@@ -148,12 +148,23 @@ window.SendHostCommand = async function()
     );
 };
 
+window.SendTutorialAction = async function(action)
+{
+    await set(
+        ref(db, `rooms/${currentRoomCode}/tutorialAction`),
+        { action: action, t: Date.now() }
+    );
+};
+
 function UpdateHostButton(state)
 {
     if (!isHost) return;
 
     const btn = document.getElementById("hostButton");
 
+    // ESCONDE no Tutorial (entre outros) — lá a navegação é feita pelos
+    // botões próprios da tela (SendTutorialAction), não pelo botão
+    // genérico de host.
     if (state !== "FinalScore")
     {
         btn.style.display = "none";
@@ -383,6 +394,16 @@ function ListenForGameState()
       .classList.toggle("active", gameState == "Voting");
 
     if(gameState == "Lobby") { ShowScreen("lobbyScreen") }
+
+    if(gameState == "Tutorial")
+    {
+      ShowScreen("tutorialScreen");
+
+      document
+        .getElementById("tutorialControls")
+        .style.display =
+        isHost ? "flex" : "none";
+    }
 
     if(gameState == "Prompt") { ShowScreen("promptScreen"); }
 
