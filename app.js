@@ -286,6 +286,12 @@ window.joinRoom = async function()
         `Stop/Stop_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "MauMau")
+    {
+      window.location.href =
+        `MauMau/MauMau_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =

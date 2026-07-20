@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Mau-Mau</title>
+
+  <link
+    rel="stylesheet"
+    href="MauMau_style.css"
+  />
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- =========================
+         LOBBY SCREEN
+    ========================== -->
+
+    <div
+      id="lobbyScreen"
+      class="screen active"
+    >
+
+      <h1>
+        MAU-MAU
+      </h1>
+
+      <p>
+        Esperando o anfitrião começar...
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         TUTORIAL SCREEN
+    ========================== -->
+
+    <div
+      id="tutorialScreen"
+      class="screen"
+    >
+
+      <h2>
+        COMO JOGAR
+      </h2>
+
+      <p>
+        Acompanhem a explicação das regras na tela principal!
+      </p>
+
+      <div id="tutorialControls">
+
+        <div class="tutorialNavRow">
+
+          <button onclick="SendTutorialAction('prev')">
+            ← Anterior
+          </button>
+
+          <button onclick="SendTutorialAction('next')">
+            Próxima →
+          </button>
+
+        </div>
+
+        <button
+          id="skipTutorialBtn"
+          onclick="SendTutorialAction('skip')"
+        >
+          Pular Tutorial
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         PLAYING SCREEN
+    ========================== -->
+
+    <div
+      id="playingScreen"
+      class="screen"
+    >
+
+      <p class="countdownText">
+        Tempo restante: <span id="turnCountdown">--</span>
+      </p>
+
+      <div
+        id="topCardDisplay"
+        class="topCardDisplay"
+      >
+        ?
+      </div>
+
+      <p
+        id="turnBannerText"
+        class="turnBanner"
+      >
+      </p>
+
+      <div id="handContainer" class="handContainer">
+      </div>
+
+      <div class="playingActions">
+
+        <button
+          id="drawButton"
+          onclick="OnDrawTapped()"
+        >
+          COMPRAR
+        </button>
+
+        <button
+          id="passButton"
+          onclick="OnPassTapped()"
+          style="display:none"
+        >
+          PASSAR
+        </button>
+
+      </div>
+
+      <p
+        id="rejectedText"
+        class="rejectedText"
+      >
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         RESULT SCREEN
+    ========================== -->
+
+    <div
+      id="resultScreen"
+      class="screen"
+    >
+
+      <h2>
+        RESULTADO DA RODADA
+      </h2>
+
+      <p
+        id="resultWinnerText"
+        class="resultWinnerText"
+      >
+      </p>
+
+      <div id="resultPlacements">
+      </div>
+
+      <p class="sectionLabel">
+        Placar Geral
+      </p>
+
+      <div id="resultScoreboard">
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         FINAL SCORE SCREEN
+    ========================== -->
+
+    <div
+      id="finalScoreScreen"
+      class="screen"
+    >
+
+      <h2>
+        RESULTADO FINAL
+      </h2>
+
+      <div id="finalScores">
+      </div>
+
+      <button
+        class="homeButton"
+        onclick="window.location.href='../index.html'"
+      >
+        Voltar ao Início
+      </button>
+
+    </div>
+
+    <button
+      id="hostButton"
+      style="display:none"
+      onclick="SendHostCommand()"
+    >
+      Começar Jogo
+    </button>
+
+  </div>
+
+
+  <!-- =========================
+       SELETOR DE COR DO CURINGA
+  ========================== -->
+
+  <div
+    id="colorPickerOverlay"
+    class="colorPickerOverlay"
+  >
+    <div class="colorPickerCard">
+
+      <p>
+        Escolha a cor:
+      </p>
+
+      <div class="colorPickerGrid">
+
+        <button
+          class="colorPickBtn color-red"
+          onclick="PickWildColor('Red')"
+        >
+          Vermelho
+        </button>
+
+        <button
+          class="colorPickBtn color-blue"
+          onclick="PickWildColor('Blue')"
+        >
+          Azul
+        </button>
+
+        <button
+          class="colorPickBtn color-green"
+          onclick="PickWildColor('Green')"
+        >
+          Verde
+        </button>
+
+        <button
+          class="colorPickBtn color-yellow"
+          onclick="PickWildColor('Yellow')"
+        >
+          Amarelo
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+
+
+  <div
+    id="pauseOverlay"
+    class="pauseOverlay"
+  >
+    <div class="pauseOverlayCard">
+      <h2>Jogo Pausado</h2>
+      <p>Aguarde o host retomar...</p>
+    </div>
+  </div>
+
+  <script
+    type="module"
+    src="MauMau_app.js"
+  ></script>
+
+</body>
+
+</html>
