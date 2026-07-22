@@ -12,6 +12,12 @@
 
   <title>Mau-Mau</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
   <link
     rel="stylesheet"
     href="MauMau_style.css"
@@ -95,15 +101,24 @@
       class="screen"
     >
 
-      <p class="countdownText">
-        Tempo restante: <span id="turnCountdown">--</span>
+      <p class="roundLabel">
+        Rodada <span id="playingRoundNum">1</span>
       </p>
 
-      <div
-        id="topCardDisplay"
-        class="topCardDisplay"
-      >
-        ?
+      <div class="topCardWrap">
+
+        <div
+          id="topCardDisplay"
+          class="cardBox topCardBox"
+        >
+        </div>
+
+        <div id="timerRing" class="timerRing">
+          <div class="timerRingHole">
+            <span id="turnCountdown">--</span>
+          </div>
+        </div>
+
       </div>
 
       <p

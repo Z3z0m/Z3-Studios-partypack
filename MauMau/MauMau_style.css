@@ -5,6 +5,7 @@
   box-sizing:border-box;
 
   font-family:
+    'Nunito',
     Arial,
     Helvetica,
     sans-serif;
@@ -14,7 +15,7 @@ body{
   width:100vw;
   height:100vh;
 
-  background:#111;
+  background:radial-gradient(circle at 50% 0%, #1c2b28 0%, #0d1414 65%);
 
   display:flex;
   flex-direction:column;
@@ -23,7 +24,7 @@ body{
   align-items:center;
   gap:15px;
 
-  color:white;
+  color:#f3f2ea;
 }
 
 .screen{
@@ -40,7 +41,7 @@ body{
   width:90%;
   max-width:420px;
 
-  background:#1e1e1e;
+  background:#161e1c;
 
   padding:30px;
 
@@ -53,6 +54,8 @@ body{
 
 h1, h2{
   text-align:center;
+
+  font-family:'Fredoka',sans-serif;
 }
 
 p{
@@ -73,8 +76,10 @@ button{
 
   color:white;
 
+  font-family:'Fredoka',sans-serif;
   font-size:16px;
-  font-weight:bold;
+  font-weight:700;
+  letter-spacing:0.3px;
 
   cursor:pointer;
 
@@ -93,7 +98,7 @@ button:disabled{
 
 
 /* =========================
-   COUNTDOWN
+   COUNTDOWN (telas fora do Playing — Reveal-like genérico)
 ========================= */
 
 .countdownText{
@@ -114,87 +119,227 @@ button:disabled{
 
 /* =========================
    CORES DAS CARTAS (originais — não replicadas de nenhum produto comercial)
+   Gradiente radial (mancha clara -> base) em vez de cor chapada — mesmo
+   tratamento visual pras cartas da mão, o topo do descarte e o seletor de
+   cor do Curinga (que reaproveita as MESMAS classes).
 ========================= */
 
-.color-red{ background:#c0392b; }
-.color-blue{ background:#2d6cdf; }
-.color-green{ background:#27ae60; }
-.color-yellow{ background:#d4ac0d; }
-.color-none{ background:#3a3a3a; }
+.color-red{ background:radial-gradient(circle at 32% 24%, #ff8f7a, #e0473a 72%); }
+.color-blue{ background:radial-gradient(circle at 32% 24%, #6fc0ff, #1f7fe8 72%); }
+.color-green{ background:radial-gradient(circle at 32% 24%, #7fe6a3, #1fa85c 72%); }
+.color-yellow{ background:radial-gradient(circle at 32% 24%, #ffe17a, #eab308 72%); }
+.color-none{ background:radial-gradient(circle at 32% 24%, #8a8f92, #4a4f52 72%); }
+
+/* CURINGA: sempre a "pizza" de 4 cores, em qualquer contexto (mão ou topo) —
+   é o que deixa ele reconhecível de longe, sem precisar de texto. */
+.color-wild{
+  background:conic-gradient(from 0deg, #e0473a 0deg 90deg, #1f7fe8 90deg 180deg, #1fa85c 180deg 270deg, #eab308 270deg 360deg);
+}
 
 
 /* =========================
-   TOP CARD
+   CAIXA DE CARTA (base compartilhada pelo topo do descarte e pela mão)
 ========================= */
 
-.topCardDisplay{
-  align-self:center;
-
-  min-width:140px;
-  padding:20px 18px;
+.cardBox{
+  display:flex;
+  align-items:center;
+  justify-content:center;
 
   border-radius:16px;
 
-  background:#3a3a3a;
+  box-shadow:0 8px 20px rgba(0,0,0,.45);
 
+  color:rgba(0,0,0,.75);
+}
+
+.cardBox svg,
+.cardButton svg{
+  stroke:rgba(0,0,0,.7);
+}
+
+
+/* =========================
+   TOP CARD + ANEL DE TEMPO
+========================= */
+
+.topCardWrap{
+  position:relative;
+
+  align-self:center;
+}
+
+.topCardBox{
+  width:130px;
+  height:180px;
+
+  border-radius:20px;
+
+  font-family:'Fredoka',sans-serif;
+  font-size:64px;
+  font-weight:700;
+
+  box-shadow:0 10px 26px rgba(0,0,0,.45);
+}
+
+.timerRing{
+  position:absolute;
+  top:-10px;
+  right:-14px;
+
+  width:44px;
+  height:44px;
+
+  border-radius:50%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:conic-gradient(#ffd76b 0deg, rgba(255,255,255,.18) 0deg);
+
+  box-shadow:0 4px 10px rgba(0,0,0,.4);
+}
+
+.timerRingHole{
+  width:36px;
+  height:36px;
+
+  border-radius:50%;
+
+  background:#11181a;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.timerRingHole span{
+  font-family:'Fredoka',sans-serif;
+  font-weight:700;
+  font-size:14px;
+
+  color:#ffd76b;
+}
+
+.roundLabel{
   text-align:center;
 
-  font-size:56px;
-  font-weight:bold;
+  font-family:'Fredoka',sans-serif;
+  font-size:13px;
+  font-weight:600;
 
-  letter-spacing:0.5px;
+  letter-spacing:1px;
+  text-transform:uppercase;
 
-  box-shadow:
-    0 0 16px
-    rgba(0,0,0,0.5);
+  color:#8fa39e;
+
+  margin:0;
 }
 
 .turnBanner{
   text-align:center;
 
+  font-family:'Fredoka',sans-serif;
+  font-weight:600;
   font-size:16px;
-  font-weight:bold;
 
-  color:#5c8dff;
+  min-height:20px;
+
+  color:#ffd76b;
+
+  margin:0;
 }
 
 
 /* =========================
-   MÃO DE CARTAS
+   MÃO DE CARTAS (fileira horizontal com scroll, não quebra linha)
 ========================= */
 
 .handContainer{
   display:flex;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
 
-  gap:8px;
+  gap:10px;
 
-  justify-content:center;
+  padding:6px 4px;
 
   width:100%;
 
-  max-height:38vh;
-  overflow-y:auto;
+  overflow-x:auto;
 }
 
 .cardButton{
-  width:auto;
-  min-width:56px;
+  flex:0 0 auto;
 
-  padding:14px 8px;
+  width:72px;
+  height:104px;
 
-  border-radius:10px;
+  padding:0;
 
-  font-size:26px;
-  font-weight:bold;
+  border-radius:14px;
 
-  text-align:center;
+  font-family:'Fredoka',sans-serif;
+  font-size:34px;
+  font-weight:700;
 
-  line-height:1.2;
+  box-shadow:0 8px 16px rgba(0,0,0,.4);
+
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1), opacity .35s;
 }
 
 .cardButton:disabled{
-  opacity:0.35;
+  opacity:.35;
+}
+
+
+/* =========================
+   ANIMAÇÕES DE CARTA (nomes em par A/B: alternar entre os dois na hora de
+   disparar via JS reinicia a animação mesmo quando o gatilho se repete em
+   seguida — o navegador não reanima se o valor de "animation" não mudar)
+========================= */
+
+@keyframes cardDeal{
+  0%{ transform:translateY(50px) scale(.6) rotate(8deg); opacity:0; }
+  100%{ transform:translateY(0) scale(1) rotate(0deg); opacity:1; }
+}
+
+@keyframes cardShakeA{
+  0%,100%{ transform:translateX(0) rotate(0); }
+  20%{ transform:translateX(-8px) rotate(-3deg); }
+  40%{ transform:translateX(7px) rotate(3deg); }
+  60%{ transform:translateX(-5px) rotate(-2deg); }
+  80%{ transform:translateX(4px) rotate(1deg); }
+}
+
+@keyframes cardShakeB{
+  0%,100%{ transform:translateX(0) rotate(0); }
+  20%{ transform:translateX(-8px) rotate(-3deg); }
+  40%{ transform:translateX(7px) rotate(3deg); }
+  60%{ transform:translateX(-5px) rotate(-2deg); }
+  80%{ transform:translateX(4px) rotate(1deg); }
+}
+
+@keyframes cardPopA{
+  0%{ transform:scale(.7) rotate(-6deg); filter:brightness(1.6); }
+  55%{ transform:scale(1.12) rotate(2deg); }
+  100%{ transform:scale(1) rotate(0); filter:brightness(1); }
+}
+
+@keyframes cardPopB{
+  0%{ transform:scale(.7) rotate(-6deg); filter:brightness(1.6); }
+  55%{ transform:scale(1.12) rotate(2deg); }
+  100%{ transform:scale(1) rotate(0); filter:brightness(1); }
+}
+
+@keyframes bannerFadeA{
+  0%{ opacity:0; transform:translateY(-6px); }
+  100%{ opacity:1; transform:translateY(0); }
+}
+
+@keyframes bannerFadeB{
+  0%{ opacity:0; transform:translateY(-6px); }
+  100%{ opacity:1; transform:translateY(0); }
 }
 
 
@@ -211,39 +356,53 @@ button:disabled{
 }
 
 #drawButton{
-  background:#f59e0b;
-  color:#111;
+  background:linear-gradient(180deg,#ffcf5c,#f2b705);
+  color:#241a02;
+
+  box-shadow:0 6px 14px rgba(242,183,5,.35);
 }
 
 #drawButton:hover:not(:disabled){
-  background:#fbbf24;
+  background:linear-gradient(180deg,#ffd876,#ffb905);
 }
 
 #passButton{
-  background:#444;
+  background:#33393b;
 }
 
 .rejectedText{
-  min-height:20px;
-
   text-align:center;
 
+  font-family:'Nunito',sans-serif;
+  font-weight:700;
   font-size:13px;
 
-  color:#ff6b6b;
+  color:#ff9d8f;
+
+  background:rgba(20,10,10,.92);
+
+  border-radius:12px;
+
+  max-height:0;
+  padding:0 14px;
+
+  overflow:hidden;
 
   opacity:0;
 
-  transition:opacity 0.2s;
+  transition:opacity .25s, max-height .25s, padding .25s;
 }
 
 .rejectedText.active{
   opacity:1;
+
+  max-height:44px;
+  padding:10px 14px;
 }
 
 
 /* =========================
-   SELETOR DE COR DO CURINGA
+   SELETOR DE COR DO CURINGA (reaproveita .color-* — mesmo gradiente das cartas)
 ========================= */
 
 .colorPickerOverlay{
@@ -252,7 +411,7 @@ button:disabled{
   position:fixed;
   inset:0;
 
-  background:rgba(0,0,0,0.75);
+  background:rgba(6,10,10,.75);
 
   z-index:9998;
 
@@ -265,9 +424,9 @@ button:disabled{
 }
 
 .colorPickerCard{
-  background:#1e1e1e;
+  background:#1b2523;
 
-  border-radius:20px;
+  border-radius:22px;
 
   padding:26px 30px;
 
@@ -275,6 +434,21 @@ button:disabled{
   max-width:360px;
 
   text-align:center;
+
+  animation:pickerPop .25s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+@keyframes pickerPop{
+  0%{ opacity:0; transform:scale(.85); }
+  100%{ opacity:1; transform:scale(1); }
+}
+
+.colorPickerCard p{
+  font-family:'Fredoka',sans-serif;
+  font-weight:600;
+  font-size:15px;
+
+  margin-bottom:16px;
 }
 
 .colorPickerGrid{
@@ -287,7 +461,16 @@ button:disabled{
 }
 
 .colorPickBtn{
-  color:white;
+  color:#fff;
+
+  border-radius:12px;
+
+  padding:16px;
+}
+
+.colorPickBtn.color-green,
+.colorPickBtn.color-yellow{
+  color:#241a02;
 }
 
 

@@ -67,21 +67,61 @@ const currentPlayerId =
 
 
 // =========================
-// LABELS (mesmo baralho original de MauMauCard.cs — sem replicar nenhum
-// produto comercial)
+// VISUAL DAS CARTAS (design "MauMau Playing Redesign") — mesmo baralho
+// original de MauMauCard.cs, sem replicar nenhum produto comercial. Cada
+// carta é um ícone (SVG pras especiais, "+2" pro Comprar 2, número pras
+// numéricas) sobre um fundo gradiente por cor — ver .color-* / .color-wild
+// em MauMau_style.css.
 // =========================
 
-// PSEUDO-DESIGN: a cor já é o fundo colorido do botão (ver ColorClass) — o
-// texto da carta fica só com o número, ou um emoji pras especiais, em vez de
-// escrever "Vermelho 7"/"Vermelho REVERTER" por extenso.
-const CardEmojis = { Skip: "🚫", Reverse: "🔄", DrawTwo: "✋+2", Wild: "🌈" };
+function CardVisualClass(card)
+{
+  return card.type === "Wild" ? "color-wild" : ColorClass(card.color);
+}
 
-// MESMAS CORES DAS CLASSES .color-* (ver MauMau_style.css) — a carta do topo
-// não usa fundo colorido (ela fica sozinha, sem outras cartas do lado pra
-// contextualizar), então quem indica a cor ativa é a FONTE, pintada aqui via
-// style.color (mesma ideia de MauMauGameManager.RefreshTableUI/ToUnityColor
-// do lado do host).
-const ColorHex = { None: "#ffffff", Red: "#e74c3c", Blue: "#4d94ff", Green: "#2ecc71", Yellow: "#f4d03f" };
+// sizeKey: "top" (carta do topo do descarte) ou "hand" (cartas da mão) —
+// só muda o tamanho do ícone, o desenho é o mesmo dos dois lados.
+function CardVisualHTML(card, sizeKey)
+{
+  const svgSize = sizeKey === "top" ? 46 : 28;
+  const plusSize = sizeKey === "top" ? 34 : 23;
+  const wildDot = sizeKey === "top" ? 16 : 12;
+  const wildHalo = sizeKey === "top" ? 4 : 3;
+
+  if(card.type === "Number") return `<span>${card.value}</span>`;
+
+  if(card.type === "Skip")
+  {
+    return `<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24">`
+      + `<circle cx="12" cy="12" r="9" fill="none" stroke-width="2.4"></circle>`
+      + `<line x1="6" y1="18" x2="18" y2="6" stroke-width="2.4"></line>`
+      + `</svg>`;
+  }
+
+  if(card.type === "Reverse")
+  {
+    return `<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round">`
+      + `<path d="M4 8H17"></path><path d="M13 4L17 8L13 12"></path>`
+      + `<path d="M20 16H7"></path><path d="M11 20L7 16L11 12"></path>`
+      + `</svg>`;
+  }
+
+  if(card.type === "DrawTwo") return `<span style="font-size:${plusSize}px;">+2</span>`;
+
+  // Wild
+  return `<div style="width:${wildDot}px;height:${wildDot}px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 0 0 ${wildHalo}px rgba(255,255,255,.28);"></div>`;
+}
+
+function ColorClass(color)
+{
+  return "color-" + (color || "none").toLowerCase();
+}
+
+// SÓ PRO ANEL DE DESTAQUE do Curinga no topo do descarte (ver
+// ApplyTableUpdate) — o Curinga sempre mostra a "pizza" de 4 cores (ver
+// CardVisualClass), então sem esse anel não daria pra saber qual cor foi
+// escolhida só de olhar pra carta.
+const ActiveColorHex = { Red: "#e0473a", Blue: "#1f7fe8", Green: "#1fa85c", Yellow: "#eab308", None: "#ffffff" };
 
 const RejectedReasonLabels = {
   "not-your-turn": "Ainda não é sua vez!",
@@ -90,7 +130,8 @@ const RejectedReasonLabels = {
   "missing-color": "Escolha uma cor pro Curinga.",
   "must-play-drawn-card-or-pass": "Jogue a carta que você comprou, ou passe.",
   "already-drew": "Você já comprou nessa vez.",
-  "nothing-to-pass": "Nada pra passar agora."
+  "nothing-to-pass": "Nada pra passar agora.",
+  "must-stack-or-draw": "Só dá pra jogar outro +2 agora, ou comprar o monte!"
 };
 
 
@@ -109,10 +150,27 @@ let currentHand = [];      // cartas da MINHA mão (só eu leio esse nó, ver GD
 let currentTable = null;   // último snapshot de currentState/table
 let pendingWildIndex = null;
 let rejectedTimeout = null;
+let lastAttemptedCardIndex = null; // pro shake quando o HOST rejeita (raro — ver TriggerShake)
 
 let handUnsubscribe = null;
 let tableUnsubscribe = null;
 let rejectedUnsubscribe = null;
+
+// ANIMAÇÃO: cada par A/B existe só pra forçar o navegador a reiniciar a
+// animação mesmo quando ela dispara duas vezes seguidas com o mesmo nome
+// (setar o MESMO valor de "animation" de novo não reinicia sozinho).
+let topCardAnimToggle = false;
+let bannerAnimToggle = false;
+let shakeAnimToggle = false;
+
+let previousHandLength = 0;
+let dealingHand = false;     // true só na primeira mão da rodada (cascata de distribuição)
+let enteringIndex = null;    // índice da carta recém-comprada (anima entrando)
+let enteringTimeout = null;
+let shakeIndex = null;       // índice da carta que levou "tremida" (jogada rejeitada)
+let shakeTimeout = null;
+let playingIndex = null;     // índice da carta sendo jogada (anima saindo antes de confirmar)
+let playingTimeout = null;
 
 
 // =========================
@@ -319,19 +377,31 @@ function ApplyGameState(gameState)
 
 
 // =========================
-// COUNTDOWN (contador visível no client)
+// COUNTDOWN (número + anel circular — ver .timerRing em MauMau_style.css)
 // =========================
 
-function StartCountdown(seconds, elementId)
+function StartCountdown(seconds, textElementId, ringElementId)
 {
   StopCountdown();
 
+  const total = seconds || 1;
   let remaining = Math.round(seconds);
-  const el = document.getElementById(elementId);
+
+  const textEl = document.getElementById(textElementId);
+  const ringEl = ringElementId ? document.getElementById(ringElementId) : null;
+
+  function applyRing()
+  {
+    if(!ringEl) return;
+
+    const deg = Math.max(0, Math.round((remaining / total) * 360));
+    ringEl.style.background = `conic-gradient(#ffd76b ${deg}deg, rgba(255,255,255,.18) 0deg)`;
+  }
 
   function tick()
   {
-    if(el) el.innerText = `${remaining}s`;
+    if(textEl) textEl.innerText = `${remaining}`;
+    applyRing();
 
     if(isGamePaused) return;
 
@@ -360,23 +430,6 @@ function StopCountdown()
 
 
 // =========================
-// FORMATAÇÃO DE CARTA
-// =========================
-
-function FormatCard(card)
-{
-  if(!card) return "?";
-  if(card.type === "Number") return `${card.value}`;
-  return CardEmojis[card.type] || "?";
-}
-
-function ColorClass(color)
-{
-  return "color-" + (color || "none").toLowerCase();
-}
-
-
-// =========================
 // OPEN PLAYING
 // =========================
 
@@ -384,6 +437,13 @@ async function OpenPlaying()
 {
   pendingWildIndex = null;
   HideColorPicker();
+
+  previousHandLength = 0;
+  dealingHand = false;
+  enteringIndex = null;
+  shakeIndex = null;
+  playingIndex = null;
+  lastAttemptedCardIndex = null;
 
   const [roundSnapshot, playersSnapshot] =
     await Promise.all(
@@ -393,6 +453,7 @@ async function OpenPlaying()
     ]);
 
   currentRound = roundSnapshot.val() || currentRound;
+  document.getElementById("playingRoundNum").innerText = currentRound;
 
   playerNames = {};
 
@@ -410,7 +471,25 @@ async function OpenPlaying()
     ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}/hand`),
     (snapshot) =>
     {
-      currentHand = snapshot.exists() ? Object.values(snapshot.val()) : [];
+      const newHand = snapshot.exists() ? Object.values(snapshot.val()) : [];
+
+      if(previousHandLength === 0 && newHand.length > 0)
+      {
+        // PRIMEIRA MÃO DA RODADA: cascata de distribuição em todas as cartas.
+        dealingHand = true;
+        setTimeout(() => { dealingHand = false; }, 400 + newHand.length * 60);
+      }
+      else if(newHand.length > previousHandLength)
+      {
+        // COMPROU (ou levou +2): só a carta nova entra animada.
+        enteringIndex = newHand.length - 1;
+        clearTimeout(enteringTimeout);
+        enteringTimeout = setTimeout(() => { enteringIndex = null; BuildHand(); }, 480);
+      }
+
+      previousHandLength = newHand.length;
+      currentHand = newHand;
+
       BuildHand();
     }
   );
@@ -435,32 +514,64 @@ async function OpenPlaying()
       if(!snapshot.exists()) return;
 
       const data = snapshot.val();
-      if(data.playerId === currentPlayerId) ShowRejectedToast(data.reason);
+      if(data.playerId !== currentPlayerId) return;
+
+      ShowRejectedToast(data.reason);
+
+      // SHAKE só na carta que a gente tentou jogar (raro — o host já rejeita
+      // localmente a maioria via bot disabled, isso aqui cobre corrida de
+      // estado, ex. o timer virar a vez bem na hora do toque).
+      if(lastAttemptedCardIndex !== null) TriggerShake(lastAttemptedCardIndex);
     }
   );
 }
 
 function ApplyTableUpdate(table)
 {
+  const previous = currentTable;
   currentTable = table;
 
+  const topCardChanged = !previous || JSON.stringify(previous.topCard) !== JSON.stringify(table.topCard);
+  const turnChanged = !previous
+    || previous.currentTurnPlayerId !== table.currentTurnPlayerId
+    || previous.awaitingDrawFollowUp !== table.awaitingDrawFollowUp
+    || previous.pendingDrawStack !== table.pendingDrawStack;
+
   const topCardEl = document.getElementById("topCardDisplay");
-  topCardEl.innerText = FormatCard(table.topCard);
-  topCardEl.style.color = ColorHex[table.activeColor] || ColorHex.None;
+  topCardEl.className = "cardBox topCardBox " + CardVisualClass(table.topCard);
+  topCardEl.innerHTML = CardVisualHTML(table.topCard, "top");
+
+  topCardEl.style.boxShadow = table.topCard && table.topCard.type === "Wild"
+    ? `0 0 0 4px ${ActiveColorHex[table.activeColor] || ActiveColorHex.None}, 0 10px 26px rgba(0,0,0,.45)`
+    : "";
+
+  if(topCardChanged)
+  {
+    topCardAnimToggle = !topCardAnimToggle;
+    topCardEl.style.animation = `cardPop${topCardAnimToggle ? "A" : "B"} 0.4s cubic-bezier(.34,1.56,.64,1) both`;
+  }
 
   const isMyTurn = table.currentTurnPlayerId === currentPlayerId;
   const bannerEl = document.getElementById("turnBannerText");
 
   if(isMyTurn)
   {
-    bannerEl.innerText = table.awaitingDrawFollowUp
-      ? "Jogue a carta que você comprou, ou passe!"
-      : "SUA VEZ!";
+    if(table.pendingDrawStack > 0) bannerEl.innerText = `Jogue +2 ou compre ${table.pendingDrawStack}!`;
+    else if(table.awaitingDrawFollowUp) bannerEl.innerText = "Jogue a carta que você comprou, ou passe!";
+    else bannerEl.innerText = "SUA VEZ!";
   }
   else
   {
     const name = playerNames[table.currentTurnPlayerId] || "outro jogador";
-    bannerEl.innerText = `Vez de ${name}...`;
+    bannerEl.innerText = table.pendingDrawStack > 0
+      ? `Vez de ${name} (sob ataque de +${table.pendingDrawStack})...`
+      : `Vez de ${name}...`;
+  }
+
+  if(turnChanged)
+  {
+    bannerAnimToggle = !bannerAnimToggle;
+    bannerEl.style.animation = `bannerFade${bannerAnimToggle ? "A" : "B"} 0.3s ease both`;
   }
 
   BuildHand();
@@ -468,7 +579,7 @@ function ApplyTableUpdate(table)
 
   if(table.turnDuration)
   {
-    StartCountdown(table.turnDuration, "turnCountdown");
+    StartCountdown(table.turnDuration, "turnCountdown", "timerRing");
   }
 }
 
@@ -491,21 +602,49 @@ function BuildHand()
 
   const isMyTurn = currentTable && currentTable.currentTurnPlayerId === currentPlayerId;
   const followUp = currentTable && currentTable.awaitingDrawFollowUp;
+  const underAttack = currentTable && currentTable.pendingDrawStack > 0;
 
   currentHand.forEach((card, index) =>
   {
     const btn = document.createElement("button");
-    btn.className = "cardButton " + ColorClass(card.color);
-    btn.innerText = FormatCard(card);
+    btn.className = "cardButton " + CardVisualClass(card);
+    btn.innerHTML = CardVisualHTML(card, "hand");
 
     // DEPOIS DE COMPRAR, SÓ A CARTA RECÉM-COMPRADA (última da mão) PODE SER
     // JOGADA — mesma regra validada (de verdade) no host, ver
     // MauMauGameManager.HandlePlayAction. Aqui é só pra UX: destacar a
     // jogada certa sem esperar o host rejeitar.
     const indexAllowed = !followUp || index === currentHand.length - 1;
+    const isPlaying = index === playingIndex;
 
-    btn.disabled = !isMyTurn || !IsCardPlayable(card) || !indexAllowed;
+    // SOB ATAQUE DE +2 EMPILHADO: só outro Comprar 2 (qualquer cor) é
+    // jogável — ignora o casamento normal de cor/tipo (mesma regra de
+    // verdade em HandlePlayAction).
+    const playableNow = underAttack ? card.type === "DrawTwo" : IsCardPlayable(card);
+
+    btn.disabled = !isMyTurn || !playableNow || !indexAllowed || isPlaying;
     btn.onclick = () => OnCardTapped(card, index);
+
+    if(isPlaying)
+    {
+      // VOANDO PRA FORA — a jogada já foi confirmada localmente, só esperando
+      // o host aplicar de verdade (ver PlayCardWithAnimation).
+      btn.style.transform = "translateY(-90px) scale(1.18) rotate(-6deg)";
+      btn.style.opacity = "0";
+    }
+    else if(index === enteringIndex)
+    {
+      btn.style.animation = "cardDeal 0.4s cubic-bezier(.34,1.56,.64,1) both";
+    }
+    else if(dealingHand)
+    {
+      btn.style.animation = "cardDeal 0.4s cubic-bezier(.34,1.56,.64,1) both";
+      btn.style.animationDelay = `${index * 60}ms`;
+    }
+    else if(index === shakeIndex)
+    {
+      btn.style.animation = `cardShake${shakeAnimToggle ? "A" : "B"} 0.35s ease`;
+    }
 
     container.appendChild(btn);
   });
@@ -515,12 +654,14 @@ function UpdateActionButtons()
 {
   const isMyTurn = currentTable && currentTable.currentTurnPlayerId === currentPlayerId;
   const followUp = currentTable && currentTable.awaitingDrawFollowUp;
+  const stack = currentTable ? currentTable.pendingDrawStack || 0 : 0;
 
   const drawButton = document.getElementById("drawButton");
   const passButton = document.getElementById("passButton");
 
   drawButton.style.display = followUp ? "none" : "block";
   drawButton.disabled = !isMyTurn || followUp;
+  drawButton.innerText = stack > 0 ? `COMPRAR ${stack}` : "COMPRAR";
 
   passButton.style.display = followUp ? "block" : "none";
   passButton.disabled = !isMyTurn;
@@ -538,10 +679,25 @@ async function OnCardTapped(card, index)
     return;
   }
 
-  await SendTurnAction({ type: "play", cardIndex: index });
+  PlayCardWithAnimation(index, null);
 }
 
-window.PickWildColor = async function(color)
+// ANIMA A CARTA SAINDO E SÓ DEPOIS manda a ação de verdade pro host — dá
+// tempo da animação (380ms) rodar antes do turno mudar de verdade.
+function PlayCardWithAnimation(index, chosenColor)
+{
+  playingIndex = index;
+  BuildHand();
+
+  clearTimeout(playingTimeout);
+  playingTimeout = setTimeout(async () =>
+  {
+    playingIndex = null;
+    await SendTurnAction({ type: "play", cardIndex: index, chosenColor });
+  }, 380);
+}
+
+window.PickWildColor = function(color)
 {
   const index = pendingWildIndex;
   pendingWildIndex = null;
@@ -549,7 +705,7 @@ window.PickWildColor = async function(color)
 
   if(index === null || index === undefined) return;
 
-  await SendTurnAction({ type: "play", cardIndex: index, chosenColor: color });
+  PlayCardWithAnimation(index, color);
 };
 
 function ShowColorPicker()
@@ -582,6 +738,8 @@ async function SendTurnAction(action)
 {
   if(isGamePaused) return;
 
+  lastAttemptedCardIndex = action.type === "play" ? action.cardIndex : null;
+
   await set(
     ref(db, `rooms/${currentRoomCode}/currentState/turnAction`),
     {
@@ -592,6 +750,16 @@ async function SendTurnAction(action)
       t: Date.now()
     }
   );
+}
+
+function TriggerShake(index)
+{
+  shakeAnimToggle = !shakeAnimToggle;
+  shakeIndex = index;
+  BuildHand();
+
+  clearTimeout(shakeTimeout);
+  shakeTimeout = setTimeout(() => { shakeIndex = null; BuildHand(); }, 400);
 }
 
 function ShowRejectedToast(reason)
