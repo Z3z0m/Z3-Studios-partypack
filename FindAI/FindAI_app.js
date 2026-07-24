@@ -122,7 +122,7 @@ window.onload = async function()
 
 
 // =========================
-// HOST (botão genérico: "Jogar de Novo" na tela final)
+// HOST CONTROLS
 // =========================
 
 async function CheckIfHost()
@@ -137,7 +137,7 @@ async function CheckIfHost()
     isHost = snapshot.val() === true;
 
     if (isHost)
-        UpdateHostButton(currentGameState);
+        UpdateHostButton("Lobby");
 }
 
 window.SendHostCommand = async function()
@@ -162,17 +162,33 @@ function UpdateHostButton(state)
 
     const btn = document.getElementById("hostButton");
 
-    // ESCONDE no Tutorial (entre outros) — lá a navegação é feita pelos
-    // botões próprios da tela (SendTutorialAction), não pelo botão
+    // ESCONDE no Tutorial e nas fases ativas (Prompt/Voting) — lá a
+    // navegação é feita pelos próprios jogadores (ou pelos botões da
+    // tela de tutorial via SendTutorialAction), não pelo botão
     // genérico de host.
-    if (state !== "FinalScore")
+    const hidden =
+        state === "Tutorial" ||
+        state === "Prompt" ||
+        state === "Voting";
+
+    if (hidden)
     {
         btn.style.display = "none";
         return;
     }
 
     btn.style.display = "block";
-    btn.innerText = "Jogar de Novo";
+
+    const labels =
+    {
+        "Lobby":       "Começar Jogo",
+        "ShowAnswers": "Ver Placar",
+        "Result":      "Próxima Rodada",
+        "FinalScore":  "Jogar de Novo",
+    };
+
+    btn.innerText =
+        labels[state] ?? "Próxima Etapa";
 }
 
 

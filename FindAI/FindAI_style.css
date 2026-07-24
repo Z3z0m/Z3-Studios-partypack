@@ -262,6 +262,40 @@ button:hover{
 
 
 /* =========================
+   HOST BUTTON
+========================= */
+
+#hostButton{
+  width:100%;
+
+  padding:18px;
+
+  border:none;
+
+  border-radius:14px;
+
+  background:#f59e0b;
+
+  color:#111;
+
+  font-size:17px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+
+  letter-spacing:1px;
+}
+
+#hostButton:hover{
+  background:#fbbf24;
+
+  transform:scale(1.02);
+}
+
+
+/* =========================
    PAUSE OVERLAY
 ========================= */
 
