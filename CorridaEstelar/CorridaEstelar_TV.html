@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Corrida Estelar — TV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #161826;
+      --surface:  #232532;
+      --text:     #e9e9ed;
+      --accent:   #9184d9;
+      --divider:  rgba(233,233,237,.16);
+      --n300: #cfd3e5; --n400: #b2b6ca; --n500: #9397ab;
+      --n600: #75798c; --n700: #595d6c; --n800: #3f424d; --n900: #292b31;
+      --a700: #5d5294; --a800: #423a6a;
+      --r-md: 8px; --r-lg: 14px;
+      --sh-sm: 0 0 0 1px #3f424d;
+      --sh-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,.55);
+      --sh-lg: 0 0 0 1px #9397ab, 0 16px 40px rgba(0,0,0,.65);
+      --solar: #EFA425; --lunar: #4B85D8;
+      --neutral-tile: #8C8C94; --blackhole: #0F0D14; --unrevealed: #292E38;
+    }
+
+    @keyframes ce-pulse    { 0%,100%{opacity:1}       50%{opacity:.3} }
+    @keyframes ce-spin     { to{transform:rotate(360deg)} }
+    @keyframes ce-twinkle-a{ 0%,100%{opacity:.55}     50%{opacity:.15} }
+    @keyframes ce-twinkle-b{ 0%,100%{opacity:.2}      50%{opacity:.5} }
+    @keyframes ce-drift    { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-14px,10px)} }
+    @keyframes ce-shoot    { 0%{transform:translate(0,0) rotate(16deg);opacity:0}
+                             3%{opacity:1} 16%{transform:translate(420px,150px) rotate(16deg);opacity:0}
+                             100%{transform:translate(420px,150px) rotate(16deg);opacity:0} }
+    @keyframes ce-fadein   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes ce-tilein   { from{opacity:0;transform:scale(.82)} to{opacity:1;transform:scale(1)} }
+    @keyframes ce-pop      { 0%{opacity:0;transform:scale(.92)} 65%{opacity:1;transform:scale(1.03)} 100%{transform:scale(1)} }
+    @keyframes ce-codeglow { 0%,100%{box-shadow:var(--sh-lg),0 0 40px rgba(145,132,217,.2)}
+                              50%{box-shadow:var(--sh-lg),0 0 72px rgba(145,132,217,.38)} }
+    @keyframes ce-void     { 0%,100%{box-shadow:inset 0 0 0 1px #5d5294}
+                              50%{box-shadow:inset 0 0 0 1px rgba(145,132,217,.5),0 0 26px 4px rgba(0,0,0,.4)} }
+
+    *,*::before,*::after { box-sizing:border-box; }
+    body {
+      margin:0; padding:0;
+      background:var(--bg); color:var(--text);
+      font-family:'Inter',system-ui,sans-serif;
+      width:1920px; height:1080px; overflow:hidden;
+    }
+
+    /* ── BACKGROUND ── */
+    .bg-glow {
+      position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(1100px 560px at 50% -120px,rgba(145,132,217,.12),transparent 70%);
+    }
+    .bg-planet {
+      position:absolute; bottom:-230px; right:-150px;
+      width:440px; height:440px; border-radius:50%;
+      pointer-events:none; opacity:.55;
+      animation:ce-drift 14s ease-in-out infinite;
+      background:radial-gradient(circle at 34% 30%,rgba(145,132,217,.32),#1a1b23 72%);
+      box-shadow:0 0 140px rgba(145,132,217,.16);
+    }
+    .bg-ring {
+      position:absolute; bottom:-30px; right:-40px;
+      width:640px; height:200px;
+      border:1.5px solid rgba(210,206,253,.55); border-radius:50%;
+      pointer-events:none; opacity:.28;
+      transform:rotate(-18deg); animation:ce-drift 14s ease-in-out infinite;
+    }
+    .bg-stars-a {
+      position:absolute; inset:0; pointer-events:none;
+      background-size:220px 220px;
+      background-image:
+        radial-gradient(1.4px 1.4px at 20px 30px,rgba(233,233,237,.45),transparent 60%),
+        radial-gradient(1px 1px at 90px 80px,rgba(233,233,237,.3),transparent 60%),
+        radial-gradient(1.6px 1.6px at 150px 20px,rgba(233,233,237,.35),transparent 60%),
+        radial-gradient(1px 1px at 60px 140px,rgba(233,233,237,.24),transparent 60%);
+      animation:ce-twinkle-a 5s ease-in-out infinite;
+    }
+    .bg-stars-b {
+      position:absolute; inset:0; pointer-events:none;
+      background-size:260px 260px; background-position:40px 60px;
+      background-image:
+        radial-gradient(1.2px 1.2px at 30px 10px,rgba(233,233,237,.4),transparent 60%),
+        radial-gradient(1px 1px at 110px 190px,rgba(233,233,237,.3),transparent 60%),
+        radial-gradient(1.5px 1.5px at 200px 90px,rgba(233,233,237,.3),transparent 60%);
+      animation:ce-twinkle-b 7s ease-in-out infinite;
+    }
+    .bg-shoot1 {
+      position:absolute; top:130px; left:-40px;
+      width:130px; height:2px;
+      background:linear-gradient(90deg,transparent,rgba(233,233,237,.85),transparent);
+      transform:rotate(16deg); pointer-events:none;
+      animation:ce-shoot 9s linear infinite; animation-delay:1.5s;
+    }
+    .bg-shoot2 {
+      position:absolute; top:640px; left:-60px;
+      width:110px; height:2px;
+      background:linear-gradient(90deg,transparent,rgba(233,233,237,.7),transparent);
+      transform:rotate(12deg); pointer-events:none;
+      animation:ce-shoot 11s linear infinite; animation-delay:6s;
+    }
+
+    /* ── BRAND ── */
+    .brand {
+      position:absolute; top:40px; left:48px;
+      display:flex; align-items:center; gap:10px; z-index:5;
+    }
+    .brand svg { animation:ce-spin 18s linear infinite; flex:none; }
+    .brand-name {
+      font:600 12px 'Inter',sans-serif;
+      letter-spacing:.14em; text-transform:uppercase; color:var(--n400);
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      position:absolute; inset:0; z-index:1;
+      display:none; flex-direction:column;
+      animation:ce-fadein .45s ease both;
+    }
+    .screen.active { display:flex; }
+
+    /* ══════════════════════════════════
+       LOBBY
+    ══════════════════════════════════ */
+    #lobbyScreen {
+      align-items:center;
+      padding:88px 120px 48px;
+    }
+    .lobby-code-section { text-align:center; margin-bottom:26px; }
+    .lobby-kicker {
+      font:600 12px 'Inter',sans-serif;
+      letter-spacing:.18em; text-transform:uppercase;
+      color:var(--accent); margin-bottom:14px;
+    }
+    .code-box {
+      display:inline-flex; padding:26px 54px;
+      border:1px solid var(--accent); border-radius:var(--r-lg);
+      background:rgba(145,132,217,.06);
+      animation:ce-codeglow 3.5s ease-in-out infinite;
+    }
+    .code-text { font:600 92px 'Inter',sans-serif; letter-spacing:.22em; }
+    .lobby-hint { margin-top:16px; font-size:16px; color:var(--n400); }
+
+    .lobby-teams {
+      display:flex; gap:40px;
+      width:100%; max-width:1500px;
+      flex:1; align-items:stretch;
+    }
+    .team-card {
+      flex:1; padding:28px 30px;
+      background:var(--surface); border-radius:var(--r-lg); box-shadow:var(--sh-sm);
+      display:flex; flex-direction:column; gap:18px;
+    }
+    .team-card-header { display:flex; align-items:center; gap:12px; }
+    .team-dot { width:14px; height:14px; border-radius:50%; flex:none; }
+    .team-card-header h3 { margin:0; font-size:24px; font-weight:600; }
+    .team-count {
+      margin-left:auto; font-size:11px; padding:3px 10px;
+      border-radius:6px; background:var(--n800); color:#f3f5fe;
+    }
+    .player-list { display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+    .player-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:13px 16px; background:var(--bg); border-radius:var(--r-md);
+    }
+    .player-name { font-size:17px; }
+    .player-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      font-size:11px; padding:3px 10px; border-radius:6px;
+    }
+
+    .lobby-footer {
+      display:flex; align-items:center; gap:14px;
+      width:100%; max-width:1500px; margin-top:30px;
+    }
+    .check-tag {
+      display:flex; align-items:center; gap:6px;
+      font-size:12px; padding:7px 14px; border-radius:6px;
+      border:1px solid var(--accent); color:var(--accent);
+      transition:opacity .3s;
+    }
+    .check-tag.unmet { opacity:.3; }
+
+    /* ══════════════════════════════════
+       TUTORIAL
+    ══════════════════════════════════ */
+    #tutorialScreen {
+      align-items:center; justify-content:center;
+    }
+    .tutorial-card {
+      width:1180px; padding:64px 76px;
+      background:var(--surface); border-radius:var(--r-lg); box-shadow:var(--sh-lg);
+      display:flex; flex-direction:column; gap:26px;
+    }
+    .tutorial-top { display:flex; align-items:center; gap:14px; }
+    .kicker {
+      font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent);
+    }
+    .tutorial-page-label { margin-left:auto; font-size:13px; color:var(--n500); }
+    .tutorial-text { font-size:30px; line-height:1.5; margin:0; }
+    .tutorial-dots { display:flex; gap:10px; margin-top:6px; }
+    .tutorial-dot { width:9px; height:9px; border-radius:50%; }
+
+    /* ══════════════════════════════════
+       PLAYING
+    ══════════════════════════════════ */
+    #playingScreen {
+      align-items:center;
+      padding:48px 72px 36px;
+    }
+    .turn-banner {
+      display:flex; align-items:center; gap:14px;
+      padding:14px 28px; border-radius:999px;
+      transition:border-color .3s, box-shadow .3s;
+    }
+    .banner-dot {
+      width:9px; height:9px; border-radius:50%;
+      animation:ce-pulse 1.6s ease-in-out infinite;
+    }
+    .banner-text { font:600 20px 'Inter',sans-serif; }
+
+    .playing-body {
+      display:flex; align-items:flex-start; justify-content:center;
+      gap:56px; margin-top:38px; width:100%; max-width:1720px;
+    }
+    .playing-left { width:300px; display:flex; flex-direction:column; gap:20px; }
+
+    .info-card {
+      padding:26px; background:var(--surface);
+      border-radius:var(--r-lg); display:flex; flex-direction:column; gap:10px;
+    }
+    .info-card.elev-md { box-shadow:var(--sh-md); }
+    .info-card.elev-sm { box-shadow:var(--sh-sm); }
+
+    .clue-row { display:flex; align-items:baseline; gap:10px; }
+    .clue-word { font:600 40px 'Inter',sans-serif; }
+    .clue-num  { font:600 28px 'Inter',sans-serif; color:var(--accent); }
+    .guesses-tag {
+      align-self:flex-start; margin-top:6px;
+      font-size:11px; padding:3px 10px; border-radius:6px;
+      background:var(--a800); color:#f5f4ff;
+    }
+
+    .prog-item { display:flex; flex-direction:column; gap:6px; }
+    .prog-labels {
+      display:flex; justify-content:space-between;
+      font-size:13px; color:var(--n300);
+    }
+    .prog-bg { height:8px; border-radius:4px; background:var(--n800); overflow:hidden; }
+    .prog-fill { height:100%; border-radius:4px; transition:width .4s ease; }
+
+    /* GRID 5×5 */
+    .star-grid {
+      display:grid;
+      grid-template-columns:repeat(5,132px);
+      grid-template-rows:repeat(5,132px);
+      gap:14px;
+    }
+    .tile {
+      border-radius:var(--r-md);
+      display:flex; align-items:center; justify-content:center;
+      text-align:center; padding:8px;
+      font:600 16px 'Inter',sans-serif;
+      letter-spacing:.01em; text-transform:uppercase;
+    }
+    .tile-hidden    { background:var(--unrevealed); color:var(--n500); }
+    .tile-solar     { background:var(--solar);       color:#241a09;  animation:ce-tilein .35s ease both; }
+    .tile-lunar     { background:var(--lunar);       color:#f3f5fe;  animation:ce-tilein .35s ease both; }
+    .tile-neutral   { background:var(--neutral-tile);color:#241a09;  animation:ce-tilein .35s ease both; }
+    .tile-blackhole { background:var(--blackhole);   color:#cfd3e5;  animation:ce-tilein .35s ease both, ce-void 2.4s ease-in-out infinite; }
+
+    /* TIMER */
+    .playing-right {
+      width:220px; display:flex; flex-direction:column;
+      align-items:center; gap:16px;
+    }
+    .timer-wrap { position:relative; width:120px; height:120px; }
+    .timer-svg  { transform:rotate(-90deg); }
+    .timer-num  {
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      font:600 30px 'Inter',sans-serif;
+    }
+    .timer-hint { font-size:12px; color:var(--n500); text-align:center; }
+    .playing-status { margin-top:auto; padding-top:24px; font-size:14px; color:var(--n500); }
+
+    /* ══════════════════════════════════
+       RESULT
+    ══════════════════════════════════ */
+    #resultScreen {
+      align-items:center;
+      padding:60px 90px 44px;
+    }
+    .result-header { text-align:center; margin-bottom:6px; }
+    .result-kicker {
+      font:600 12px 'Inter',sans-serif;
+      letter-spacing:.18em; text-transform:uppercase; margin-bottom:4px;
+    }
+    .result-headline {
+      font:600 50px 'Inter',sans-serif;
+      margin:10px 0 6px; animation:ce-pop .55s ease both;
+    }
+    .result-sub { font-size:19px; color:var(--n300); }
+
+    .result-body {
+      display:flex; gap:56px; margin-top:30px;
+      align-items:flex-start; max-width:1720px;
+    }
+    .result-grid {
+      display:grid;
+      grid-template-columns:repeat(5,120px);
+      grid-template-rows:repeat(5,120px);
+      gap:12px;
+    }
+    .result-tile {
+      border-radius:var(--r-md);
+      display:flex; align-items:center; justify-content:center;
+      text-align:center; padding:6px;
+      font:600 14px 'Inter',sans-serif; text-transform:uppercase;
+      animation:ce-tilein .35s ease both;
+    }
+
+    .score-panel {
+      width:360px; padding:26px;
+      background:var(--surface); border-radius:var(--r-lg); box-shadow:var(--sh-md);
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .score-panel .kicker { margin-bottom:10px; }
+    .score-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 4px; border-bottom:1px solid var(--divider);
+    }
+    .score-left  { display:flex; align-items:center; gap:10px; }
+    .score-dot   { width:8px; height:8px; border-radius:50%; }
+    .score-name  { font-size:15px; }
+    .score-delta { font:600 15px 'Inter',sans-serif; }
+
+    .result-footer {
+      margin-top:auto; width:100%; max-width:900px;
+      display:flex; flex-direction:column; gap:8px; align-items:center;
+    }
+    .result-footer-hint { font-size:13px; color:var(--n500); }
+    .result-prog-bg { width:100%; height:4px; border-radius:2px; background:var(--n800); overflow:hidden; }
+    .result-prog-fill { height:100%; background:var(--accent); width:0; transition:width .1s linear; }
+
+    /* ══════════════════════════════════
+       FINAL
+    ══════════════════════════════════ */
+    #finalScreen {
+      align-items:center; justify-content:center;
+      padding:64px 120px;
+    }
+    .final-kicker {
+      font:600 12px 'Inter',sans-serif;
+      letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:10px;
+    }
+    .final-title { font:600 44px 'Inter',sans-serif; margin:0 0 34px; }
+    .leaderboard { width:900px; border-collapse:collapse; font-size:14px; }
+    .leaderboard th {
+      text-align:left; font-size:11px;
+      letter-spacing:.08em; text-transform:uppercase; color:var(--n500); padding:8px;
+    }
+    .leaderboard th:last-child { text-align:right; }
+    .leaderboard td { padding:8px; }
+    .leaderboard td:last-child { text-align:right; font:600 16px 'Inter',sans-serif; }
+    .leaderboard thead tr {
+      background:linear-gradient(to right,transparent,var(--divider) 48px,var(--divider) calc(100% - 48px),transparent) no-repeat bottom/100% 1px;
+    }
+    .leaderboard tbody tr {
+      background:linear-gradient(to right,transparent,rgba(233,233,237,.08) 48px,rgba(233,233,237,.08) calc(100% - 48px),transparent) no-repeat bottom/100% 1px;
+    }
+    .team-badge {
+      display:inline-flex; font-size:11px; padding:3px 10px; border-radius:6px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── BACKGROUND ── -->
+<div class="bg-glow"></div>
+<div class="bg-planet"></div>
+<div class="bg-ring"></div>
+<div class="bg-stars-a"></div>
+<div class="bg-stars-b"></div>
+<div class="bg-shoot1"></div>
+<div class="bg-shoot2"></div>
+
+<!-- ── BRAND ── -->
+<div class="brand">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="3" fill="#9184d9"></circle>
+    <ellipse cx="12" cy="12" rx="10" ry="4" stroke="#9184d9" stroke-width="1.4"></ellipse>
+  </svg>
+  <span class="brand-name">Corrida Estelar</span>
+</div>
+
+
+<!-- ════════════════════════════════════
+     LOBBY
+════════════════════════════════════ -->
+<div id="lobbyScreen" class="screen active">
+
+  <div class="lobby-code-section">
+    <div class="lobby-kicker">Sala criada</div>
+    <div class="code-box">
+      <span class="code-text" id="tvRoomCode">----</span>
+    </div>
+    <div class="lobby-hint">Entrem pelo app e escolham equipe e papel</div>
+  </div>
+
+  <div class="lobby-teams" id="lobbyTeams">
+    <!-- preenchido por JS -->
+  </div>
+
+  <div class="lobby-footer">
+    <span class="check-tag" id="chkPlayers">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 12l5 5L20 6"/></svg>
+      4+ jogadores
+    </span>
+    <span class="check-tag" id="chkTeams">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 12l5 5L20 6"/></svg>
+      Equipes equilibradas
+    </span>
+    <span class="check-tag" id="chkExplorers">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 12l5 5L20 6"/></svg>
+      Exploradores definidos
+    </span>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════════
+     TUTORIAL
+════════════════════════════════════ -->
+<div id="tutorialScreen" class="screen">
+  <div class="tutorial-card">
+    <div class="tutorial-top">
+      <span class="kicker">Como jogar</span>
+      <span class="tutorial-page-label" id="tutPageLabel">1 / 6</span>
+    </div>
+    <p class="tutorial-text" id="tutText"></p>
+    <div class="tutorial-dots" id="tutDots"></div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     PLAYING
+════════════════════════════════════ -->
+<div id="playingScreen" class="screen">
+
+  <div class="turn-banner" id="turnBanner">
+    <span class="banner-dot" id="bannerDot"></span>
+    <span class="banner-text" id="bannerText">--</span>
+  </div>
+
+  <div class="playing-body">
+
+    <div class="playing-left">
+
+      <div class="info-card elev-md">
+        <span class="kicker">Pista atual</span>
+        <div class="clue-row">
+          <span class="clue-word" id="clueWord">—</span>
+          <span class="clue-num"  id="clueNum"></span>
+        </div>
+        <span class="guesses-tag" id="guessesTag">Aguardando pista...</span>
+      </div>
+
+      <div class="info-card elev-sm">
+        <span class="kicker">Progresso</span>
+        <div class="prog-item">
+          <div class="prog-labels">
+            <span>Equipe Solar</span>
+            <span id="solarFrac">0/9</span>
+          </div>
+          <div class="prog-bg">
+            <div class="prog-fill" id="solarBar" style="background:#EFA425;width:0%"></div>
+          </div>
+        </div>
+        <div class="prog-item">
+          <div class="prog-labels">
+            <span>Equipe Lunar</span>
+            <span id="lunarFrac">0/8</span>
+          </div>
+          <div class="prog-bg">
+            <div class="prog-fill" id="lunarBar" style="background:#4B85D8;width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="star-grid" id="starGrid"></div>
+
+    <div class="playing-right">
+      <div class="timer-wrap">
+        <svg class="timer-svg" width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#3f424d" stroke-width="8"></circle>
+          <circle id="timerCircle" cx="60" cy="60" r="52" fill="none"
+                  stroke="#9184d9" stroke-width="8" stroke-linecap="round"
+                  stroke-dasharray="326.7" stroke-dashoffset="0"></circle>
+        </svg>
+        <div class="timer-num" id="timerNum">--</div>
+      </div>
+      <span class="timer-hint">tempo pro palpite</span>
+    </div>
+
+  </div>
+
+  <div class="playing-status" id="playingStatus"></div>
+
+</div>
+
+
+<!-- ════════════════════════════════════
+     RESULT
+════════════════════════════════════ -->
+<div id="resultScreen" class="screen">
+
+  <div class="result-header">
+    <div class="result-kicker" id="resultKicker">Fim de partida</div>
+    <h1 class="result-headline" id="resultHeadline">--</h1>
+    <div class="result-sub" id="resultSub">--</div>
+  </div>
+
+  <div class="result-body">
+    <div class="result-grid" id="resultGrid"></div>
+    <div class="score-panel">
+      <span class="kicker" style="margin-bottom:10px">Placar da rodada</span>
+      <div id="resultScores"></div>
+    </div>
+  </div>
+
+  <div class="result-footer">
+    <span class="result-footer-hint">Prosseguindo para o placar final...</span>
+    <div class="result-prog-bg">
+      <div class="result-prog-fill" id="resultProgFill"></div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════════
+     FINAL
+════════════════════════════════════ -->
+<div id="finalScreen" class="screen">
+  <div class="final-kicker">Corrida encerrada</div>
+  <h1 class="final-title">Placar final</h1>
+  <table class="leaderboard">
+    <thead>
+      <tr>
+        <th style="width:60px">#</th>
+        <th>Jogador</th>
+        <th>Equipe</th>
+        <th>Pontos</th>
+      </tr>
+    </thead>
+    <tbody id="finalBody"></tbody>
+  </table>
+</div>
+
+
+<!-- ════════════════════════════════════
+     FIREBASE + LOGIC
+════════════════════════════════════ -->
+<script type="module">
+
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get, onValue }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIza....",
+  authDomain: "z3-partypack.firebaseapp.com",
+  databaseURL: "https://z3-partypack-default-rtdb.firebaseio.com",
+  projectId: "z3-partypack",
+  storageBucket: "z3-partypack.firebasestorage.app",
+  messagingSenderId: "...",
+  appId: "..."
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+const params         = new URLSearchParams(window.location.search);
+const currentRoomCode = params.get("room");
+
+
+// ── CONSTANTS ──────────────────────────────────
+
+const TEAM_COLOR = {
+  Solar:     "#EFA425",
+  Lunar:     "#4B85D8",
+  Neutral:   "#8C8C94",
+  BlackHole: "#0F0D14",
+};
+
+const TILE_TEXT_COLOR = {
+  Solar:     "#241a09",
+  Lunar:     "#f3f5fe",
+  Neutral:   "#241a09",
+  BlackHole: "#cfd3e5",
+};
+
+const TUTORIAL_PAGES = [
+  "Duas equipes rivais disputam o mapeamento de um setor estelar recém-descoberto. Cada equipe tem um Explorador (vê o mapa secreto completo) e Observadores (só veem o que já foi confirmado).",
+  "Na sua vez, o Explorador da equipe manda uma pista: UMA palavra + UM número. O número diz quantas palavras do mapa se relacionam com essa pista.",
+  "Os Observadores da equipe apontam palavras tentando adivinhar quais a pista indica — podem tentar até o número da pista + 1 chute bônus, mas param assim que erram.",
+  "Acertar uma palavra da própria equipe confirma ela no mapa e a vez continua. Errar (palavra neutra ou da equipe rival) passa a vez pro outro lado na hora.",
+  "Cuidado com o Buraco Negro! Se os Observadores apontarem essa palavra fatal, a equipe perde contato com a sonda — derrota imediata, sem chance de recuperação.",
+  "Demorou demais pra agir? A vez passa sozinha. A primeira equipe a mapear todas as suas próprias palavras vence a Corrida Estelar!",
+];
+
+const CIRC = 326.7;
+
+
+// ── STATE ──────────────────────────────────────
+
+let currentGameState   = null;
+let rosterData         = {};
+let gridData           = [];
+let currentTeamTurn    = null;
+let turnPhase          = null;
+let currentClue        = null;
+let guessesRemaining   = 0;
+let solarTotal         = 9;
+let lunarTotal         = 8;
+let tutorialPage       = 0;
+let lastTutActionTs    = 0;
+let countdownTimer     = null;
+let resultProgTimer    = null;
+let playingUnsubs      = [];
+
+
+// ── HELPERS ────────────────────────────────────
+
+function hex2rgb(hex) {
+  if (!hex || hex.length < 7) return "145,132,217";
+  return [
+    parseInt(hex.slice(1,3), 16),
+    parseInt(hex.slice(3,5), 16),
+    parseInt(hex.slice(5,7), 16)
+  ].join(",");
+}
+
+function teamColor(t) { return TEAM_COLOR[t] || "#8C8C94"; }
+function teamLabel(t) { return t === "Solar" ? "Equipe Solar" : t === "Lunar" ? "Equipe Lunar" : "—"; }
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id)?.classList.add("active");
+}
+
+function setCheck(id, ok) {
+  document.getElementById(id)?.classList.toggle("unmet", !ok);
+}
+
+function stopCountdown() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+}
+
+function stopResultProg() {
+  if (resultProgTimer) { clearInterval(resultProgTimer); resultProgTimer = null; }
+}
+
+function stopPlaying() {
+  playingUnsubs.forEach(u => u());
+  playingUnsubs = [];
+  stopCountdown();
+}
+
+
+// ── INIT ───────────────────────────────────────
+
+document.getElementById("tvRoomCode").innerText = currentRoomCode || "----";
+
+window.onload = () => {
+  if (!currentRoomCode) return;
+  ListenGameState();
+  ListenRoster();
+  ListenTutorialAction();
+};
+
+
+// ── GAME STATE ─────────────────────────────────
+
+function ListenGameState() {
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/currentState/gameState`),
+    snap => ApplyGameState(snap.val())
+  );
+}
+
+function ApplyGameState(state) {
+  if (!state || state === currentGameState) return;
+  currentGameState = state;
+
+  stopCountdown();
+  stopResultProg();
+
+  if (state === "Lobby")    { showScreen("lobbyScreen");    RenderLobby(); }
+  if (state === "Tutorial") { tutorialPage = 0; lastTutActionTs = 0;
+                              showScreen("tutorialScreen"); RenderTutorial(); }
+  if (state === "Playing")  { showScreen("playingScreen");  OpenPlaying(); }
+  if (state === "Result")   { stopPlaying(); showScreen("resultScreen"); OpenResult(); }
+  if (state === "FinalScore"){ stopPlaying(); showScreen("finalScreen"); OpenFinalScore(); }
+}
+
+
+// ── ROSTER ─────────────────────────────────────
+
+function ListenRoster() {
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/players`),
+    snap => {
+      rosterData = {};
+      snap.forEach(child => { rosterData[child.key] = child.val(); });
+      if (currentGameState === "Lobby") RenderLobby();
+    }
+  );
+}
+
+
+// ── TUTORIAL ACTION ────────────────────────────
+
+function ListenTutorialAction() {
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/tutorialAction`),
+    snap => {
+      if (!snap.exists() || currentGameState !== "Tutorial") return;
+      const d = snap.val();
+      if ((d.t || 0) <= lastTutActionTs) return;
+      lastTutActionTs = d.t;
+      if (d.action === "next") tutorialPage = Math.min(tutorialPage + 1, TUTORIAL_PAGES.length - 1);
+      if (d.action === "prev") tutorialPage = Math.max(tutorialPage - 1, 0);
+      RenderTutorial();
+    }
+  );
+}
+
+
+// ── LOBBY ──────────────────────────────────────
+
+function RenderLobby() {
+  const container = document.getElementById("lobbyTeams");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const byTeam   = { Solar: [], Lunar: [] };
+  let total = 0, solarExp = false, lunarExp = false;
+
+  Object.values(rosterData).forEach(p => {
+    total++;
+    if (p.team === "Solar" || p.team === "Lunar") {
+      byTeam[p.team].push(p);
+      if (p.role === "Explorador") {
+        if (p.team === "Solar") solarExp = true;
+        else lunarExp = true;
+      }
+    }
+  });
+
+  ["Solar", "Lunar"].forEach(team => {
+    const color   = teamColor(team);
+    const players = byTeam[team];
+
+    const card = document.createElement("div");
+    card.className = "team-card";
+
+    const header = document.createElement("div");
+    header.className = "team-card-header";
+    header.innerHTML = `
+      <span class="team-dot" style="background:${color};box-shadow:0 0 12px ${color}"></span>
+      <h3>${teamLabel(team)}</h3>
+      <span class="team-count">${players.length} jogador${players.length !== 1 ? "es" : ""}</span>
+    `;
+
+    const list = document.createElement("div");
+    list.className = "player-list";
+
+    if (players.length === 0) {
+      const row = document.createElement("div");
+      row.className = "player-row";
+      row.style.opacity = ".4";
+      row.innerHTML = `<span class="player-name">Aguardando jogadores...</span>`;
+      list.appendChild(row);
+    } else {
+      players.forEach(p => {
+        const isExp = p.role === "Explorador";
+        const bg    = `rgba(${hex2rgb(color)},${isExp ? .3 : .16})`;
+        const row   = document.createElement("div");
+        row.className = "player-row";
+        row.innerHTML = `
+          <span class="player-name">${p.name || "?"}</span>
+          <span class="player-badge" style="background:${bg};color:${color}">
+            ${isExp ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+              <circle cx="12" cy="12" r="3"/></svg>` : ""}
+            ${p.role || "—"}
+          </span>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    card.appendChild(header);
+    card.appendChild(list);
+    container.appendChild(card);
+  });
+
+  const solar = byTeam.Solar.length;
+  const lunar = byTeam.Lunar.length;
+  setCheck("chkPlayers",   total >= 4);
+  setCheck("chkTeams",     solar >= 2 && lunar >= 2);
+  setCheck("chkExplorers", solarExp && lunarExp);
+}
+
+
+// ── TUTORIAL ───────────────────────────────────
+
+function RenderTutorial() {
+  const n = TUTORIAL_PAGES.length;
+  document.getElementById("tutText").innerText      = TUTORIAL_PAGES[tutorialPage] || "";
+  document.getElementById("tutPageLabel").innerText = `${tutorialPage + 1} / ${n}`;
+
+  const dots = document.getElementById("tutDots");
+  dots.innerHTML = "";
+  TUTORIAL_PAGES.forEach((_, i) => {
+    const d = document.createElement("span");
+    d.className = "tutorial-dot";
+    d.style.background = i === tutorialPage ? "#9184d9" : "#595d6c";
+    dots.appendChild(d);
+  });
+}
+
+
+// ── PLAYING ────────────────────────────────────
+
+async function OpenPlaying() {
+  stopPlaying();
+
+  // Read secret map counts once (for progress bar totals)
+  const mapSnap = await get(ref(db, `rooms/${currentRoomCode}/secretMap`));
+  if (mapSnap.exists()) {
+    const map = mapSnap.val();
+    const vals = Object.values(map);
+    solarTotal = vals.filter(v => v === "Solar").length;
+    lunarTotal = vals.filter(v => v === "Lunar").length;
+  }
+
+  // Grid
+  playingUnsubs.push(
+    onValue(ref(db, `rooms/${currentRoomCode}/grid`), snap => {
+      gridData = snap.exists() ? Object.values(snap.val()) : [];
+      BuildGrid();
+      UpdateProgress();
+    })
+  );
+
+  // Turn fields
+  ["currentTeam","turnPhase","currentClue","guessesRemainingThisTurn","turnDuration"]
+  .forEach(field => {
+    playingUnsubs.push(
+      onValue(ref(db, `rooms/${currentRoomCode}/currentState/${field}`), snap => {
+        const v = snap.exists() ? snap.val() : null;
+        if (field === "currentTeam")             currentTeamTurn  = v;
+        else if (field === "turnPhase")          turnPhase        = v;
+        else if (field === "currentClue")        currentClue      = v;
+        else if (field === "guessesRemainingThisTurn") guessesRemaining = v || 0;
+        else if (field === "turnDuration" && v)  StartCountdown(v);
+        RefreshPlayingUI();
+      })
+    );
+  });
+}
+
+function RefreshPlayingUI() {
+  if (currentGameState !== "Playing") return;
+
+  const color = teamColor(currentTeamTurn);
+  const lbl   = teamLabel(currentTeamTurn);
+  const rgb   = hex2rgb(color);
+
+  // Banner
+  const banner = document.getElementById("turnBanner");
+  if (banner) {
+    banner.style.border     = `1px solid ${color}`;
+    banner.style.boxShadow  = `0 0 24px rgba(${rgb},.35)`;
+  }
+  const dot = document.getElementById("bannerDot");
+  if (dot) dot.style.background = color;
+
+  const txt = document.getElementById("bannerText");
+  if (txt) {
+    if (turnPhase === "GivingClue")
+      txt.innerText = `Vez de ${lbl} — Explorador está dando a pista...`;
+    else if (turnPhase === "Guessing")
+      txt.innerText = `Vez de ${lbl} — Observadores apontando (${guessesRemaining} palpite(s) restante(s))`;
+    else
+      txt.innerText = lbl ? `Vez de ${lbl}` : "--";
+  }
+
+  // Clue
+  const cw = document.getElementById("clueWord");
+  const cn = document.getElementById("clueNum");
+  const ct = document.getElementById("guessesTag");
+  if (currentClue) {
+    if (cw) cw.innerText = currentClue.word || "—";
+    if (cn) cn.innerText = `· ${currentClue.number}`;
+    if (ct) ct.innerText = `${guessesRemaining} palpite(s) restante(s)`;
+  } else {
+    if (cw) cw.innerText = "—";
+    if (cn) cn.innerText = "";
+    if (ct) ct.innerText = "Aguardando pista...";
+  }
+
+  // Status line
+  const sl = document.getElementById("playingStatus");
+  if (sl) {
+    if (turnPhase === "GivingClue")
+      sl.innerText = `Explorador da ${lbl} está pensando na pista — os Observadores aguardam.`;
+    else if (currentClue)
+      sl.innerText = `Explorador da ${lbl} já deu a pista — agora é a vez dos Observadores apontarem no mapa.`;
+    else
+      sl.innerText = "";
+  }
+}
+
+function BuildGrid() {
+  const container = document.getElementById("starGrid");
+  if (!container) return;
+  container.innerHTML = "";
+
+  gridData.forEach((tile, i) => {
+    const div = document.createElement("div");
+    div.className = "tile";
+
+    if (!tile || !tile.revealed) {
+      div.classList.add("tile-hidden");
+    } else {
+      const team = tile.revealedAsTeam || "Neutral";
+      div.classList.add("tile-" + team.toLowerCase().replace("blackhole", "blackhole"));
+      div.style.animationDelay = `${(i * 0.02).toFixed(2)}s`;
+    }
+
+    div.innerText = tile?.word || "";
+    container.appendChild(div);
+  });
+}
+
+function UpdateProgress() {
+  let sR = 0, lR = 0;
+  gridData.forEach(t => {
+    if (t?.revealed) {
+      if (t.revealedAsTeam === "Solar")  sR++;
+      if (t.revealedAsTeam === "Lunar") lR++;
+    }
+  });
+
+  const sT = solarTotal || 9;
+  const lT = lunarTotal || 8;
+
+  document.getElementById("solarFrac").innerText = `${sR}/${sT}`;
+  document.getElementById("lunarFrac").innerText = `${lR}/${lT}`;
+  document.getElementById("solarBar").style.width = `${Math.round(sR/sT*100)}%`;
+  document.getElementById("lunarBar").style.width = `${Math.round(lR/lT*100)}%`;
+}
+
+
+// ── COUNTDOWN ──────────────────────────────────
+
+function StartCountdown(seconds) {
+  stopCountdown();
+  let rem   = Math.round(seconds);
+  const tot = seconds || 1;
+
+  const circle = document.getElementById("timerCircle");
+  const num    = document.getElementById("timerNum");
+
+  function tick() {
+    if (num)    num.innerText = `${rem}s`;
+    if (circle) circle.setAttribute("stroke-dashoffset", CIRC * (1 - rem / tot));
+    if (rem <= 0) { stopCountdown(); return; }
+    rem--;
+  }
+
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+
+// ── RESULT ─────────────────────────────────────
+
+async function OpenResult() {
+  const [stateSnap, gridSnap, playersSnap] = await Promise.all([
+    get(ref(db, `rooms/${currentRoomCode}/currentState`)),
+    get(ref(db, `rooms/${currentRoomCode}/grid`)),
+    get(ref(db, `rooms/${currentRoomCode}/players`)),
+  ]);
+
+  const state    = stateSnap.exists() ? stateSnap.val() : {};
+  const winner   = state.winner;
+  const winReason = state.winReason;
+  const wColor   = teamColor(winner);
+  const wLabel   = teamLabel(winner);
+  const loser    = winner === "Solar" ? "Equipe Lunar" : "Equipe Solar";
+
+  // Header
+  const kicker   = document.getElementById("resultKicker");
+  const headline = document.getElementById("resultHeadline");
+  const sub      = document.getElementById("resultSub");
+
+  if (kicker) kicker.style.color = wColor;
+  if (headline) {
+    headline.style.color      = wColor;
+    headline.style.textShadow = `0 0 40px rgba(${hex2rgb(wColor)},.45)`;
+    headline.innerText = winReason === "BlackHole"
+      ? `Sinal perdido no Buraco Negro — ${loser} perdeu contato!`
+      : `${wLabel} mapeou todo o setor!`;
+  }
+  if (sub) {
+    sub.innerText = winReason === "BlackHole"
+      ? `${wLabel} vence por eliminação do rival.`
+      : `Vitória por mapeamento completo.`;
+  }
+
+  // Grid (fully revealed)
+  const grid        = gridSnap.exists() ? Object.values(gridSnap.val()) : [];
+  const resultGrid  = document.getElementById("resultGrid");
+  if (resultGrid) {
+    resultGrid.innerHTML = "";
+    grid.forEach((tile, i) => {
+      const team = tile.revealedAsTeam || "Neutral";
+      const div  = document.createElement("div");
+      div.className             = "result-tile";
+      div.style.background      = teamColor(team);
+      div.style.color           = TILE_TEXT_COLOR[team] || "#241a09";
+      div.style.animationDelay  = `${(i * 0.025).toFixed(2)}s`;
+      if (team === "BlackHole") div.style.animation = `ce-tilein .35s ease ${(i*0.025).toFixed(2)}s both, ce-void 2.4s ease-in-out infinite`;
+      div.innerText = tile.word || "";
+      resultGrid.appendChild(div);
+    });
+  }
+
+  // Score rows
+  const scores = document.getElementById("resultScores");
+  if (scores) {
+    scores.innerHTML = "";
+    if (playersSnap.exists()) {
+      const players = [];
+      playersSnap.forEach(c => players.push(c.val()));
+      players.sort((a, b) => (b.score || 0) - (a.score || 0));
+      players.forEach(p => {
+        const isWin  = p.team === winner;
+        const color  = teamColor(p.team);
+        const row    = document.createElement("div");
+        row.className = "score-row";
+        row.innerHTML = `
+          <div class="score-left">
+            <span class="score-dot" style="background:${color}"></span>
+            <span class="score-name">${p.name || "?"}</span>
+          </div>
+          <span class="score-delta" style="color:${isWin ? "#9184d9" : "#9397ab"}">${isWin ? "+1" : "0"}</span>
+        `;
+        scores.appendChild(row);
+      });
+    }
+  }
+
+  // Progress bar to final score (10s to match Unity's resultDuration)
+  const fill = document.getElementById("resultProgFill");
+  if (fill) {
+    fill.style.width = "0%";
+    let elapsed = 0;
+    const duration = 10;
+    resultProgTimer = setInterval(() => {
+      elapsed += 0.1;
+      fill.style.width = `${Math.min(elapsed / duration * 100, 100)}%`;
+      if (elapsed >= duration) stopResultProg();
+    }, 100);
+  }
+}
+
+
+// ── FINAL ──────────────────────────────────────
+
+async function OpenFinalScore() {
+  const snap  = await get(ref(db, `rooms/${currentRoomCode}/players`));
+  const tbody = document.getElementById("finalBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!snap.exists()) return;
+
+  const players = [];
+  snap.forEach(c => players.push(c.val()));
+  players.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  players.forEach((p, i) => {
+    const color = teamColor(p.team);
+    const tr    = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        ${i === 0
+          ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9184d9" stroke-width="2"
+               style="animation:ce-pulse 2s ease-in-out infinite">
+               <path d="M12 2l2.4 6.5L21 9l-5 4.6L17.4 21 12 17.3 6.6 21 8 13.6 3 9l6.6-.5Z"/>
+             </svg>`
+          : `<span style="color:#9397ab">${i + 1}</span>`
+        }
+      </td>
+      <td style="font-size:16px">${p.name || "?"}</td>
+      <td>
+        <span class="team-badge"
+              style="background:rgba(${hex2rgb(color)},.22);color:${color}">
+          ${teamLabel(p.team)}
+        </span>
+      </td>
+      <td>${p.score || 0}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+</script>
+</body>
+</html>

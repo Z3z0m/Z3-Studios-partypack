@@ -1,0 +1,399 @@
+*{
+  margin:0;
+  padding:0;
+
+  box-sizing:border-box;
+
+  font-family:
+    'Nunito',
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body{
+  width:100vw;
+  height:100vh;
+
+  background:radial-gradient(circle at 50% 0%, #16213a 0%, #05070d 65%);
+
+  display:flex;
+  flex-direction:column;
+
+  justify-content:center;
+  align-items:center;
+  gap:15px;
+
+  color:#f3f2ea;
+}
+
+.screen{
+  display:none;
+  flex-direction:column;
+  gap:15px;
+}
+
+.screen.active{
+  display:flex;
+}
+
+.container{
+  width:94%;
+  max-width:480px;
+
+  background:#0f1626;
+
+  padding:26px;
+
+  border-radius:20px;
+
+  box-shadow:
+    0 0 20px
+    rgba(0,0,0,0.5);
+}
+
+h1, h2{
+  text-align:center;
+
+  font-family:'Fredoka',sans-serif;
+}
+
+p{
+  text-align:center;
+  line-height:1.4;
+}
+
+.sectionLabel{
+  margin-top:6px;
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+  opacity:0.6;
+}
+
+button{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#3b5bdb;
+
+  color:white;
+
+  font-family:'Fredoka',sans-serif;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:0.3px;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+button:hover:not(:disabled){
+  transform:scale(1.02);
+}
+
+button:disabled{
+  opacity:0.4;
+  cursor:default;
+  transform:none;
+}
+
+input{
+  width:100%;
+
+  padding:12px;
+
+  border:none;
+  border-radius:10px;
+
+  background:#1b2436;
+  color:#f3f2ea;
+
+  font-family:'Nunito',sans-serif;
+  font-size:15px;
+}
+
+
+/* =========================
+   TIMES (Solar/Lunar — identidade 100% original)
+========================= */
+
+.teamPickRow{
+  display:flex;
+  gap:10px;
+}
+
+.teamPickBtn{
+  opacity:0.55;
+}
+
+.teamPickBtn.selected{
+  opacity:1;
+  transform:scale(1.03);
+  box-shadow:0 0 0 3px rgba(255,255,255,.35);
+}
+
+.teamPickSolar{ background:radial-gradient(circle at 32% 24%, #ffd27a, #ef9c14 72%); }
+.teamPickLunar{ background:radial-gradient(circle at 32% 24%, #8fb8ff, #4b7bd6 72%); }
+
+.explorerToggleBtn{
+  background:#6d3fc9;
+}
+
+.explorerToggleBtn.selected{
+  background:#9a5cff;
+  box-shadow:0 0 0 3px rgba(255,255,255,.35);
+}
+
+.lobbyRoster{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+
+  max-height:160px;
+  overflow-y:auto;
+}
+
+.rosterItem{
+  padding:8px 10px;
+
+  background:#1b2436;
+  border-radius:8px;
+
+  font-size:14px;
+  text-align:left;
+}
+
+.rosterItemSelf{
+  box-shadow:0 0 0 2px rgba(255,255,255,.35);
+}
+
+
+/* =========================
+   TUTORIAL
+========================= */
+
+#tutorialControls{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.tutorialNavRow{
+  display:flex;
+  gap:10px;
+}
+
+
+/* =========================
+   PLAYING — MAPA ESTELAR
+========================= */
+
+.turnHeaderRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.turnBanner{
+  flex:1;
+  text-align:left;
+
+  font-family:'Fredoka',sans-serif;
+  font-weight:600;
+  font-size:14px;
+
+  color:#7fd8ff;
+}
+
+.clueDisplayText{
+  font-family:'Fredoka',sans-serif;
+  font-weight:600;
+  font-size:15px;
+
+  color:#ffd76b;
+
+  min-height:20px;
+}
+
+.timerRing{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+
+  flex-shrink:0;
+
+  background:conic-gradient(#7fd8ff 360deg, rgba(255,255,255,.18) 0deg);
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.timerRingHole{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+
+  background:#0f1626;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-weight:700;
+  font-size:14px;
+}
+
+.starGrid{
+  display:grid;
+  grid-template-columns:repeat(5, 1fr);
+  gap:4px;
+}
+
+.starTile{
+  aspect-ratio:1;
+
+  padding:2px;
+
+  border-radius:6px;
+
+  font-size:9.5px;
+  font-weight:700;
+  line-height:1.1;
+
+  text-transform:uppercase;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+
+  word-break:break-word;
+}
+
+/* NÃO REVELADA, sem info: neutro escuro, NENHUMA pista visual de cor —
+   crítico pro papel de Observador. */
+.tile-hidden{ background:#1b2436; color:#dcdff0; }
+
+/* SÓ O EXPLORADOR VÊ (secretMapData) — mesma paleta do revelado, mas com
+   opacidade reduzida pra ficar claro (só pra ele) que ainda não foi
+   confirmada pro resto da mesa. */
+.tile-secret-solar{ background:rgba(239,156,20,.55); color:#1a1200; }
+.tile-secret-lunar{ background:rgba(75,123,214,.55); color:#eaf2ff; }
+.tile-secret-neutral{ background:rgba(120,120,128,.45); color:#f0f0f2; }
+.tile-secret-blackhole{ background:rgba(20,10,28,.75); color:#ff9a9a; }
+
+/* REVELADA PRA TODO MUNDO */
+.tile-solar{ background:radial-gradient(circle at 32% 24%, #ffd27a, #ef9c14 72%); color:#1a1200; }
+.tile-lunar{ background:radial-gradient(circle at 32% 24%, #8fb8ff, #4b7bd6 72%); color:#0a1830; }
+.tile-neutral{ background:#6d7078; color:#f0f0f2; }
+.tile-blackhole{ background:radial-gradient(circle at 32% 24%, #3a1030, #0a0610 72%); color:#ff6b6b; }
+
+.clueForm{
+  display:flex;
+  gap:8px;
+}
+
+.clueForm input#clueWordInput{
+  flex:2;
+}
+
+.clueForm input#clueNumberInput{
+  flex:1;
+}
+
+.clueForm button{
+  flex:1.4;
+}
+
+.guessControls{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.rejectedText{
+  min-height:18px;
+
+  color:#ff8f7a;
+  font-weight:700;
+  font-size:13px;
+
+  opacity:0;
+  transition:opacity 0.2s;
+}
+
+.rejectedText.active{
+  opacity:1;
+}
+
+
+/* =========================
+   RESULT / FINAL SCORE
+========================= */
+
+.resultWinnerText{
+  font-family:'Fredoka',sans-serif;
+  font-weight:700;
+  font-size:16px;
+
+  color:#7fd8ff;
+}
+
+.scoreItem{
+  padding:8px 10px;
+
+  background:#1b2436;
+  border-radius:8px;
+
+  font-size:14px;
+
+  margin-bottom:6px;
+}
+
+.homeButton{
+  background:#374151;
+}
+
+
+/* =========================
+   PAUSE OVERLAY (padrão compartilhado entre todos os jogos)
+========================= */
+
+.pauseOverlay{
+  display:none;
+
+  position:fixed;
+  inset:0;
+
+  background:rgba(0,0,0,0.75);
+
+  align-items:center;
+  justify-content:center;
+
+  z-index:999;
+}
+
+.pauseOverlay.active{
+  display:flex;
+}
+
+.pauseOverlayCard{
+  background:#0f1626;
+  padding:30px;
+  border-radius:16px;
+
+  text-align:center;
+}
+
+#hostButton{
+  margin-top:6px;
+}

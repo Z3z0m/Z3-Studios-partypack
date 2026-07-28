@@ -292,6 +292,12 @@ window.joinRoom = async function()
         `MauMau/MauMau_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "CorridaEstelar")
+    {
+      window.location.href =
+        `CorridaEstelar/CorridaEstelar_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =
