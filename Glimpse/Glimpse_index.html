@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Glimpse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link
+    rel="stylesheet"
+    href="Glimpse_style.css"
+  />
+
+</head>
+
+<body>
+
+  <!-- =========================
+       LOBBY SCREEN
+  ========================== -->
+
+  <div
+    id="lobbyScreen"
+    class="screen screenCenter active"
+  >
+
+    <div class="brandBlob"></div>
+
+    <h1>
+      Glimpse
+    </h1>
+
+    <p class="screenSubtitle">
+      esperando o anfitrião começar a partida…
+    </p>
+
+    <span
+      id="lobbyPlayerTag"
+      class="tag tag-neutral"
+    >
+      você entrou como Você
+    </span>
+
+  </div>
+
+
+  <!-- =========================
+       TUTORIAL SCREEN
+  ========================== -->
+
+  <div
+    id="tutorialScreen"
+    class="screen screenCenter"
+  >
+
+    <p class="kicker">
+      como jogar
+    </p>
+
+    <h2>
+      acompanhe as regras
+    </h2>
+
+    <p class="screenSubtitle">
+      a explicação completa está passando na tela principal!
+    </p>
+
+    <div id="tutorialControls" class="tutorialControls">
+
+      <span
+        id="tutorialPageTag"
+        class="tag tag-outline"
+      >
+        página 1/5
+      </span>
+
+      <div class="tutorialNavRow">
+
+        <button
+          class="btn btn-secondary"
+          onclick="SendTutorialAction('prev')"
+        >
+          anterior
+        </button>
+
+        <button
+          class="btn btn-primary"
+          onclick="SendTutorialAction('next')"
+        >
+          próxima
+        </button>
+
+      </div>
+
+      <button
+        id="skipTutorialBtn"
+        class="btn btn-ghost"
+        onclick="SendTutorialAction('skip')"
+      >
+        pular tutorial
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       NARRATING SCREEN
+  ========================== -->
+
+  <div
+    id="narratingScreen"
+    class="screen"
+  >
+
+    <span class="tag tag-outline roundTag">
+      rodada <span id="narratingRoundNum">1</span>
+    </span>
+
+    <!-- SOU O NARRADOR -->
+
+    <div id="narratingAsNarrator" class="roleBlock">
+
+      <div class="roleHeader">
+
+        <h3>sua vez de narrar!</h3>
+
+        <p class="screenSubtitle">
+          escolha uma carta da sua mão e dê uma dica que combine com ela
+        </p>
+
+      </div>
+
+      <div id="narratorHandContainer" class="handGrid"></div>
+
+      <input
+        id="hintInput"
+        class="input"
+        type="text"
+        placeholder="sua dica..."
+        maxlength="60"
+      />
+
+      <button
+        id="confirmHintButton"
+        class="btn btn-primary"
+        onclick="OnConfirmHintTapped()"
+        disabled
+      >
+        confirmar
+      </button>
+
+      <p id="narratorWaitingText" class="waitingText"></p>
+
+    </div>
+
+    <!-- SOU PALPITEIRO -->
+
+    <div id="narratingAsGuesser" class="roleBlock screenCenter">
+
+      <div id="narratorAvatar" class="narratorAvatar">?</div>
+
+      <h3>aguardando a dica…</h3>
+
+      <p class="screenSubtitle">
+        <span id="narratingNarratorName">???</span> está escolhendo uma carta e pensando numa dica
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       SUBMITTING SCREEN
+  ========================== -->
+
+  <div
+    id="submittingScreen"
+    class="screen"
+  >
+
+    <span class="tag tag-outline roundTag">
+      rodada <span id="submittingRoundNum">1</span>
+    </span>
+
+    <p class="hintBanner">
+      dica: "<span id="submittingHintText">...</span>"
+    </p>
+
+    <!-- SOU O NARRADOR -->
+
+    <div id="submittingAsNarrator" class="roleBlock screenCenter">
+
+      <h3>aguardando os jogadores…</h3>
+
+      <p class="screenSubtitle">
+        <span id="submittingCountText">0/0</span> já escolheram uma carta
+      </p>
+
+    </div>
+
+    <!-- SOU PALPITEIRO -->
+
+    <div id="submittingAsGuesser" class="roleBlock">
+
+      <h3 class="centerHeading">escolha a carta que combina</h3>
+
+      <div id="guesserHandContainer" class="handGrid"></div>
+
+      <p id="submittingWaitingText" class="waitingText"></p>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       VOTING SCREEN
+  ========================== -->
+
+  <div
+    id="votingScreen"
+    class="screen"
+  >
+
+    <span class="tag tag-outline roundTag">
+      rodada <span id="votingRoundNum">1</span>
+    </span>
+
+    <p class="hintBanner">
+      dica: "<span id="votingHintText">...</span>"
+    </p>
+
+    <!-- SOU O NARRADOR -->
+
+    <div id="votingAsNarrator" class="roleBlock screenCenter">
+
+      <h3>aguardando os votos…</h3>
+
+      <p class="screenSubtitle">
+        <span id="votingCountText">0/0</span> já votaram
+      </p>
+
+    </div>
+
+    <!-- SOU PALPITEIRO -->
+
+    <div id="votingAsGuesser" class="roleBlock">
+
+      <h3 class="centerHeading">qual carta é a do narrador?</h3>
+
+      <div id="votingCardsContainer" class="handGrid"></div>
+
+      <p id="votingWaitingText" class="waitingText"></p>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       RESULT SCREEN
+  ========================== -->
+
+  <div
+    id="resultScreen"
+    class="screen"
+  >
+
+    <h2 class="centerHeading">
+      resultado da rodada
+    </h2>
+
+    <p class="screenSubtitle small centerHeading">
+      dica: "<span id="resultHintText">...</span>"
+    </p>
+
+    <div id="resultCardsContainer" class="handGrid"></div>
+
+    <p
+      id="resultOutcomeText"
+      class="resultOutcomeText"
+    >
+    </p>
+
+    <p class="kicker centerHeading">
+      placar geral
+    </p>
+
+    <div id="resultScoreboard" class="scoreboard"></div>
+
+  </div>
+
+
+  <!-- =========================
+       FINAL SCORE SCREEN
+  ========================== -->
+
+  <div
+    id="finalScoreScreen"
+    class="screen"
+  >
+
+    <h2 class="centerHeading">
+      resultado final
+    </h2>
+
+    <div id="finalScores" class="scoreboard"></div>
+
+    <button
+      class="btn btn-secondary homeButton"
+      onclick="window.location.href='../index.html'"
+    >
+      voltar ao início
+    </button>
+
+  </div>
+
+  <button
+    id="hostButton"
+    class="btn btn-primary hostButton"
+    style="display:none"
+    onclick="SendHostCommand()"
+  >
+    começar jogo
+  </button>
+
+
+  <div
+    id="pauseOverlay"
+    class="pauseOverlay"
+  >
+    <div class="pauseCard">
+      <h3>jogo pausado</h3>
+      <p class="screenSubtitle">aguarde o host retomar…</p>
+    </div>
+  </div>
+
+  <script
+    type="module"
+    src="Glimpse_app.js"
+  ></script>
+
+</body>
+
+</html>

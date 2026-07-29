@@ -1,0 +1,573 @@
+/* =========================
+   ORGANIC DESIGN TOKENS
+   (ver Design UI completo do Glimpse — sistema "Organic")
+========================= */
+
+:root{
+  --color-bg:#f5ead8;
+  --color-surface:#ebddc5;
+  --color-text:#201e1d;
+  --color-accent:#c67139;
+  --color-accent-2:#7a8a5e;
+  --color-divider:color-mix(in srgb, #201e1d 16%, transparent);
+
+  --color-neutral-300:#dcd3c4;
+
+  --color-accent-100:#fff2eb;
+  --color-accent-200:#ffe1d0;
+  --color-accent-300:#ffc6a5;
+  --color-accent-400:#f6a06b;
+  --color-accent-500:#d67f48;
+  --color-accent-600:#b2622d;
+  --color-accent-700:#8c491a;
+  --color-accent-800:#643312;
+
+  --color-accent-2-200:#e1eecc;
+  --color-accent-2-300:#ccdbb2;
+  --color-accent-2-400:#aebf92;
+  --color-accent-2-500:#8fa073;
+  --color-accent-2-700:#56633f;
+  --color-accent-2-800:#3d472b;
+
+  --font-heading:'Caprasimo', system-ui, sans-serif;
+  --font-body:'Figtree', system-ui, sans-serif;
+
+  --shadow-sm:0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
+  --shadow-md:0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
+  --shadow-lg:0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
+}
+
+*{
+  margin:0;
+  padding:0;
+
+  box-sizing:border-box;
+
+  font-family:var(--font-body);
+}
+
+body{
+  min-height:100dvh;
+
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+
+  padding:max(28px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+
+  background:var(--color-bg);
+  color:var(--color-text);
+}
+
+h1, h2, h3{
+  font-family:var(--font-heading);
+  font-weight:400;
+  line-height:1.15;
+}
+
+h1{ font-size:36px; }
+h2{ font-size:24px; }
+h3{ font-size:20px; }
+
+p{
+  line-height:1.5;
+}
+
+:focus-visible{
+  outline:2px solid var(--color-accent);
+  outline-offset:2px;
+}
+
+
+/* =========================
+   SCREEN SYSTEM
+========================= */
+
+.screen{
+  display:none;
+  flex-direction:column;
+  gap:16px;
+}
+
+.screen.active{
+  display:flex;
+  flex:1;
+}
+
+.screenCenter{
+  flex:1;
+
+  align-items:center;
+  justify-content:center;
+
+  gap:14px;
+
+  text-align:center;
+}
+
+.centerHeading{
+  text-align:center;
+}
+
+
+/* =========================
+   LOBBY
+========================= */
+
+.brandBlob{
+  width:60px;
+  height:60px;
+
+  border-radius:58% 42% 55% 45% / 50% 50% 50% 50%;
+
+  background:var(--color-accent);
+}
+
+.screenSubtitle{
+  font-size:15px;
+  opacity:.7;
+
+  max-width:260px;
+}
+
+.screenSubtitle.small{
+  font-size:12.5px;
+}
+
+
+/* =========================
+   TUTORIAL
+========================= */
+
+.kicker{
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+
+  color:var(--color-accent);
+}
+
+.tutorialControls{
+  display:none;
+
+  flex-direction:column;
+  align-items:center;
+
+  gap:10px;
+
+  width:100%;
+  margin-top:6px;
+}
+
+.tutorialNavRow{
+  display:flex;
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow .btn{
+  flex:1;
+}
+
+
+/* =========================
+   TAGS
+========================= */
+
+.tag{
+  display:inline-flex;
+  align-items:center;
+
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.02em;
+
+  padding:3px 12px;
+
+  border-radius:999px;
+}
+
+.tag-neutral{
+  background:var(--color-neutral-300);
+  color:var(--color-text);
+}
+
+.tag-outline{
+  border:1px solid var(--color-accent);
+  color:var(--color-accent);
+}
+
+.roundTag{
+  align-self:center;
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  width:100%;
+  min-height:52px;
+
+  padding:14px 20px;
+
+  border:1px solid transparent;
+  border-radius:999px;
+
+  background:transparent;
+  color:var(--color-text);
+
+  font-family:var(--font-heading);
+  font-size:15px;
+
+  cursor:pointer;
+
+  transition:background-color .2s ease, transform .2s ease;
+}
+
+.btn:hover:not(:disabled){
+  transform:scale(1.02);
+}
+
+.btn:disabled{
+  opacity:.45;
+  cursor:default;
+  transform:none;
+}
+
+.btn-primary{
+  background:var(--color-accent);
+  color:var(--color-bg);
+}
+
+.btn-primary:hover:not(:disabled){
+  background:var(--color-accent-600);
+}
+
+.btn-secondary{
+  border-color:var(--color-divider);
+}
+
+.btn-secondary:hover:not(:disabled){
+  background:color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.btn-ghost{
+  min-height:44px;
+
+  color:var(--color-accent);
+}
+
+.btn-ghost:hover:not(:disabled){
+  background:color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.hostButton{
+  margin-top:auto;
+
+  font-size:16px;
+  min-height:56px;
+}
+
+.homeButton{
+  margin-top:auto;
+}
+
+
+/* =========================
+   INPUT
+========================= */
+
+.input{
+  width:100%;
+  min-height:52px;
+
+  padding:0 18px;
+
+  border:1px solid var(--color-divider);
+  border-radius:999px;
+
+  background:var(--color-surface);
+  color:var(--color-text);
+
+  font-family:var(--font-body);
+  font-size:16px;
+
+  outline:none;
+}
+
+.input::placeholder{
+  color:color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.input:disabled{
+  opacity:.5;
+}
+
+
+/* =========================
+   ROLE BLOCKS (narrador vs palpiteiro — só um dos dois fica visível por vez)
+========================= */
+
+.roleBlock{
+  display:none;
+  flex-direction:column;
+  gap:16px;
+}
+
+.roleHeader{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+
+  text-align:center;
+}
+
+
+/* =========================
+   NARRADOR AGUARDANDO (avatar pulsante)
+========================= */
+
+@keyframes glimpsePulse{
+  0%, 100%{ transform:scale(1); opacity:1; }
+  50%{ transform:scale(1.12); opacity:.75; }
+}
+
+.narratorAvatar{
+  width:66px;
+  height:66px;
+
+  border-radius:50%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:var(--color-accent-200);
+  color:var(--color-accent-800);
+
+  font-family:var(--font-heading);
+  font-size:24px;
+
+  animation:glimpsePulse 2.2s ease-in-out infinite;
+}
+
+
+/* =========================
+   MÃO / GRID DE CARTAS
+========================= */
+
+.handGrid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+
+  gap:9px;
+
+  width:100%;
+}
+
+.cardButton{
+  position:relative;
+
+  width:100%;
+  aspect-ratio:3/4;
+
+  padding:0;
+
+  border:1px solid transparent;
+  border-radius:14px;
+
+  overflow:hidden;
+  cursor:pointer;
+  background:none;
+
+  transition:opacity .2s ease, border-color .2s ease;
+}
+
+.cardButton:disabled{
+  cursor:default;
+}
+
+.cardArt{
+  position:relative;
+
+  width:100%;
+  height:100%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.cardArt svg{
+  width:100%;
+  height:100%;
+}
+
+
+/* =========================
+   REVELAÇÃO (Result)
+========================= */
+
+.cardReveal{
+  display:flex;
+  flex-direction:column;
+
+  cursor:default;
+}
+
+.cardReveal .cardArt{
+  flex:1;
+}
+
+.cardBadge{
+  position:absolute;
+  top:6px;
+  right:6px;
+
+  width:22px;
+  height:22px;
+
+  border-radius:50%;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:var(--color-accent);
+  color:var(--color-bg);
+
+  font-size:12px;
+
+  box-shadow:var(--shadow-sm);
+}
+
+.cardCaption{
+  padding:5px 3px;
+
+  background:var(--color-surface);
+
+  font-size:10px;
+  font-weight:700;
+  text-align:center;
+  line-height:1.3;
+}
+
+
+/* =========================
+   ROUND / HINT LABELS
+========================= */
+
+.hintBanner{
+  text-align:center;
+
+  font-family:var(--font-heading);
+  font-size:19px;
+
+  color:var(--color-accent-700);
+}
+
+.waitingText{
+  text-align:center;
+
+  font-size:12.5px;
+  font-weight:600;
+
+  color:var(--color-accent-700);
+
+  min-height:16px;
+}
+
+
+/* =========================
+   RESULTADO / PLACAR
+========================= */
+
+.resultOutcomeText{
+  text-align:center;
+
+  font-size:13px;
+  font-weight:700;
+
+  color:var(--color-accent-2-700);
+}
+
+.scoreboard{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+
+  width:100%;
+}
+
+.scoreRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:11px 16px;
+
+  border:1px solid transparent;
+  border-radius:16px;
+
+  background:var(--color-surface);
+
+  font-size:14.5px;
+  font-weight:700;
+}
+
+.scoreRow.self{
+  border-color:var(--color-accent);
+}
+
+.scoreRank{
+  font-family:var(--font-heading);
+  color:var(--color-accent-700);
+}
+
+
+/* =========================
+   PAUSE OVERLAY
+========================= */
+
+.pauseOverlay{
+  display:none;
+
+  position:fixed;
+  inset:0;
+
+  align-items:center;
+  justify-content:center;
+
+  padding:24px;
+
+  background:color-mix(in srgb, #2e2b25 78%, transparent);
+
+  z-index:9999;
+}
+
+.pauseOverlay.active{
+  display:flex;
+}
+
+.pauseCard{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+
+  padding:32px 28px;
+
+  border-radius:32px;
+
+  background:var(--color-surface);
+  box-shadow:var(--shadow-lg);
+
+  text-align:center;
+}

@@ -298,6 +298,12 @@ window.joinRoom = async function()
         `CorridaEstelar/CorridaEstelar_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "Glimpse")
+    {
+      window.location.href =
+        `Glimpse/Glimpse_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =
