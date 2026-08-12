@@ -1,0 +1,539 @@
+*{
+  margin:0;
+  padding:0;
+
+  box-sizing:border-box;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body{
+  width:100vw;
+  height:100vh;
+
+  background:#111;
+
+  display:flex;
+  flex-direction:column;
+
+  justify-content:center;
+  align-items:center;
+  gap:15px;
+
+  color:white;
+}
+
+.screen{
+  display:none;
+  flex-direction:column;
+  gap:15px;
+}
+
+.screen.active{
+  display:flex;
+}
+
+.container{
+  width:90%;
+  max-width:400px;
+
+  background:#1e1e1e;
+
+  padding:30px;
+
+  border-radius:20px;
+
+  box-shadow:
+    0 0 20px
+    rgba(0,0,0,0.4);
+}
+
+h1, h2{
+  text-align:center;
+}
+
+p{
+  text-align:center;
+  line-height:1.4;
+}
+
+input{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+}
+
+input:focus{
+  outline:2px solid #5c8dff;
+}
+
+button{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#5c8dff;
+
+  color:white;
+
+  font-size:16px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+button:hover{
+  transform:scale(1.02);
+}
+
+button:disabled{
+  opacity:0.5;
+  cursor:default;
+  transform:none;
+}
+
+
+/* =========================
+   THEME / TOPIC BANNER
+========================= */
+
+.themeBanner{
+  text-align:center;
+
+  opacity:0.6;
+
+  font-size:14px;
+}
+
+#biddingTopicText,
+#speechTopicText{
+  font-size:20px;
+}
+
+
+/* =========================
+   COUNTDOWN
+========================= */
+
+.countdownText{
+  text-align:center;
+
+  font-size:14px;
+
+  opacity:0.7;
+}
+
+.countdownText span{
+  font-size:20px;
+  font-weight:bold;
+
+  color:#ffb84d;
+}
+
+
+/* =========================
+   BIDDING SCREEN
+========================= */
+
+.bidStatusText{
+  text-align:center;
+
+  font-size:16px;
+  font-weight:bold;
+
+  color:#ffb84d;
+}
+
+.waitingText{
+  text-align:center;
+
+  opacity:0.7;
+
+  font-style:italic;
+}
+
+#bidTurnControls{
+  display:none;
+  flex-direction:column;
+  gap:10px;
+
+  width:100%;
+}
+
+.bidSecondaryRow{
+  display:flex;
+  gap:10px;
+
+  width:100%;
+}
+
+.bidSecondaryRow button{
+  flex:1;
+}
+
+.secondaryButton{
+  background:#444;
+}
+
+.secondaryButton:hover:not(:disabled){
+  background:#555;
+}
+
+.dangerButton{
+  background:#e74c3c;
+}
+
+.dangerButton:hover:not(:disabled){
+  background:#ff5c4d;
+}
+
+
+/* =========================
+   SPEECH SCREEN (digitar as respostas)
+========================= */
+
+#speechOwnControls{
+  display:none;
+  flex-direction:column;
+  gap:12px;
+
+  width:100%;
+}
+
+#speechAnswersList{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+
+  width:100%;
+
+  max-height:30vh;
+  overflow-y:auto;
+}
+
+.speechAnswerRow{
+  padding:10px 14px;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  font-size:15px;
+  font-weight:bold;
+}
+
+
+/* =========================
+   REVEAL / QUESTIONAR
+========================= */
+
+#revealItemsList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+
+  width:100%;
+
+  max-height:50vh;
+  overflow-y:auto;
+}
+
+.revealRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+
+  padding:12px 14px;
+
+  border-radius:12px;
+
+  background:#2c2c2c;
+
+  transition:0.2s;
+}
+
+.revealRowWord{
+  font-size:16px;
+  font-weight:bold;
+
+  flex:1;
+  min-width:0;
+
+  overflow-wrap:break-word;
+}
+
+.revealOwnLabel{
+  font-size:13px;
+
+  opacity:0.6;
+  font-style:italic;
+
+  white-space:nowrap;
+}
+
+.challengeToggleButton{
+  width:auto;
+
+  padding:10px 16px;
+
+  font-size:14px;
+
+  background:#e74c3c;
+
+  white-space:nowrap;
+}
+
+.challengeToggleButton:hover:not(:disabled){
+  background:#ff5c4d;
+}
+
+.challengeToggleButton.selected{
+  background:#7a1f1f;
+}
+
+.revealRow.revealRowKept{
+  outline:2px solid #4caf50;
+}
+
+.revealRow.revealRowInvalidated{
+  outline:2px solid #e74c3c;
+
+  opacity:0.6;
+}
+
+
+/* =========================
+   RESULT SCREEN
+========================= */
+
+.resultCard{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+
+  width:100%;
+
+  padding:20px;
+
+  border-radius:14px;
+
+  background:#2c2c2c;
+}
+
+.resultCard.resultSuccess{
+  outline:2px solid #4caf50;
+}
+
+.resultCard.resultFail{
+  outline:2px solid #e74c3c;
+}
+
+.resultTopic{
+  font-size:13px;
+
+  opacity:0.7;
+  font-style:italic;
+}
+
+.resultBidder{
+  font-size:15px;
+}
+
+.resultOutcome{
+  font-size:20px;
+  font-weight:bold;
+}
+
+.resultValidCount{
+  font-size:13px;
+
+  opacity:0.8;
+}
+
+
+/* =========================
+   SCOREBOARD
+========================= */
+
+.scoreItem{
+  background:#2c2c2c;
+
+  padding:15px;
+
+  border-radius:12px;
+
+  font-size:18px;
+
+  font-weight:bold;
+
+  text-align:center;
+}
+
+#resultScoreboard,
+#finalScores{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+
+/* =========================
+   TUTORIAL SCREEN
+========================= */
+
+#tutorialControls{
+  display:none;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow{
+  display:flex;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow button{
+  flex:1;
+}
+
+#skipTutorialBtn{
+  background:#444;
+
+  color:#aaa;
+
+  font-size:14px;
+}
+
+#skipTutorialBtn:hover{
+  background:#555;
+
+  transform:none;
+}
+
+
+/* =========================
+   HOST BUTTON
+========================= */
+
+#hostButton{
+  width:100%;
+
+  padding:18px;
+
+  border:none;
+
+  border-radius:14px;
+
+  background:#f59e0b;
+
+  color:#111;
+
+  font-size:17px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+
+  letter-spacing:1px;
+}
+
+#hostButton:hover{
+  background:#fbbf24;
+
+  transform:scale(1.02);
+}
+
+
+/* =========================
+   PAUSE OVERLAY
+========================= */
+
+.pauseOverlay{
+  display:none;
+
+  position:fixed;
+  inset:0;
+
+  background:rgba(0,0,0,0.75);
+
+  z-index:9999;
+
+  align-items:center;
+  justify-content:center;
+
+  text-align:center;
+}
+
+.pauseOverlay.active{
+  display:flex;
+}
+
+.pauseOverlayCard{
+  background:#1e1e1e;
+
+  border-radius:20px;
+
+  padding:30px 40px;
+}
+
+
+/* =========================
+   HOME BUTTON
+========================= */
+
+.homeButton{
+  width:100%;
+
+  padding:14px;
+
+  border:none;
+
+  border-radius:14px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:15px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+.homeButton:hover{
+  background:#3a3a3a;
+}

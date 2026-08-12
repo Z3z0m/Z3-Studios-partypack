@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Aposta</title>
+
+  <link
+    rel="stylesheet"
+    href="Aposta_style.css"
+  />
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- =========================
+         LOBBY SCREEN
+    ========================== -->
+
+    <div
+      id="lobbyScreen"
+      class="screen active"
+    >
+
+      <h1>
+        APOSTA
+      </h1>
+
+      <p>
+        Esperando o anfitrião começar...
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         TUTORIAL SCREEN
+    ========================== -->
+
+    <div
+      id="tutorialScreen"
+      class="screen"
+    >
+
+      <h2>
+        COMO JOGAR
+      </h2>
+
+      <p>
+        Acompanhem a explicação das regras na tela principal!
+      </p>
+
+      <div id="tutorialControls">
+
+        <div class="tutorialNavRow">
+
+          <button onclick="SendTutorialAction('prev')">
+            ← Anterior
+          </button>
+
+          <button onclick="SendTutorialAction('next')">
+            Próxima →
+          </button>
+
+        </div>
+
+        <button
+          id="skipTutorialBtn"
+          onclick="SendTutorialAction('skip')"
+        >
+          Pular Tutorial
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         BIDDING SCREEN
+    ========================== -->
+
+    <div
+      id="biddingScreen"
+      class="screen"
+    >
+
+      <p class="themeBanner" id="biddingThemeBanner">
+      </p>
+
+      <h2 id="biddingTopicText">
+        Tópico
+      </h2>
+
+      <p class="bidStatusText" id="bidStatusText">
+      </p>
+
+      <!-- SÓ APARECE NA SUA VEZ (ver ApplyBiddingState) -->
+      <div id="bidTurnControls">
+
+        <input
+          type="number"
+          id="bidAmountInput"
+          min="1"
+        />
+
+        <button
+          id="raiseButton"
+          onclick="SendBidAction('raise')"
+        >
+          Apostar
+        </button>
+
+        <div class="bidSecondaryRow">
+
+          <button
+            id="passButton"
+            class="secondaryButton"
+            onclick="SendBidAction('pass')"
+          >
+            Passar
+          </button>
+
+          <button
+            id="challengeButton"
+            class="dangerButton"
+            onclick="SendBidAction('challenge')"
+          >
+            Duvido!
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- SÓ APARECE FORA DA SUA VEZ -->
+      <p
+        id="bidWaitingText"
+        class="waitingText"
+      >
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         SPEECH SCREEN (digitar as respostas)
+    ========================== -->
+
+    <div
+      id="speechScreen"
+      class="screen"
+    >
+
+      <p class="themeBanner" id="speechTopicText">
+      </p>
+
+      <p class="countdownText">
+        Tempo restante: <span id="speechCountdown">--</span>
+      </p>
+
+      <!-- SÓ APARECE PRA QUEM ESTÁ APOSTANDO (ver OpenSpeech) -->
+      <div id="speechOwnControls">
+
+        <p class="bidStatusText" id="speechGoalText">
+        </p>
+
+        <input
+          type="text"
+          id="speechInput"
+          placeholder="Digite uma resposta e aperte Enter..."
+        />
+
+        <div id="speechAnswersList">
+        </div>
+
+        <button
+          id="speechDoneButton"
+          class="secondaryButton"
+          onclick="callSpeechDone()"
+        >
+          Terminei!
+        </button>
+
+      </div>
+
+      <!-- SÓ APARECE PRA QUEM NÃO ESTÁ APOSTANDO -->
+      <p
+        id="speechWaitingText"
+        class="waitingText"
+      >
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         REVEAL SCREEN (votação sobre as respostas)
+    ========================== -->
+
+    <div
+      id="revealScreen"
+      class="screen"
+    >
+
+      <h2>
+        REVISE AS RESPOSTAS
+      </h2>
+
+      <p id="revealSubtitle">
+      </p>
+
+      <p class="countdownText">
+        Tempo restante: <span id="revealCountdown">--</span>
+      </p>
+
+      <div id="revealItemsList">
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         RESULT SCREEN
+    ========================== -->
+
+    <div
+      id="resultScreen"
+      class="screen"
+    >
+
+      <h2>
+        RESULTADO DA RODADA
+      </h2>
+
+      <div id="resultOutcomeCard">
+      </div>
+
+      <div id="resultScoreboard">
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         FINAL SCORE SCREEN
+    ========================== -->
+
+    <div
+      id="finalScoreScreen"
+      class="screen"
+    >
+
+      <h2>
+        RESULTADO FINAL
+      </h2>
+
+      <div id="finalScores">
+      </div>
+
+      <button
+        class="homeButton"
+        onclick="window.location.href='../index.html'"
+      >
+        Voltar ao Início
+      </button>
+
+    </div>
+
+    <button
+      id="hostButton"
+      style="display:none"
+      onclick="SendHostCommand()"
+    >
+      Começar Jogo
+    </button>
+
+  </div>
+
+  <div
+    id="pauseOverlay"
+    class="pauseOverlay"
+  >
+    <div class="pauseOverlayCard">
+      <h2>Jogo Pausado</h2>
+      <p>Aguarde o host retomar...</p>
+    </div>
+  </div>
+
+  <script
+    type="module"
+    src="Aposta_app.js"
+  ></script>
+
+</body>
+
+</html>

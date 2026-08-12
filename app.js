@@ -304,6 +304,12 @@ window.joinRoom = async function()
         `Glimpse/Glimpse_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "Aposta")
+    {
+      window.location.href =
+        `Aposta/Aposta_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =
