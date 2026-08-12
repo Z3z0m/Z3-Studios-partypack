@@ -589,6 +589,7 @@ window.callSpeechDone = async function()
 let revealUnsubscribe = null;
 let revealBuilt = false;
 let revealIsBidder = false;
+let revealTotalAnswers = 0;
 let myVotes = new Map(); // answerIndex -> true (concordo) | false (discordo)
 
 function OpenReveal()
@@ -616,11 +617,6 @@ function OpenReveal()
       revealBuilt = true;
 
       BuildRevealScreen(data);
-
-      if(data.duration)
-      {
-        StartCountdown(data.duration, "revealCountdown");
-      }
     }
 
     // RESULTADOS (chegam depois, quando o host resolve a votação)
@@ -642,6 +638,7 @@ function OpenReveal()
 function BuildRevealScreen(data)
 {
   revealIsBidder = data.bidderId === currentPlayerId;
+  revealTotalAnswers = Object.keys(data.answers).length;
 
   document.getElementById("revealSubtitle").innerText =
     revealIsBidder
@@ -655,6 +652,29 @@ function BuildRevealScreen(data)
   {
     BuildRevealRow(Number(answerIndex), text);
   });
+
+  UpdateRevealVoteStatus();
+}
+
+// Texto abaixo do subtítulo: lembra de votar em tudo, depois avisa que é só
+// esperar — não tem prazo, a fase só passa quando todo mundo já votou.
+function UpdateRevealVoteStatus()
+{
+  const statusText = document.getElementById("revealVoteStatusText");
+  if(!statusText) return;
+
+  if(revealIsBidder)
+  {
+    statusText.innerText = "";
+  }
+  else if(myVotes.size >= revealTotalAnswers && revealTotalAnswers > 0)
+  {
+    statusText.innerText = "Você votou em tudo! Aguardando os outros jogadores...";
+  }
+  else
+  {
+    statusText.innerText = `Faltam ${revealTotalAnswers - myVotes.size} resposta(s) pra você votar.`;
+  }
 }
 
 function BuildRevealRow(answerIndex, text)
@@ -718,6 +738,8 @@ async function CastVote(index, agree, agreeButton, disagreeButton)
 
   agreeButton.classList.toggle("selected", agree);
   disagreeButton.classList.toggle("selected", !agree);
+
+  UpdateRevealVoteStatus();
 
   await set(
     ref(db, `rooms/${currentRoomCode}/currentState/reveal/votes/${index}/${currentPlayerId}`),
