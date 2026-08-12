@@ -291,24 +291,39 @@ button:disabled{
   white-space:nowrap;
 }
 
-.challengeToggleButton{
+.voteButtons{
+  display:flex;
+  gap:8px;
+
+  flex-shrink:0;
+}
+
+.voteButton{
   width:auto;
 
-  padding:10px 16px;
+  padding:10px 14px;
 
   font-size:14px;
 
-  background:#e74c3c;
+  opacity:0.55;
 
   white-space:nowrap;
 }
 
-.challengeToggleButton:hover:not(:disabled){
-  background:#ff5c4d;
+.voteButton.agree{
+  background:#4caf50;
 }
 
-.challengeToggleButton.selected{
-  background:#7a1f1f;
+.voteButton.disagree{
+  background:#e74c3c;
+}
+
+.voteButton:hover:not(:disabled){
+  opacity:0.8;
+}
+
+.voteButton.selected{
+  opacity:1;
 }
 
 .revealRow.revealRowKept{

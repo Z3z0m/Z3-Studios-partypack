@@ -589,7 +589,7 @@ window.callSpeechDone = async function()
 let revealUnsubscribe = null;
 let revealBuilt = false;
 let revealIsBidder = false;
-let challengedByMe = new Set();
+let myVotes = new Map(); // answerIndex -> true (concordo) | false (discordo)
 
 function OpenReveal()
 {
@@ -600,7 +600,7 @@ function OpenReveal()
   }
 
   revealBuilt = false;
-  challengedByMe = new Set();
+  myVotes = new Map();
 
   const revealRef =
     ref(db, `rooms/${currentRoomCode}/currentState/reveal`);
@@ -633,8 +633,7 @@ function OpenReveal()
 
         row.classList.add(outcome === "invalidated" ? "revealRowInvalidated" : "revealRowKept");
 
-        const button = row.querySelector(".challengeToggleButton");
-        if(button) button.disabled = true;
+        row.querySelectorAll(".voteButton").forEach((button) => { button.disabled = true; });
       });
     }
   });
@@ -647,7 +646,7 @@ function BuildRevealScreen(data)
   document.getElementById("revealSubtitle").innerText =
     revealIsBidder
       ? "Aguarde a votação dos outros jogadores."
-      : `${data.bidderName} apostou ${data.bidAmount}. Questione as que acharem erradas!`;
+      : `${data.bidderName} apostou ${data.bidAmount}. Vote CONCORDO ou DISCORDO em cada resposta — a fase só avança quando todo mundo votar!`;
 
   const container = document.getElementById("revealItemsList");
   container.innerHTML = "";
@@ -682,11 +681,22 @@ function BuildRevealRow(answerIndex, text)
   }
   else
   {
-    const button = document.createElement("button");
-    button.className = "challengeToggleButton";
-    button.innerText = "Questionar";
-    button.onclick = () => ToggleChallenge(answerIndex, button);
-    row.appendChild(button);
+    const voteButtons = document.createElement("div");
+    voteButtons.className = "voteButtons";
+
+    const agreeButton = document.createElement("button");
+    agreeButton.className = "voteButton agree";
+    agreeButton.innerText = "✓ Concordo";
+    agreeButton.onclick = () => CastVote(answerIndex, true, agreeButton, disagreeButton);
+
+    const disagreeButton = document.createElement("button");
+    disagreeButton.className = "voteButton disagree";
+    disagreeButton.innerText = "✕ Discordo";
+    disagreeButton.onclick = () => CastVote(answerIndex, false, agreeButton, disagreeButton);
+
+    voteButtons.appendChild(agreeButton);
+    voteButtons.appendChild(disagreeButton);
+    row.appendChild(voteButtons);
   }
 
   container.appendChild(row);
@@ -694,31 +704,24 @@ function BuildRevealRow(answerIndex, text)
 
 
 // =========================
-// QUESTIONAR (toggle — pode desfazer enquanto a janela não fechar)
+// CONCORDO / DISCORDO (dá pra trocar de ideia enquanto a votação não fechar)
 // =========================
 
-async function ToggleChallenge(index, button)
+async function CastVote(index, agree, agreeButton, disagreeButton)
 {
   if(isGamePaused) return;
 
-  const isChallenged = challengedByMe.has(index);
+  // MESMO VOTO DE NOVO: não faz nada (não dá pra "desvotar", só trocar).
+  if(myVotes.get(index) === agree) return;
 
-  if(isChallenged)
-  {
-    challengedByMe.delete(index);
-    button.classList.remove("selected");
-    button.innerText = "Questionar";
-  }
-  else
-  {
-    challengedByMe.add(index);
-    button.classList.add("selected");
-    button.innerText = "Questionado!";
-  }
+  myVotes.set(index, agree);
+
+  agreeButton.classList.toggle("selected", agree);
+  disagreeButton.classList.toggle("selected", !agree);
 
   await set(
-    ref(db, `rooms/${currentRoomCode}/currentState/reveal/challenges/${index}/${currentPlayerId}`),
-    isChallenged ? null : true
+    ref(db, `rooms/${currentRoomCode}/currentState/reveal/votes/${index}/${currentPlayerId}`),
+    agree
   );
 }
 
