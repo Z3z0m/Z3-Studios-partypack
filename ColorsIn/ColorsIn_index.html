@@ -82,6 +82,10 @@
       </h2>
       <div id="myColorPreview"></div>
 
+      <button id="viewContextButton" class="secondaryButton">
+          🔎 Ver cores vizinhas
+      </button>
+
       <p>Digite uma dica para sua cor.</p>
 
       <input
@@ -123,6 +127,26 @@
         Começar Jogo
       </button>
 
+  </div>
+
+  <div
+    id="contextModal"
+    class="contextModal"
+  >
+    <div class="contextModalCard">
+      <h2>Contexto da sua cor</h2>
+
+      <p class="contextModalHint">
+        Sua cor está no centro (com borda branca).
+        Veja como ela se compara às cores vizinhas da grade.
+      </p>
+
+      <div id="contextGrid"></div>
+
+      <button id="closeContextButton" class="secondaryButton">
+          Fechar
+      </button>
+    </div>
   </div>
 
   <div

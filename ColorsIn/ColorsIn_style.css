@@ -391,6 +391,111 @@ h1{
 
 
 /* =========================
+   SECONDARY BUTTON
+========================= */
+
+.secondaryButton{
+    width:100%;
+
+    max-width:300px;
+
+    padding:12px;
+
+    border:2px solid #5c8dff;
+
+    border-radius:10px;
+
+    background:transparent;
+
+    color:#5c8dff;
+
+    font-size:14px;
+    font-weight:bold;
+
+    cursor:pointer;
+
+    transition:0.2s;
+}
+
+.secondaryButton:hover{
+    background:rgba(92,141,255,0.15);
+}
+
+/* =========================
+   COLOR CONTEXT MODAL
+========================= */
+
+.contextModal{
+    display:none;
+
+    position:fixed;
+    inset:0;
+
+    background:rgba(0,0,0,0.8);
+
+    z-index:9998;
+
+    align-items:center;
+    justify-content:center;
+
+    text-align:center;
+}
+
+.contextModal.active{
+    display:flex;
+}
+
+.contextModalCard{
+    width:90%;
+    max-width:420px;
+
+    background:#1e1e1e;
+
+    border-radius:20px;
+
+    padding:30px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    gap:16px;
+}
+
+.contextModalHint{
+    opacity:0.75;
+
+    font-size:14px;
+}
+
+#contextGrid{
+    display:grid;
+
+    gap:6px;
+
+    width:100%;
+}
+
+.contextCell{
+    aspect-ratio:1;
+
+    border-radius:6px;
+}
+
+.contextCell.contextCellCenter{
+    border:3px solid white;
+
+    box-shadow:
+        0 0 12px rgba(255,255,255,0.6);
+}
+
+.contextCell.contextCellEmpty{
+    background:transparent;
+}
+
+/* =========================
    PAUSE OVERLAY
 ========================= */
 

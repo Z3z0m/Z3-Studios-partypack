@@ -63,6 +63,25 @@ let selectedGuessX = -1;
 let selectedGuessY = -1;
 let isHost = false;
 let isGamePaused = false;
+let currentSecretColor = null;
+
+
+// =========================
+// GUESS GRID LAYOUT
+// =========================
+
+const GUESS_GRID_WIDTH = 12;
+const GUESS_GRID_HEIGHT = 6;
+
+const rowProfiles =
+[
+    { sat: 0.15, val: 1.00 },
+    { sat: 0.40, val: 1.00 },
+    { sat: 0.70, val: 1.00 },
+    { sat: 1.00, val: 1.00 },
+    { sat: 1.00, val: 0.60 },
+    { sat: 1.00, val: 0.30 },
+];
 
 
 // =========================
@@ -96,7 +115,139 @@ window.onload = async function()
   await CheckIfHost();
   ListenForStage();
   ListenForPause();
+  SetupContextModal();
 };
+
+
+// =========================
+// COLOR CONTEXT MODAL
+// =========================
+
+function SetupContextModal()
+{
+    document
+        .getElementById("viewContextButton")
+        .onclick =
+    () =>
+    {
+        if(!currentSecretColor) return;
+
+        RenderColorContext(currentSecretColor);
+
+        document
+            .getElementById("contextModal")
+            .classList.add("active");
+    };
+
+    document
+        .getElementById("closeContextButton")
+        .onclick =
+    () =>
+    {
+        document
+            .getElementById("contextModal")
+            .classList.remove("active");
+    };
+}
+
+function FindClosestGridCell(r,g,b)
+{
+    let closest =
+        { x: 0, y: 0, dist: Infinity };
+
+    for(let y=0;y<GUESS_GRID_HEIGHT;y++)
+    {
+        const { sat, val } = rowProfiles[y];
+
+        for(let x=0;x<GUESS_GRID_WIDTH;x++)
+        {
+            const hue = x / GUESS_GRID_WIDTH;
+
+            const cellRgb =
+                HSVtoRGBValues(hue, sat, val);
+
+            const dist =
+                (cellRgb.r - r) ** 2 +
+                (cellRgb.g - g) ** 2 +
+                (cellRgb.b - b) ** 2;
+
+            if(dist < closest.dist)
+                closest = { x, y, dist };
+        }
+    }
+
+    return closest;
+}
+
+const CONTEXT_RADIUS_X = 2;
+const CONTEXT_RADIUS_Y = 1;
+
+function RenderColorContext(secretColor)
+{
+    const r = Math.round(secretColor.r * 255);
+    const g = Math.round(secretColor.g * 255);
+    const b = Math.round(secretColor.b * 255);
+
+    const { x: centerX, y: centerY } =
+        FindClosestGridCell(r, g, b);
+
+    const grid =
+        document.getElementById("contextGrid");
+
+    grid.innerHTML = "";
+
+    const columns =
+        CONTEXT_RADIUS_X * 2 + 1;
+
+    grid.style.gridTemplateColumns =
+        `repeat(${columns}, 1fr)`;
+
+    for(let dy=-CONTEXT_RADIUS_Y; dy<=CONTEXT_RADIUS_Y; dy++)
+    {
+        const y = centerY + dy;
+        const isOutOfBounds = y < 0 || y >= GUESS_GRID_HEIGHT;
+
+        for(let dx=-CONTEXT_RADIUS_X; dx<=CONTEXT_RADIUS_X; dx++)
+        {
+            const cell =
+                document.createElement("div");
+
+            cell.className = "contextCell";
+
+            if(isOutOfBounds)
+            {
+                cell.classList.add("contextCellEmpty");
+                grid.appendChild(cell);
+                continue;
+            }
+
+            const x =
+                ((centerX + dx) % GUESS_GRID_WIDTH + GUESS_GRID_WIDTH) %
+                GUESS_GRID_WIDTH;
+
+            const isCenter =
+                dx === 0 && dy === 0;
+
+            if(isCenter)
+            {
+                cell.style.background =
+                    `rgb(${r},${g},${b})`;
+
+                cell.classList.add("contextCellCenter");
+            }
+            else
+            {
+                const { sat, val } = rowProfiles[y];
+                const hue = x / GUESS_GRID_WIDTH;
+
+                cell.style.background =
+                    HSVtoRGB(hue, sat, val);
+            }
+
+            grid.appendChild(cell);
+        }
+    }
+}
 
 
 // =========================
@@ -396,6 +547,8 @@ async function OpenGiveHint()
         const color =
             secretSnapshot.val();
 
+        currentSecretColor = color;
+
         const r =
             Math.round(color.r * 255);
 
@@ -420,6 +573,8 @@ async function OpenGiveHint()
     }
     else
     {
+        currentSecretColor = null;
+
         document
             .getElementById("waitingHintScreen")
             .style.display =
@@ -507,22 +662,9 @@ function GenerateGuessGrid()
 
     grid.innerHTML = "";
 
-    const width = 12;
-    const height = 6;
-
-    const rowProfiles =
-    [
-        { sat: 0.15, val: 1.00 },
-        { sat: 0.40, val: 1.00 },
-        { sat: 0.70, val: 1.00 },
-        { sat: 1.00, val: 1.00 },
-        { sat: 1.00, val: 0.60 },
-        { sat: 1.00, val: 0.30 },
-    ];
-
-    for(let y=0;y<height;y++)
+    for(let y=0;y<GUESS_GRID_HEIGHT;y++)
     {
-        for(let x=0;x<width;x++)
+        for(let x=0;x<GUESS_GRID_WIDTH;x++)
         {
             const cell =
                 document.createElement("div");
@@ -531,7 +673,7 @@ function GenerateGuessGrid()
                 "guessCell";
 
             const hue =
-                x / width;
+                x / GUESS_GRID_WIDTH;
 
             const { sat, val } =
                 rowProfiles[y];
@@ -566,7 +708,7 @@ function GenerateGuessGrid()
     }
 }
 
-function HSVtoRGB(h,s,v)
+function HSVtoRGBValues(h,s,v)
 {
     let f =
         (n,k=(n+h*6)%6)=>
@@ -575,11 +717,19 @@ function HSVtoRGB(h,s,v)
             0
         );
 
-    return `rgb(
-        ${Math.round(f(5)*255)},
-        ${Math.round(f(3)*255)},
-        ${Math.round(f(1)*255)}
-    )`;
+    return {
+        r: Math.round(f(5)*255),
+        g: Math.round(f(3)*255),
+        b: Math.round(f(1)*255)
+    };
+}
+
+function HSVtoRGB(h,s,v)
+{
+    const { r, g, b } =
+        HSVtoRGBValues(h,s,v);
+
+    return `rgb(${r},${g},${b})`;
 }
 
 async function SubmitGuess(x,y)
@@ -794,6 +944,10 @@ async function OpenRoundScore()
 
 function HideAllScreens()
 {
+    document
+        .getElementById("contextModal")
+        .classList.remove("active");
+
     document.getElementById("LobbyScreen").style.display = "none";
     document.getElementById("tutorialScreen").style.display = "none";
     document.getElementById("tutorialControls").style.display = "none";
