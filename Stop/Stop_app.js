@@ -166,6 +166,11 @@ async function CheckIfHost()
 
   isHost = snapshot.val() === true;
 
+  // Nota "você é o anfitrião" mora dentro da lobbyScreen, então já some
+  // sozinha quando a tela muda — não precisa reavaliar depois disso.
+  document.getElementById("hostHint").style.display =
+    isHost ? "block" : "none";
+
   if(isHost)
   {
     UpdateHostButton(currentGameState);
@@ -192,17 +197,18 @@ function UpdateHostButton(state)
 {
   if(!isHost) return;
 
+  const wrap = document.getElementById("hostControls");
   const btn = document.getElementById("hostButton");
 
   // ESCONDE no Tutorial — lá a navegação é feita pelos botões próprios da
   // tela (SendTutorialAction), não pelo botão genérico de host.
   if(state === "Tutorial")
   {
-    btn.style.display = "none";
+    wrap.style.display = "none";
     return;
   }
 
-  btn.style.display = "block";
+  wrap.style.display = "flex";
 
   const labels =
   {
@@ -326,7 +332,7 @@ function StartCountdown(seconds, elementId)
 
   function tick()
   {
-    if(el) el.innerText = `${remaining}s`;
+    if(el) el.innerText = remaining;
 
     if(isGamePaused) return;
 
@@ -381,6 +387,9 @@ async function OpenFilling()
 
   document.getElementById("letterText").innerText = letter;
 
+  document.getElementById("letterHint").innerText =
+    `tudo começa com ${letter}!`;
+
   document.getElementById("themeBanner").innerText =
     `Rodada ${currentRound}`;
 
@@ -388,7 +397,11 @@ async function OpenFilling()
 
   const stopButton = document.getElementById("stopCallButton");
   stopButton.disabled = true;
+  stopButton.classList.remove("calling");
   stopButton.innerText = "PARAR!";
+
+  const stopHint = document.querySelector(".stopHint");
+  if(stopHint) stopHint.style.display = "block";
 
   BuildCategoryInputs(letter);
 
@@ -428,8 +441,12 @@ function BuildCategoryInputs(letter)
       HandleCategoryInput(categoryIndex, input);
     });
 
+    const warning = document.createElement("span");
+    warning.className = "categoryWarning";
+
     row.appendChild(label);
     row.appendChild(input);
+    row.appendChild(warning);
     container.appendChild(row);
   });
 }
@@ -442,10 +459,18 @@ function HandleCategoryInput(categoryIndex, inputEl)
   const normalized = NormalizeForCompare(value);
   const letter = document.getElementById("letterText").innerText.toLowerCase();
 
-  inputEl.classList.toggle(
-    "invalidHint",
-    value.trim().length > 0 && !normalized.startsWith(letter)
-  );
+  const isInvalid =
+    value.trim().length > 0 && !normalized.startsWith(letter);
+
+  inputEl.classList.toggle("invalidHint", isInvalid);
+
+  const warningEl = inputEl.parentElement.querySelector(".categoryWarning");
+
+  if(warningEl)
+  {
+    warningEl.innerText =
+      isInvalid ? `não começa com ${letter.toUpperCase()}` : "";
+  }
 
   clearTimeout(saveDebounceTimers[categoryIndex]);
 
@@ -477,10 +502,15 @@ function UpdateStopButtonAvailability()
     Array.from(inputs).every(input => input.value.trim().length > 0);
 
   const stopButton = document.getElementById("stopCallButton");
+  const stopHint = document.querySelector(".stopHint");
 
   if(!alreadyCalledStop)
   {
     stopButton.disabled = !allFilled;
+
+    // "preencha tudo pra liberar" some assim que o botão destrava — a
+    // mensagem de "gritou PARAR" (fillingStatusText) toma o lugar dela.
+    if(stopHint) stopHint.style.display = allFilled ? "none" : "block";
   }
 }
 
@@ -506,7 +536,11 @@ window.callStop = async function()
 
   const stopButton = document.getElementById("stopCallButton");
   stopButton.disabled = true;
+  stopButton.classList.add("calling");
   stopButton.innerText = "Parando a rodada...";
+
+  const stopHint = document.querySelector(".stopHint");
+  if(stopHint) stopHint.style.display = "none";
 
   await set(
     ref(db, `rooms/${currentRoomCode}/currentState/stopCall`),
@@ -580,7 +614,17 @@ function OpenReveal()
         const row = document.getElementById(`revealRow_${groupIndex}`);
         if(!row) return;
 
-        row.classList.add(outcome === "invalidated" ? "revealRowInvalidated" : "revealRowKept");
+        const invalidated = outcome === "invalidated";
+
+        row.classList.add(invalidated ? "revealRowInvalidated" : "revealRowKept");
+
+        // Risca a palavra (invalidada) e carimba o veredito, igual à tela
+        // "Questionar · veredito" do design.
+        const wordEl = row.querySelector(".revealRowWord");
+        if(wordEl) wordEl.classList.toggle("wordStruck", invalidated);
+
+        const seloEl = row.querySelector(".revealSelo");
+        if(seloEl) seloEl.innerText = invalidated ? "não vale" : "valeu";
 
         const button = row.querySelector(".challengeToggleButton");
         if(button) button.disabled = true;
@@ -657,6 +701,12 @@ function BuildRevealRow(groupIndex, group)
     row.appendChild(button);
   }
 
+  // SELO ("valeu" / "não vale") só ganha texto quando o outcome desta
+  // categoria chegar — ver o listener de "data.outcomes" acima.
+  const selo = document.createElement("span");
+  selo.className = "revealSelo";
+  row.appendChild(selo);
+
   container.appendChild(row);
 }
 
@@ -714,10 +764,14 @@ async function OpenResult()
   const ownAnswers = ownAnswersSnapshot.exists() ? ownAnswersSnapshot.val() : {};
   const ownScores = ownScoresSnapshot.exists() ? ownScoresSnapshot.val() : {};
 
+  let ownTotalPoints = 0;
+
   currentCategories.forEach((category, categoryIndex) =>
   {
     const points = ownScores[categoryIndex] ?? 0;
     const word = ownAnswers[categoryIndex] || "(em branco)";
+
+    ownTotalPoints += points;
 
     // SÓ DISTINGUE "pontuou" (verde) de "não pontuou" (cinza) — não dá pra
     // saber, só pelo número de pontos, se foi único ou repetido sem
@@ -733,6 +787,9 @@ async function OpenResult()
     ownBreakdownDiv.appendChild(row);
   });
 
+  document.getElementById("ownTotalPoints").innerText =
+    `${ownTotalPoints} pts`;
+
   if(playersSnapshot.exists())
   {
     const players = [];
@@ -744,15 +801,17 @@ async function OpenResult()
 
     players.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-    players.forEach((player) =>
+    players.forEach((player, index) =>
     {
-      const item = document.createElement("div");
-      item.className = "scoreItem";
+      const row = document.createElement("div");
+      row.className = "scoreItem";
 
-      item.innerText =
-        `${player.name} - ${player.score || 0}`;
+      row.innerHTML =
+        `<span class="scorePos">${index + 1}º</span>` +
+        `<span class="scoreName">${player.name}</span>` +
+        `<span class="scorePoints">${player.score || 0}</span>`;
 
-      scoreboardDiv.appendChild(item);
+      scoreboardDiv.appendChild(row);
     });
   }
 }
@@ -761,6 +820,10 @@ async function OpenResult()
 // =========================
 // OPEN FINAL SCORE
 // =========================
+
+// TAMANHOS DECRESCENTES POR POSIÇÃO (1º maior, depois vai encolhendo) —
+// da 5ª posição em diante repete o menor tamanho em vez de continuar.
+const FINAL_RANK_SIZES = [46, 40, 36, 34, 32];
 
 async function OpenFinalScore()
 {
@@ -783,16 +846,30 @@ async function OpenFinalScore()
 
   players.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-  players.forEach((player) =>
+  players.forEach((player, index) =>
   {
-    const item =
-      document.createElement("div");
+    const size =
+      FINAL_RANK_SIZES[Math.min(index, FINAL_RANK_SIZES.length - 1)];
 
-    item.className = "scoreItem";
+    const row = document.createElement("div");
+    row.className = "scoreItem finalScoreRow";
 
-    item.innerText =
-      `${player.name} - ${player.score || 0}`;
+    // O 1º lugar ganha o círculo desenhado à mão em volta do nome, igual ao
+    // design da tela final.
+    const winnerCircle = index === 0
+      ? `<svg class="winnerCircle" viewBox="0 0 150 64">` +
+          `<ellipse cx="75" cy="32" rx="70" ry="27" fill="none" stroke="#d5382b" stroke-width="3.5" transform="rotate(-3 75 32)" />` +
+        `</svg>`
+      : "";
 
-    finalDiv.appendChild(item);
+    row.innerHTML =
+      `<span class="scorePos">${index + 1}º</span>` +
+      `<span class="scoreNameWrap">` +
+        `<span class="scoreName" style="font-size:${size}px">${player.name}</span>` +
+        winnerCircle +
+      `</span>` +
+      `<span class="scorePoints" style="font-size:${size}px">${player.score || 0}</span>`;
+
+    finalDiv.appendChild(row);
   });
 }

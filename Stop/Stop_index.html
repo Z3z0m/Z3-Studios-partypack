@@ -12,6 +12,13 @@
 
   <title>Stop</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&family=Gloria+Hallelujah&display=swap"
+    rel="stylesheet"
+  />
+
   <link
     rel="stylesheet"
     href="Stop_style.css"
@@ -32,12 +39,23 @@
       class="screen active"
     >
 
-      <h1>
-        STOP
-      </h1>
+      <div class="stopTitle">
+        <h1>STOP</h1>
+        <svg class="stopSquiggle" viewBox="0 0 210 12">
+          <path d="M3 7 C 60 2, 130 11, 207 4" fill="none" stroke="#23366b" stroke-width="3" stroke-linecap="round" />
+        </svg>
+      </div>
 
       <p>
         Esperando o anfitrião começar...
+      </p>
+
+      <p
+        id="hostHint"
+        class="hostHint"
+        style="display:none"
+      >
+        você é o anfitrião
       </p>
 
     </div>
@@ -59,6 +77,14 @@
       <p>
         Acompanhem a explicação das regras na tela principal!
       </p>
+
+      <div class="tutorialDots">
+        <span class="dot dotActive"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
 
       <div id="tutorialControls">
 
@@ -95,31 +121,38 @@
       class="screen"
     >
 
-      <p class="themeBanner" id="themeBanner">
-      </p>
-
-      <div class="letterBanner">
-        <span>Letra</span>
-        <div id="letterText">?</div>
+      <div class="fillingTopRow">
+        <span id="themeBanner" class="themeBanner"></span>
+        <span class="countdownInline">tempo <span id="fillingCountdown">--</span></span>
       </div>
 
-      <p class="countdownText">
-        Tempo restante: <span id="fillingCountdown">--</span>
-      </p>
+      <div class="letterRow">
+        <div class="letterBanner">
+          <span>Letra</span>
+          <div id="letterText">?</div>
+        </div>
+        <p id="letterHint" class="letterHint"></p>
+      </div>
 
       <div id="categoryInputs">
       </div>
 
-      <button
-        id="stopCallButton"
-        onclick="callStop()"
-        disabled
-      >
-        PARAR!
-      </button>
+      <div class="stopArea">
 
-      <p id="fillingStatusText">
-      </p>
+        <button
+          id="stopCallButton"
+          onclick="callStop()"
+          disabled
+        >
+          PARAR!
+        </button>
+
+        <p class="stopHint">preencha tudo pra liberar</p>
+
+        <p id="fillingStatusText">
+        </p>
+
+      </div>
 
     </div>
 
@@ -142,9 +175,10 @@
         Questione as que parecerem suspeitas — se a maioria concordar, elas perdem os pontos!
       </p>
 
-      <p class="countdownText">
-        Tempo restante: <span id="revealCountdown">--</span>
-      </p>
+      <div class="statRow">
+        <span>Tempo restante</span>
+        <span id="revealCountdown" class="statValue statValueRed">--</span>
+      </div>
 
       <div id="revealItemsList">
       </div>
@@ -165,8 +199,15 @@
         RESULTADO DA RODADA
       </h2>
 
+      <div class="statRow">
+        <span>suas respostas</span>
+        <span id="ownTotalPoints" class="statValue">-- pts</span>
+      </div>
+
       <div id="ownBreakdown">
       </div>
+
+      <div class="sectionLabel">placar</div>
 
       <div id="resultScoreboard">
       </div>
@@ -199,13 +240,22 @@
 
     </div>
 
-    <button
-      id="hostButton"
+    <div
+      id="hostControls"
+      class="hostControls"
       style="display:none"
-      onclick="SendHostCommand()"
     >
-      Começar Jogo
-    </button>
+
+      <button
+        id="hostButton"
+        onclick="SendHostCommand()"
+      >
+        Começar Jogo
+      </button>
+
+      <p class="hostCaption">só você, o host, vê este botão</p>
+
+    </div>
 
   </div>
 
