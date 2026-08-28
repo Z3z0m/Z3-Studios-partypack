@@ -268,7 +268,7 @@ window.joinRoom = async function()
         `ColorsIn/ColorsIn_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
-    else if(detectedGameMode == "Trivia" || detectedGameMode == "2000ner")
+    else if(detectedGameMode == "NextAthena")
     {
       window.location.href =
         `Trivia/Trivia_index.html?room=${roomCode}&id=${playerId}`;

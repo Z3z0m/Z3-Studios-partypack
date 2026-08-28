@@ -1,45 +1,84 @@
+/* =========================
+   TRIVIA CLIENT — identidade Athena
+   Paleta do host:
+     terracota   #C67138
+     terracota-  #8F5327  (barra lateral / traços)
+     creme       #F9F4ED
+     creme borda #F7EBD6
+     marrom      #5C2F14
+     tinta       #3A2317
+     sálvia      #8FA073
+========================= */
+
+/* Troque pela fonte do host quando tiver o arquivo:
+@font-face{
+  font-family:"AthenaDisplay";
+  src:url("fonts/athena.woff2") format("woff2");
+  font-display:swap;
+}
+e então: --font-display:"AthenaDisplay", "Cinzel", serif;
+*/
+
+:root{
+  --terracota:#8F5327;
+  --terracota-dark:#7c4721;
+  --creme:#F9F4ED;
+  --creme-borda:#F7EBD6;
+  --marrom:#5C2F14;
+  --tinta:#3A2317;
+  --salvia:#8FA073;
+  --pedra:#EBD9CC;
+
+  --font-display:"Cinzel", "Times New Roman", serif;
+  --font-body:"Alegreya Sans", system-ui, sans-serif;
+
+  --meandro:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M0 22H22V2H4V18H18V6H8V14H14' fill='none' stroke='%23F7EBD6' stroke-width='2'/%3E%3C/svg%3E");
+}
+
 *{
   margin:0;
   padding:0;
   box-sizing:border-box;
-
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+  font-family:var(--font-body);
 }
 
 body{
-  width:100vw;
-  height:100vh;
-
-  background:#111;
-
+  min-height:100vh;
+  background:var(--terracota);
   display:flex;
-
   justify-content:center;
   align-items:center;
-
-  color:white;
+  padding:34px 0;
+  color:var(--creme);
+  -webkit-font-smoothing:antialiased;
 }
+
+/* faixa de meandro grego no topo e na base */
+body::before,
+body::after{
+  content:"";
+  position:fixed;
+  left:0;
+  right:0;
+  height:22px;
+  background-color:var(--terracota-dark);
+  background-image:var(--meandro);
+  background-size:22px 22px;
+  background-repeat:repeat-x;
+  z-index:10;
+}
+
+body::before{ top:0; }
+body::after{ bottom:0; }
 
 .container{
   width:90%;
   max-width:500px;
-
-  padding:40px;
-
-  border-radius:25px;
-
-  background:#1e1e1e;
-
+  padding:28px 22px;
   display:flex;
-
   flex-direction:column;
-
   align-items:center;
-
-  gap:25px;
+  gap:22px;
 }
 
 
@@ -49,13 +88,9 @@ body{
 
 .screen{
   display:none;
-
   flex-direction:column;
-
   align-items:center;
-
-  gap:20px;
-
+  gap:18px;
   width:100%;
 }
 
@@ -69,362 +104,342 @@ body{
 ========================= */
 
 #gameTitle{
-  font-size:48px;
-
-  letter-spacing:6px;
-
-  font-weight:bold;
+  font-family:var(--font-display);
+  font-size:40px;
+  font-weight:800;
+  line-height:1.1;
+  letter-spacing:0.16em;
+  text-indent:0.16em;
+  text-transform:uppercase;
+  color:var(--creme);
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
 }
 
-.t1{ color:#a78bfa; }
-.t2{ color:#818cf8; }
-.t3{ color:#60a5fa; }
-.t4{ color:#818cf8; }
-.t5{ color:#a78bfa; }
-.t6{ color:#c084fc; }
+#gameTitle span{ color:var(--creme); }
 
 #lobbyWaitingText{
-  font-size:18px;
-
-  opacity:0.6;
-
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:400;
+  letter-spacing:0.16em;
+  text-transform:uppercase;
   text-align:center;
+  line-height:1.7;
+  color:var(--creme);
+  opacity:0.9;
 }
 
 
 /* =========================
-   TUTORIAL SCREEN
+   TUTORIAL
 ========================= */
 
 #tutorialText{
-  font-size:18px;
-
+  width:100%;
+  background:var(--creme);
+  border-radius:18px;
+  padding:30px 24px;
+  font-family:var(--font-display);
+  font-size:17px;
+  font-weight:400;
   text-align:center;
-
-  line-height:1.5;
-
+  line-height:1.6;
+  color:var(--tinta);
   min-height:120px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 #tutorialControls{
   display:none;
-
   flex-direction:column;
-
   gap:10px;
-
   width:100%;
 }
 
 .tutorialNavRow{
   display:flex;
-
   gap:10px;
-
   width:100%;
 }
 
 #tutorialControls button{
   flex:1;
-
-  padding:14px 12px;
-
-  border:none;
-
+  padding:15px 12px;
+  border:2px solid var(--creme);
   border-radius:14px;
-
-  background:#2c2c2c;
-
-  color:white;
-
-  font-size:14px;
-  font-weight:bold;
-
+  background:rgba(249,244,237,0.14);
+  color:var(--creme);
+  font-family:var(--font-display);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
   cursor:pointer;
-
   transition:0.2s;
 }
 
 #tutorialControls button:hover{
-  background:#3a3a3a;
+  background:rgba(249,244,237,0.26);
 }
 
 #skipTutorialBtn{
   width:100%;
-
-  background:#7c3aed;
+  border:2px solid var(--creme);
+  border-radius:999px;
+  background:var(--creme);
+  color:var(--marrom);
+  padding:16px;
+  font-size:14px;
+  letter-spacing:0.14em;
 }
 
 #skipTutorialBtn:hover{
-  background:#8b4ff0;
+  background:#FFFFFF;
 }
 
 
 /* =========================
-   QUESTION SCREEN
+   PERGUNTA
 ========================= */
 
 #roundBadge{
-  background:#2a2a2a;
-
-  border-radius:20px;
-
-  padding:6px 18px;
+  background:var(--creme);
+  border-radius:999px;
+  padding:8px 22px;
 }
 
 #roundText{
-  font-size:14px;
-
-  font-weight:bold;
-
-  letter-spacing:1px;
-
-  color:#a78bfa;
+  font-family:var(--font-display);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--terracota-dark);
 }
 
 #questionText{
+  font-family:var(--font-display);
   font-size:22px;
-
+  font-weight:700;
   text-align:center;
-
-  line-height:1.4;
-
-  font-weight:bold;
+  line-height:1.35;
+  color:var(--creme);
+  text-wrap:pretty;
 }
 
 #answerGrid{
   width:100%;
-
-  display:grid;
-
-  grid-template-columns:
-    repeat(2, 1fr);
-
+  display:flex;
+  flex-direction:column;
   gap:12px;
 }
 
 .answerButton{
   width:100%;
-
-  padding:18px 12px;
-
-  border:none;
-
-  border-radius:14px;
-
-  background:#2c2c2c;
-
-  color:white;
-
-  font-size:15px;
-
-  font-weight:bold;
-
-  cursor:pointer;
-
-  transition:0.2s;
-
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-height:66px;
+  padding:14px 16px;
+  border:3px solid transparent;
+  border-radius:16px;
+  background:var(--creme);
+  color:var(--tinta);
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:600;
   text-align:left;
-
   line-height:1.3;
+  cursor:pointer;
+  transition:0.2s;
+}
 
-  min-height:70px;
+.answerLetter{
+  width:34px;
+  height:34px;
+  flex-shrink:0;
+  border-radius:50%;
+  background:var(--pedra);
+  color:var(--terracota-dark);
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .answerButton:hover{
-  background:#3a3a3a;
-
   transform:scale(1.02);
 }
 
 .answerButton.selected{
-  background:#7c3aed;
+  background:var(--marrom);
+  color:var(--creme);
+  border-color:var(--creme);
+  box-shadow:0 0 0 4px rgba(249,244,237,0.18);
+}
 
-  border:3px solid #a78bfa;
-
-  box-shadow:
-    0 0 16px rgba(124,58,237,0.5);
+.answerButton.selected .answerLetter{
+  background:var(--creme);
+  color:var(--marrom);
 }
 
 .answerButton.dimmed{
-  opacity:0.3;
+  opacity:0.4;
 }
 
 .answerButton:disabled{
   cursor:default;
 }
 
-.answerButton:disabled:not(.selected):not(.dimmed):hover{
+.answerButton:disabled:hover{
   transform:none;
 }
 
 #waitingAnswerText{
-  font-size:14px;
-
-  opacity:0.7;
-
+  font-family:var(--font-display);
+  font-size:12px;
+  letter-spacing:0.16em;
+  text-transform:uppercase;
   text-align:center;
-
+  color:var(--creme);
+  opacity:0.85;
   min-height:20px;
 }
 
 
 /* =========================
-   RESULT SCREEN
-========================= */
-
-#resultTitle{
-  font-size:28px;
-
-  font-weight:bold;
-
-  text-align:center;
-
-  color:#a78bfa;
-}
-
-#resultSubtitle{
-  font-size:16px;
-
-  opacity:0.7;
-
-  text-align:center;
-}
-
-
-/* =========================
-   SCOREBOARD / FINAL SCORE
+   PLACAR / RESULTADO FINAL
 ========================= */
 
 #scoreboardTitle,
 #finalScoreTitle{
-  font-size:28px;
-
-  font-weight:bold;
-
-  letter-spacing:2px;
-
+  font-family:var(--font-display);
+  font-size:22px;
+  font-weight:800;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
   text-align:center;
+  color:var(--creme);
+}
+
+#scoreboardTitle::after,
+#finalScoreTitle::after{
+  content:"";
+  display:block;
+  width:52px;
+  height:2px;
+  margin:14px auto 0;
+  background:var(--creme);
+  opacity:0.5;
 }
 
 #scoreList,
 #finalList{
   width:100%;
-
   display:flex;
-
   flex-direction:column;
-
   gap:10px;
 }
 
 .scoreCard{
   display:flex;
-
   align-items:center;
-
-  gap:14px;
-
-  background:#2a2a2a;
-
+  gap:12px;
+  background:var(--creme);
   border-radius:14px;
-
-  padding:12px 16px;
+  padding:11px 14px;
 }
 
 .scoreCard img{
-  width:48px;
-  height:48px;
-
+  width:44px;
+  height:44px;
   border-radius:50%;
-
   object-fit:cover;
-
-  border:3px solid #444;
-
+  border:3px solid var(--terracota-dark);
   flex-shrink:0;
 }
 
 .scoreCardRank{
-  font-size:18px;
-
-  font-weight:bold;
-
-  color:#a78bfa;
-
-  min-width:36px;
-
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+  color:var(--terracota-dark);
+  min-width:28px;
   text-align:center;
 }
 
 .scoreCardName{
   flex:1;
-
-  font-size:16px;
-
-  font-weight:bold;
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+  color:var(--tinta);
 }
 
 .scoreCardPoints{
-  font-size:16px;
+  font-family:var(--font-display);
+  font-size:14px;
+  font-weight:700;
+  color:var(--terracota-dark);
+}
 
-  font-weight:bold;
+/* primeiro lugar no resultado final */
+#finalList .scoreCard:first-child{
+  border:3px solid var(--marrom);
+}
 
-  color:#ffd93d;
+#finalList .scoreCard:first-child img{
+  border-color:var(--marrom);
 }
 
 
 /* =========================
-   HOST BUTTON
+   BOTÃO DO HOST
 ========================= */
 
 #hostButton{
   width:100%;
-
-  padding:18px;
-
+  padding:17px;
   border:none;
-
-  border-radius:14px;
-
-  background:#f59e0b;
-
-  color:#111;
-
-  font-size:17px;
-  font-weight:bold;
-
+  border-radius:999px;
+  background:var(--creme);
+  color:var(--marrom);
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
   cursor:pointer;
-
   transition:0.2s;
-
-  letter-spacing:1px;
 }
 
 #hostButton:hover{
-  background:#fbbf24;
-
+  background:#FFFFFF;
   transform:scale(1.02);
 }
 
 
 /* =========================
-   PAUSE OVERLAY
+   OVERLAY DE PAUSA
 ========================= */
 
 .pauseOverlay{
   display:none;
-
   position:fixed;
   inset:0;
-
-  background:rgba(0,0,0,0.75);
-
+  background:rgba(50,26,10,0.78);
   z-index:9999;
-
   align-items:center;
   justify-content:center;
-
+  padding:30px;
   text-align:center;
 }
 
@@ -433,39 +448,88 @@ body{
 }
 
 .pauseOverlayCard{
-  background:#1e1e1e;
-
+  width:100%;
+  max-width:420px;
+  background:var(--creme);
   border-radius:20px;
+  padding:30px 26px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
 
-  padding:30px 40px;
+.pauseOverlayCard h2{
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--tinta);
+}
+
+.pauseOverlayCard p{
+  font-family:var(--font-display);
+  font-size:14px;
+  color:var(--terracota-dark);
 }
 
 
 /* =========================
-   HOME BUTTON
+   BOTÃO VOLTAR
 ========================= */
 
 .homeButton{
   width:100%;
-
-  padding:14px;
-
-  border:none;
-
-  border-radius:14px;
-
-  background:#2c2c2c;
-
-  color:white;
-
-  font-size:15px;
-  font-weight:bold;
-
+  padding:15px;
+  border:2px solid var(--creme);
+  border-radius:999px;
+  background:transparent;
+  color:var(--creme);
+  font-family:var(--font-display);
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
   cursor:pointer;
-
   transition:0.2s;
 }
 
 .homeButton:hover{
-  background:#3a3a3a;
+  background:rgba(249,244,237,0.16);
 }
+
+
+/* =========================
+   PARTÍCULAS DE FUNDO
+========================= */
+
+.specks{
+  position:fixed;
+  inset:22px 0;
+  pointer-events:none;
+  z-index:0;
+}
+
+.specks span{
+  position:absolute;
+  width:8px;
+  height:8px;
+  background:var(--creme);
+  opacity:0.45;
+  transform:rotate(45deg);
+}
+
+.specks span:nth-child(2){ background:var(--salvia); opacity:0.9; }
+.specks span:nth-child(4){ background:var(--salvia); opacity:0.8; }
+.specks span:nth-child(6){ background:var(--salvia); opacity:0.7; }
+
+.specks span:nth-child(1){ top:9%;  left:11%; }
+.specks span:nth-child(2){ top:20%; right:14%; }
+.specks span:nth-child(3){ top:38%; left:7%; }
+.specks span:nth-child(4){ top:52%; right:9%; }
+.specks span:nth-child(5){ bottom:24%; left:17%; }
+.specks span:nth-child(6){ bottom:12%; right:20%; }
+.specks span:nth-child(7){ bottom:34%; right:26%; }
+.specks span:nth-child(8){ top:66%; left:24%; }
+
+.container{ position:relative; z-index:1; }

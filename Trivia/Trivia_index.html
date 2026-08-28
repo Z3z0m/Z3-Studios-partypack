@@ -10,7 +10,14 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Trivia</title>
+  <title>Next Athena</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Alegreya+Sans:wght@400;500;700;800&display=swap"
+    rel="stylesheet"
+  />
 
   <link
     rel="stylesheet"
@@ -20,6 +27,11 @@
 </head>
 
 <body>
+
+  <div class="specks">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
 
   <div class="container">
 
@@ -34,12 +46,8 @@
     >
 
       <h1 id="gameTitle">
-        <span class="t1">T</span>
-        <span class="t2">R</span>
-        <span class="t3">I</span>
-        <span class="t4">V</span>
-        <span class="t5">I</span>
-        <span class="t6">A</span>
+        <span class="titleLine">Next</span>
+        <span class="titleLine">Athena</span>
       </h1>
 
       <h2 id="lobbyWaitingText">
@@ -111,53 +119,37 @@
           class="answerButton"
           onclick="AnswerQuestion(0)"
         >
-          A. ...
+          <span class="answerLetter">A</span>
+          <span class="answerLabel">...</span>
         </button>
 
         <button
           class="answerButton"
           onclick="AnswerQuestion(1)"
         >
-          B. ...
+          <span class="answerLetter">B</span>
+          <span class="answerLabel">...</span>
         </button>
 
         <button
           class="answerButton"
           onclick="AnswerQuestion(2)"
         >
-          C. ...
+          <span class="answerLetter">Γ</span>
+          <span class="answerLabel">...</span>
         </button>
 
         <button
           class="answerButton"
           onclick="AnswerQuestion(3)"
         >
-          D. ...
+          <span class="answerLetter">Δ</span>
+          <span class="answerLabel">...</span>
         </button>
 
       </div>
 
       <p id="waitingAnswerText"></p>
-
-    </div>
-
-
-    <!-- =========================
-         RESULT SCREEN
-    ========================== -->
-
-    <div
-      id="resultScreen"
-      class="screen"
-    >
-
-      <h2 id="resultTitle">
-        Resposta enviada!
-      </h2>
-
-      <p id="resultSubtitle">
-        Aguardando o resultado...
-      </p>
 
     </div>
 

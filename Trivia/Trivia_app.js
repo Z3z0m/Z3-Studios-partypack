@@ -230,7 +230,12 @@ function ListenForGameState()
 
             if (state === "Result")
             {
-                ShowScreen("resultScreen");
+                ShowScreen("questionScreen");
+
+                document
+                    .getElementById("waitingAnswerText")
+                    .innerText =
+                    "Resposta enviada! Aguardando o resultado...";
             }
 
             if (state === "Scoreboard")
@@ -275,17 +280,21 @@ function ListenForQuestion()
 
             if (data.answers)
             {
-                const labels = ["A", "B", "C", "D"];
-
                 const buttons =
                     document.querySelectorAll(".answerButton");
 
                 Object.entries(data.answers).forEach(([index, text]) =>
                 {
                     const i = parseInt(index);
-                    if (buttons[i])
-                        buttons[i].innerText =
-                            `${labels[i]}. ${text}`;
+                    if (!buttons[i]) return;
+
+                    const label =
+                        buttons[i].querySelector(".answerLabel");
+
+                    if (label)
+                        label.textContent = text;
+                    else
+                        buttons[i].textContent = text;
                 });
             }
 
@@ -294,7 +303,7 @@ function ListenForQuestion()
                 document
                     .getElementById("roundText")
                     .innerText =
-                    `Pergunta ${data.round}`;
+                    `Rodada ${data.round}`;
             }
         }
     );
