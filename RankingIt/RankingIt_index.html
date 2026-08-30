@@ -26,17 +26,17 @@
   </p>
 
   <!-- =========================
-       QUADRO DE CLASSIFICAÇÃO (persistente, fora do .container — usado
-       tanto no Judging quanto no Refining, ver RankingIt_app.js)
+       QUADRO DE CLASSIFICAÇÃO (persistente, fora do .container — só usado no
+       Refining, ver RankingIt_app.js). Arraste as cartas entre as colunas.
   ========================== -->
 
   <div id="rankBoardWrapper" class="rankBoardWrapper">
 
     <p id="rankBoardAxis" class="axisText"></p>
-    <p id="rankBoardHint" class="rankBoardHint"></p>
+    <p class="rankBoardHint">Arraste cada resposta pra nota que ela merece — dá pra mudar quantas vezes quiser.</p>
 
     <div id="authorReminder" class="authorReminder">
-      <strong>Sua resposta está aí!</strong> Não reaja nem dê pistas enquanto os outros julgam.
+      <strong>Sua resposta está aí!</strong> Não reaja nem dê pistas enquanto os outros reclassificam.
     </div>
 
     <div id="rankTray" class="cardTray"></div>
@@ -70,7 +70,7 @@
 
     <p id="rankProgressText" class="progressText"></p>
 
-    <button id="refiningReadyBtn" style="display:none" onclick="markRefiningReady()">
+    <button id="refiningReadyBtn" onclick="markRefiningReady()">
       Pronto!
     </button>
 
@@ -205,13 +205,47 @@
 
 
     <!-- =========================
-         JUDGING SCREEN (quadro fica em #rankBoardWrapper, fora daqui)
+         JUDGING SCREEN (sequencial — uma resposta por vez)
     ========================== -->
 
     <div
       id="judgingScreen"
       class="screen"
     >
+
+      <p id="judgingProgress" class="progressText">
+      </p>
+
+      <h2 id="judgingAuthorName">
+        Autor
+      </h2>
+
+      <p id="judgingAnswerText" class="answerQuote">
+        "Resposta aqui..."
+      </p>
+
+      <div id="authorWaitingBox" class="authorWaitingBox">
+        <p><strong>É a sua resposta!</strong></p>
+        <p>Não fale nem dê dicas enquanto os outros julgam.</p>
+      </div>
+
+      <div id="judgeGradeBox">
+
+        <p class="axisText" id="judgingAxis"></p>
+
+        <div id="gradeButtons" class="gradeButtons">
+          <button class="gradeButton" onclick="submitJudgment(0)">0</button>
+          <button class="gradeButton" onclick="submitJudgment(1)">1</button>
+          <button class="gradeButton" onclick="submitJudgment(2)">2</button>
+          <button class="gradeButton" onclick="submitJudgment(3)">3</button>
+          <button class="gradeButton" onclick="submitJudgment(4)">4</button>
+          <button class="gradeButton" onclick="submitJudgment(5)">5</button>
+        </div>
+
+        <p id="judgingWaitingText"></p>
+
+      </div>
+
     </div>
 
 

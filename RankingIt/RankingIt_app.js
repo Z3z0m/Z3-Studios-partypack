@@ -71,19 +71,19 @@ const currentPlayerId =
 // =========================
 
 let alreadyAnswered = false;
+let alreadyJudged = false;
 let currentGameState = "Lobby";
+let currentJudgingAuthorId = null;
 let isGamePaused = false;
 let isHost = false;
 
-// QUADRO DE CLASSIFICAÇÃO (Judging + Refining): estado fica só em memória —
-// não recarrega a página entre as duas fases, então não precisa reler nada
-// do Firebase pra continuar de onde parou.
-let currentRound = null;
+// QUADRO DE CLASSIFICAÇÃO (Refining): as notas dadas durante o Judging
+// sequencial ficam guardadas aqui em memória — não precisa reler nada do
+// Firebase pra já chegar no Refining com o quadro pré-preenchido.
 let answersMap = {}; // authorId -> {authorName, text}  (todas as respostas da rodada, exceto a minha)
 let myGuesses = {}; // authorId -> nota (0-5) que EU dei
-let selectedCardAuthorId = null;
-let judgingProgressSent = false;
 let refiningReadySent = false;
+let dragState = null; // { authorId, pointerId, offsetX, offsetY }
 
 // =========================
 // SCREEN SYSTEM
@@ -161,7 +161,7 @@ function UpdateHostButton(state)
 
     // ESCONDE nas fases onde os próprios jogadores é que fazem a ação
     // (escrever, julgar ou reclassificar) — não faz sentido o host "pular"
-    // enquanto todo mundo ainda está mexendo no quadro. Tutorial tem seus
+    // enquanto todo mundo ainda está mexendo na tela. Tutorial tem seus
     // próprios botões (SendTutorialAction), então o genérico também some lá.
     const hidden =
         state === "Tutorial" ||
@@ -238,6 +238,7 @@ function ListenForTheme()
 
       document.getElementById("themeRevealAxis").innerText = axis;
       document.getElementById("writingAxis").innerText = axis;
+      document.getElementById("judgingAxis").innerText = axis;
       document.getElementById("rankBoardAxis").innerText = axis;
     }
   );
@@ -248,7 +249,7 @@ function ListenForTheme()
 // LISTEN FOR MY SECRET GRADE
 // Só lê o próprio caminho (currentState/secretGrades/{meuId}) — nunca o nó
 // inteiro de secretGrades, pra não expor a nota dos outros no console/rede
-// por acidente.
+// por acidente. Também é o sinal de "rodada nova" — reseta o quadro.
 // =========================
 
 function ListenForMySecretGrade()
@@ -265,6 +266,8 @@ function ListenForMySecretGrade()
       document.getElementById("writingSecretGradeValue").innerText = grade;
 
       alreadyAnswered = false;
+      myGuesses = {};
+      refiningReadySent = false;
 
       document.getElementById("answerInput").disabled = false;
       document.getElementById("sendButton").disabled = false;
@@ -355,16 +358,15 @@ function ListenForGameState()
 
     UpdateHostButton(gameState);
 
-    const isBoardPhase =
-      gameState == "Judging" || gameState == "Refining";
+    const isRefiningPhase = gameState == "Refining";
 
-    document.getElementById("rankBoardWrapper").classList.toggle("active", isBoardPhase);
-    document.querySelector(".container").style.display = isBoardPhase ? "none" : "block";
+    document.getElementById("rankBoardWrapper").classList.toggle("active", isRefiningPhase);
+    document.querySelector(".container").style.display = isRefiningPhase ? "none" : "block";
 
     document
       .getElementById("themeBanner")
       .style.display =
-        (gameState == "Writing" || isBoardPhase || gameState == "Reveal")
+        (gameState == "Writing" || gameState == "Judging" || isRefiningPhase || gameState == "Reveal")
           ? "block" : "none";
 
     if(gameState == "Lobby") { ShowScreen("lobbyScreen") }
@@ -417,7 +419,8 @@ function ListenForGameState()
 
 
 // =========================
-// LISTEN FOR ALL ANSWERS (respostas públicas da rodada, sem nota nenhuma)
+// LISTEN FOR ALL ANSWERS (respostas públicas da rodada, sem nota nenhuma —
+// usado só pra montar o quadro do Refining)
 // =========================
 
 function ListenForAllAnswers()
@@ -435,64 +438,111 @@ function ListenForAllAnswers()
         answersMap[child.key] = child.val();
       });
 
-      RenderBoard();
+      if(currentGameState === "Refining") RenderBoard();
     }
   );
 }
 
 
 // =========================
-// JUDGING (nota inicial em todas as respostas)
+// JUDGING (sequencial — uma resposta por vez)
 // =========================
 
-async function OpenJudging()
+function OpenJudging()
 {
+  const currentAnswerRef =
+    ref(db, `rooms/${currentRoomCode}/currentState/currentAnswer`);
+
+  onValue(currentAnswerRef, (snapshot) =>
+  {
+    if(!snapshot.exists()) return;
+    if(currentGameState !== "Judging") return;
+
+    const data = snapshot.val();
+
+    // NOVA RESPOSTA (autor mudou): reseta o estado local de julgamento.
+    if(data.authorId !== currentJudgingAuthorId)
+    {
+      currentJudgingAuthorId = data.authorId;
+      alreadyJudged = myGuesses[data.authorId] !== undefined;
+
+      document
+        .querySelectorAll(".gradeButton")
+        .forEach(btn => btn.classList.remove("selected"));
+
+      if(alreadyJudged)
+      {
+        const btn = document.querySelectorAll(".gradeButton")[myGuesses[data.authorId]];
+        if(btn) btn.classList.add("selected");
+      }
+
+      document.getElementById("judgingWaitingText").innerText =
+        alreadyJudged ? "Esperando os outros julgarem..." : "";
+    }
+
+    document.getElementById("judgingAuthorName").innerText = data.authorName ?? "???";
+    document.getElementById("judgingAnswerText").innerText = `"${data.text ?? ""}"`;
+    document.getElementById("judgingProgress").innerText =
+      `Resposta ${data.index ?? "?"}/${data.total ?? "?"}`;
+
+    const isAuthor = data.authorId === currentPlayerId;
+
+    document.getElementById("authorWaitingBox").classList.toggle("active", isAuthor);
+    document.getElementById("judgeGradeBox").classList.toggle("hidden", isAuthor);
+  });
+}
+
+window.submitJudgment = async function(grade)
+{
+  if(isGamePaused) return;
+  if(alreadyJudged) return;
+  if(!currentJudgingAuthorId) return;
+
+  alreadyJudged = true;
+  myGuesses[currentJudgingAuthorId] = grade;
+
+  document
+    .querySelectorAll(".gradeButton")
+    .forEach(btn => btn.classList.remove("selected"));
+
+  document
+    .querySelectorAll(".gradeButton")[grade]
+    .classList.add("selected");
+
   const roundSnapshot =
     await get(ref(db, `rooms/${currentRoomCode}/currentState/round`));
 
   const round = roundSnapshot.val();
 
-  // RODADA NOVA: reseta o quadro (respostas voltam pra bandeja, sem nota).
-  if(round !== currentRound)
-  {
-    currentRound = round;
-    myGuesses = {};
-    judgingProgressSent = false;
-  }
+  await set(
+    ref(db, `rooms/${currentRoomCode}/history/round_${round}/judgments/${currentJudgingAuthorId}/${currentPlayerId}`),
+    {
+      playerName: currentPlayerName,
+      guessedGrade: grade
+    }
+  );
 
-  refiningReadySent = false;
-  selectedCardAuthorId = null;
-
-  document.getElementById("rankBoardHint").innerText =
-    "Toque numa resposta e depois na nota que ela merece — dá pra trocar quantas vezes quiser.";
-
-  document.getElementById("refiningReadyBtn").style.display = "none";
-
-  UpdateAuthorReminder();
-  RenderBoard();
-  UpdateJudgingProgressUI();
-}
+  document.getElementById("judgingWaitingText").innerText =
+    "Esperando os outros julgarem...";
+};
 
 
 // =========================
-// REFINING (dobro do tempo — rever e reorganizar as notas já dadas)
+// REFINING (quadro com todas as respostas — arrastar pra reorganizar)
 // =========================
 
 function OpenRefining()
 {
-  selectedCardAuthorId = null;
-
-  document.getElementById("rankBoardHint").innerText =
-    "Última chance! Toque numa resposta pra mover ela pra outra nota antes da revelação.";
+  refiningReadySent = false;
 
   const readyBtn = document.getElementById("refiningReadyBtn");
-  readyBtn.style.display = "block";
   readyBtn.disabled = false;
   readyBtn.innerText = "Pronto!";
 
-  UpdateAuthorReminder();
-  RenderBoard();
+  document.getElementById("authorReminder").classList.toggle("active", alreadyAnswered);
   document.getElementById("rankProgressText").innerText = "";
+
+  RenderBoard();
 }
 
 window.markRefiningReady = async function()
@@ -511,19 +561,6 @@ window.markRefiningReady = async function()
   readyBtn.disabled = true;
   readyBtn.innerText = "Aguardando os outros...";
 };
-
-
-// =========================
-// AVISO PRA QUEM ESCREVEU UMA RESPOSTA NESTA RODADA
-// "alreadyAnswered" já é exatamente esse sinal — vira true ao enviar a
-// resposta no Writing e só é resetado quando a próxima nota secreta chega
-// (ou seja, na próxima rodada).
-// =========================
-
-function UpdateAuthorReminder()
-{
-  document.getElementById("authorReminder").classList.toggle("active", alreadyAnswered);
-}
 
 
 // =========================
@@ -547,11 +584,6 @@ function RenderBoard()
     card.className = "answerCard";
     card.dataset.authorId = authorId;
 
-    if(authorId === selectedCardAuthorId)
-    {
-      card.classList.add("selected");
-    }
-
     const authorSpan = document.createElement("span");
     authorSpan.className = "cardAuthor";
     authorSpan.innerText = answer.authorName ?? "???";
@@ -563,7 +595,7 @@ function RenderBoard()
     card.appendChild(authorSpan);
     card.appendChild(textSpan);
 
-    card.onclick = () => HandleCardTap(authorId);
+    AttachDragHandlers(card, authorId);
 
     const grade = myGuesses[authorId];
 
@@ -580,48 +612,117 @@ function RenderBoard()
   });
 }
 
-function HandleCardTap(authorId)
+// =========================
+// ARRASTAR (Pointer Events — funciona com mouse E touch, sem precisar de
+// nenhuma lib. HTML5 drag-and-drop nativo não é confiável em touch/mobile,
+// por isso o gesto inteiro é feito na mão aqui.)
+// =========================
+
+function AttachDragHandlers(card, authorId)
+{
+  card.addEventListener("pointerdown", (event) => StartDrag(card, authorId, event));
+}
+
+function StartDrag(card, authorId, event)
 {
   if(isGamePaused) return;
+  if(currentGameState !== "Refining") return;
 
-  // TOCOU DE NOVO NA MESMA CARTA JÁ SELECIONADA: desmarca.
-  if(selectedCardAuthorId === authorId)
+  event.preventDefault();
+
+  const rect = card.getBoundingClientRect();
+
+  dragState =
   {
-    selectedCardAuthorId = null;
+    authorId: authorId,
+    pointerId: event.pointerId,
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top
+  };
+
+  card.setPointerCapture(event.pointerId);
+  card.classList.add("dragging");
+  card.style.position = "fixed";
+  card.style.width = rect.width + "px";
+  card.style.zIndex = 1000;
+
+  MoveCardTo(card, event.clientX, event.clientY);
+
+  card.addEventListener("pointermove", OnDragMove);
+  card.addEventListener("pointerup", OnDragEnd);
+  card.addEventListener("pointercancel", OnDragEnd);
+}
+
+function MoveCardTo(card, clientX, clientY)
+{
+  card.style.left = (clientX - dragState.offsetX) + "px";
+  card.style.top = (clientY - dragState.offsetY) + "px";
+}
+
+function OnDragMove(event)
+{
+  if(!dragState || event.pointerId !== dragState.pointerId) return;
+
+  MoveCardTo(event.currentTarget, event.clientX, event.clientY);
+  HighlightDropTarget(event.clientX, event.clientY);
+}
+
+function HighlightDropTarget(x, y)
+{
+  document
+    .querySelectorAll(".rankColumn.dragOver")
+    .forEach(col => col.classList.remove("dragOver"));
+
+  const elementBelow = document.elementFromPoint(x, y);
+  const column = elementBelow ? elementBelow.closest(".rankColumn") : null;
+
+  if(column) column.classList.add("dragOver");
+}
+
+async function OnDragEnd(event)
+{
+  if(!dragState || event.pointerId !== dragState.pointerId) return;
+
+  const card = event.currentTarget;
+
+  card.removeEventListener("pointermove", OnDragMove);
+  card.removeEventListener("pointerup", OnDragEnd);
+  card.removeEventListener("pointercancel", OnDragEnd);
+
+  card.classList.remove("dragging");
+  card.style.position = "";
+  card.style.left = "";
+  card.style.top = "";
+  card.style.width = "";
+  card.style.zIndex = "";
+
+  document
+    .querySelectorAll(".rankColumn.dragOver")
+    .forEach(col => col.classList.remove("dragOver"));
+
+  const elementBelow = document.elementFromPoint(event.clientX, event.clientY);
+  const column = elementBelow ? elementBelow.closest(".rankColumn") : null;
+
+  const authorId = dragState.authorId;
+  dragState = null;
+
+  if(column)
+  {
+    const grade = parseInt(column.querySelector(".rankColumnCards").dataset.grade, 10);
+    await PlaceCard(authorId, grade);
   }
   else
   {
-    selectedCardAuthorId = authorId;
+    // SOLTOU FORA de qualquer coluna: a carta volta pra onde estava.
+    RenderBoard();
   }
-
-  RenderBoard();
 }
 
-// TOCAR NUMA COLUNA COM UMA CARTA SELECIONADA: aplica a nota. O script fica
-// no fim do <body> (e módulos já rodam depois do parse do documento), então
-// os elementos abaixo já existem — sem precisar esperar nenhum evento de load.
-document.querySelectorAll(".rankColumn").forEach((column) =>
+async function PlaceCard(authorId, grade)
 {
-  column.addEventListener("click", (event) =>
-  {
-    // SÓ conta clique na coluna em si (fora de uma carta específica, que já
-    // tem seu próprio onclick pra (des)selecionar).
-    if(event.target.closest(".answerCard")) return;
+  if(currentGameState !== "Refining") return;
 
-    const grade = parseInt(column.querySelector(".rankColumnCards").dataset.grade, 10);
-    PlaceSelectedCard(grade);
-  });
-});
-
-async function PlaceSelectedCard(grade)
-{
-  if(isGamePaused) return;
-  if(selectedCardAuthorId === null) return;
-  if(currentGameState !== "Judging" && currentGameState !== "Refining") return;
-
-  const authorId = selectedCardAuthorId;
   myGuesses[authorId] = grade;
-  selectedCardAuthorId = null;
 
   RenderBoard();
 
@@ -637,32 +738,6 @@ async function PlaceSelectedCard(grade)
       guessedGrade: grade
     }
   );
-
-  if(currentGameState === "Judging")
-  {
-    UpdateJudgingProgressUI();
-  }
-}
-
-// TODAS AS RESPOSTAS JÁ TÊM NOTA: avisa o host que terminei (só uma vez —
-// se eu mudar de ideia depois, continuo marcado como pronto mesmo assim).
-async function UpdateJudgingProgressUI()
-{
-  const totalToJudge = Object.keys(answersMap).length;
-  const totalJudged = Object.keys(myGuesses).filter(id => answersMap[id]).length;
-
-  document.getElementById("rankProgressText").innerText =
-    totalToJudge > 0 ? `${totalJudged}/${totalToJudge} respostas com nota` : "";
-
-  if(!judgingProgressSent && totalToJudge > 0 && totalJudged >= totalToJudge)
-  {
-    judgingProgressSent = true;
-
-    await set(
-      ref(db, `rooms/${currentRoomCode}/currentState/judgingProgress/${currentPlayerId}`),
-      true
-    );
-  }
 }
 
 
@@ -699,6 +774,22 @@ async function OpenReveal()
 
   document.getElementById("revealRealGrade").innerText =
     result.realGrade ?? "?";
+
+  // MODO EXPERIMENTAL: pontos vão pro escritor (ver pointsGoToWriters no
+  // GameManager) — mostra quanto o AUTOR ganhou em vez do chute individual.
+  if(result.pointsGoToWriters)
+  {
+    if(answer.authorId === currentPlayerId)
+    {
+      mineDiv.innerText = `Você ganhou ${result.authorPoints ?? 0} pontos!`;
+    }
+    else
+    {
+      mineDiv.innerText = `${answer.authorName ?? "O escritor"} ganhou ${result.authorPoints ?? 0} pontos!`;
+    }
+
+    return;
+  }
 
   const myEntry = result.entries ? result.entries[currentPlayerId] : null;
 
