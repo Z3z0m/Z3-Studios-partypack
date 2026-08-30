@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>RankingIt</title>
+
+  <link
+    rel="stylesheet"
+    href="RankingIt_style.css"
+  />
+
+</head>
+
+<body>
+
+  <p id="themeBanner" class="themeBanner">
+    Tema aqui...
+  </p>
+
+  <div class="container">
+
+    <!-- =========================
+         LOBBY SCREEN
+    ========================== -->
+
+    <div
+      id="lobbyScreen"
+      class="screen active"
+    >
+
+      <h1>
+        RankingIt
+      </h1>
+
+      <p>
+        Esperando o anfitrião começar...
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         TUTORIAL SCREEN
+    ========================== -->
+
+    <div
+      id="tutorialScreen"
+      class="screen"
+    >
+
+      <h2>
+        COMO JOGAR
+      </h2>
+
+      <p>
+        Acompanhem a explicação das regras na tela principal!
+      </p>
+
+      <div id="tutorialControls">
+
+        <div class="tutorialNavRow">
+
+          <button onclick="SendTutorialAction('prev')">
+            ← Anterior
+          </button>
+
+          <button onclick="SendTutorialAction('next')">
+            Próxima →
+          </button>
+
+        </div>
+
+        <button
+          id="skipTutorialBtn"
+          onclick="SendTutorialAction('skip')"
+        >
+          Pular Tutorial
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         THEME REVEAL SCREEN
+    ========================== -->
+
+    <div
+      id="themeRevealScreen"
+      class="screen"
+    >
+
+      <h2 id="themeRevealTheme">
+        Tema aqui...
+      </h2>
+
+      <p id="themeRevealAxis" class="axisText">
+      </p>
+
+      <div class="secretGradeCard">
+        <p class="secretGradeLabel">Sua nota secreta é</p>
+        <p id="secretGradeValue" class="secretGradeValue">?</p>
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         WRITING SCREEN
+    ========================== -->
+
+    <div
+      id="writingScreen"
+      class="screen"
+    >
+
+      <h2 id="writingTheme">
+        Tema aqui...
+      </h2>
+
+      <p id="writingAxis" class="axisText">
+      </p>
+
+      <div class="secretGradeCard small">
+        <p class="secretGradeLabel">Mire na nota</p>
+        <p id="writingSecretGradeValue" class="secretGradeValue">?</p>
+      </div>
+
+      <textarea
+        id="answerInput"
+        placeholder="Sua resposta..."
+      ></textarea>
+
+      <button
+        id="sendButton"
+        onclick="sendAnswer()"
+      >
+        Enviar Resposta
+      </button>
+
+      <p id="waitingText">
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         JUDGING SCREEN
+    ========================== -->
+
+    <div
+      id="judgingScreen"
+      class="screen"
+    >
+
+      <p id="judgingProgress" class="progressText">
+      </p>
+
+      <h2 id="judgingAuthorName">
+        Autor
+      </h2>
+
+      <p id="judgingAnswerText" class="answerQuote">
+        "Resposta aqui..."
+      </p>
+
+      <div id="authorWaitingBox" class="authorWaitingBox">
+        <p><strong>É a sua resposta!</strong></p>
+        <p>Não fale nem dê dicas enquanto os outros julgam.</p>
+      </div>
+
+      <div id="judgeGradeBox">
+
+        <p class="axisText" id="judgingAxis"></p>
+
+        <div id="gradeButtons" class="gradeButtons">
+          <button class="gradeButton" onclick="submitJudgment(0)">0</button>
+          <button class="gradeButton" onclick="submitJudgment(1)">1</button>
+          <button class="gradeButton" onclick="submitJudgment(2)">2</button>
+          <button class="gradeButton" onclick="submitJudgment(3)">3</button>
+          <button class="gradeButton" onclick="submitJudgment(4)">4</button>
+          <button class="gradeButton" onclick="submitJudgment(5)">5</button>
+        </div>
+
+        <p id="judgingWaitingText"></p>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         ANSWER RESULT SCREEN
+    ========================== -->
+
+    <div
+      id="answerResultScreen"
+      class="screen"
+    >
+
+      <h2>
+        Nota real: <span id="answerResultRealGrade">?</span>
+      </h2>
+
+      <div id="answerResultMine" class="answerResultMine">
+      </div>
+
+      <p>
+        Veja o placar completo na tela principal!
+      </p>
+
+    </div>
+
+
+    <!-- =========================
+         ROUND SCORE SCREEN
+    ========================== -->
+
+    <div
+      id="roundScoreScreen"
+      class="screen"
+    >
+
+      <h2>
+        PLACAR DA RODADA
+      </h2>
+
+      <div id="roundScores">
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         FINAL SCORE SCREEN
+    ========================== -->
+
+    <div
+      id="finalScoreScreen"
+      class="screen"
+    >
+
+      <h2>
+        RESULTADO FINAL
+      </h2>
+
+      <div id="finalScores">
+      </div>
+
+      <button
+        class="homeButton"
+        onclick="window.location.href='../index.html'"
+      >
+        Voltar ao Início
+      </button>
+
+    </div>
+
+    <button
+      id="hostButton"
+      style="display:none"
+      onclick="SendHostCommand()"
+    >
+      Começar Jogo
+    </button>
+
+  </div>
+
+  <div
+    id="pauseOverlay"
+    class="pauseOverlay"
+  >
+    <div class="pauseOverlayCard">
+      <h2>Jogo Pausado</h2>
+      <p>Aguarde o host retomar...</p>
+    </div>
+  </div>
+
+  <script
+    type="module"
+    src="RankingIt_app.js"
+  ></script>
+
+</body>
+
+</html>

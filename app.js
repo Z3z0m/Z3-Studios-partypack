@@ -280,6 +280,12 @@ window.joinRoom = async function()
         `InBetween/InBetween_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "RankingIt")
+    {
+      window.location.href =
+        `RankingIt/RankingIt_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else if(detectedGameMode == "Stop")
     {
       window.location.href =

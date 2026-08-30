@@ -1,0 +1,480 @@
+*{
+  margin:0;
+  padding:0;
+
+  box-sizing:border-box;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body{
+  width:100vw;
+  height:100vh;
+
+  background:#111;
+
+  display:flex;
+  flex-direction:column;
+
+  justify-content:center;
+  align-items:center;
+  gap:15px;
+
+  color:white;
+}
+
+.screen{
+  display:none;
+  flex-direction:column;
+  gap:15px;
+}
+
+.screen.active{
+  display:flex;
+}
+
+.container{
+  width:90%;
+  max-width:400px;
+
+  background:#1e1e1e;
+
+  padding:30px;
+
+  border-radius:20px;
+
+  box-shadow:
+    0 0 20px
+    rgba(0,0,0,0.4);
+}
+
+h2{
+  text-align:center;
+}
+
+input, textarea{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+
+  font-family:inherit;
+
+  resize:vertical;
+}
+
+textarea{
+  min-height:90px;
+}
+
+input:focus, textarea:focus{
+  outline:2px solid #5c8dff;
+}
+
+button{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#5c8dff;
+
+  color:white;
+
+  font-size:16px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+button:hover{
+  transform:scale(1.02);
+}
+
+
+/* =========================
+   THEME BANNER
+========================= */
+
+.themeBanner{
+  width:90%;
+  max-width:400px;
+
+  text-align:center;
+
+  opacity:0.6;
+}
+
+
+/* =========================
+   AXIS TEXT
+========================= */
+
+.axisText{
+  text-align:center;
+
+  opacity:0.7;
+
+  font-size:14px;
+
+  line-height:1.4;
+}
+
+
+/* =========================
+   SECRET GRADE CARD
+========================= */
+
+.secretGradeCard{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+
+  background:#2c2c2c;
+
+  border-radius:14px;
+
+  padding:20px;
+
+  border:2px solid #5c8dff;
+}
+
+.secretGradeCard.small{
+  padding:12px;
+}
+
+.secretGradeLabel{
+  font-size:13px;
+
+  opacity:0.7;
+
+  text-transform:uppercase;
+
+  letter-spacing:1px;
+}
+
+.secretGradeValue{
+  font-size:48px;
+  font-weight:bold;
+
+  color:#5c8dff;
+}
+
+.secretGradeCard.small .secretGradeValue{
+  font-size:32px;
+}
+
+
+/* =========================
+   WAITING
+========================= */
+
+#waitingText{
+  text-align:center;
+
+  opacity:0.8;
+}
+
+
+/* =========================
+   JUDGING SCREEN
+========================= */
+
+.progressText{
+  text-align:center;
+
+  opacity:0.6;
+
+  font-size:14px;
+}
+
+.answerQuote{
+  text-align:center;
+
+  font-size:20px;
+
+  font-style:italic;
+
+  line-height:1.4;
+}
+
+.authorWaitingBox{
+  display:none;
+
+  text-align:center;
+
+  background:#3a2c00;
+
+  border:2px solid #f59e0b;
+
+  border-radius:14px;
+
+  padding:20px;
+
+  gap:8px;
+
+  flex-direction:column;
+}
+
+.authorWaitingBox.active{
+  display:flex;
+}
+
+#judgeGradeBox.hidden{
+  display:none;
+}
+
+.gradeButtons{
+  display:grid;
+
+  grid-template-columns:repeat(3, 1fr);
+
+  gap:10px;
+}
+
+.gradeButton{
+  padding:20px 0;
+
+  border:none;
+
+  border-radius:12px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:22px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+.gradeButton:hover{
+  transform:scale(1.05);
+
+  background:#3a3a3a;
+}
+
+.gradeButton.selected{
+  background:#5c8dff;
+
+  border:2px solid white;
+
+  transform:scale(1.05);
+}
+
+#judgingWaitingText{
+  text-align:center;
+
+  opacity:0.8;
+}
+
+
+/* =========================
+   ANSWER RESULT
+========================= */
+
+#answerResultRealGrade{
+  color:#5c8dff;
+}
+
+.answerResultMine{
+  text-align:center;
+
+  background:#2c2c2c;
+
+  border-radius:12px;
+
+  padding:15px;
+
+  font-size:16px;
+}
+
+
+/* =========================
+   RESULTS / SCORES
+========================= */
+
+.scoreItem{
+  background:#2c2c2c;
+
+  padding:15px;
+
+  border-radius:12px;
+
+  font-size:18px;
+
+  font-weight:bold;
+
+  text-align:center;
+}
+
+#roundScores, #finalScores{
+  display:flex;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+
+/* =========================
+   TUTORIAL SCREEN
+========================= */
+
+#tutorialControls{
+  display:none;
+
+  flex-direction:column;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow{
+  display:flex;
+
+  gap:10px;
+
+  width:100%;
+}
+
+.tutorialNavRow button{
+  flex:1;
+}
+
+#skipTutorialBtn{
+  background:#444;
+
+  color:#aaa;
+
+  font-size:14px;
+}
+
+#skipTutorialBtn:hover{
+  background:#555;
+
+  transform:none;
+}
+
+
+/* =========================
+   HOST BUTTON
+========================= */
+
+#hostButton{
+  width:100%;
+
+  padding:18px;
+
+  border:none;
+
+  border-radius:14px;
+
+  background:#f59e0b;
+
+  color:#111;
+
+  font-size:17px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+
+  letter-spacing:1px;
+}
+
+#hostButton:hover{
+  background:#fbbf24;
+
+  transform:scale(1.02);
+}
+
+
+/* =========================
+   PAUSE OVERLAY
+========================= */
+
+.pauseOverlay{
+  display:none;
+
+  position:fixed;
+  inset:0;
+
+  background:rgba(0,0,0,0.75);
+
+  z-index:9999;
+
+  align-items:center;
+  justify-content:center;
+
+  text-align:center;
+}
+
+.pauseOverlay.active{
+  display:flex;
+}
+
+.pauseOverlayCard{
+  background:#1e1e1e;
+
+  border-radius:20px;
+
+  padding:30px 40px;
+}
+
+
+/* =========================
+   HOME BUTTON
+========================= */
+
+.homeButton{
+  width:100%;
+
+  padding:15px;
+
+  border:none;
+
+  border-radius:10px;
+
+  background:#2c2c2c;
+
+  color:white;
+
+  font-size:16px;
+  font-weight:bold;
+
+  cursor:pointer;
+
+  transition:0.2s;
+}
+
+.homeButton:hover{
+  transform:scale(1.02);
+
+  background:#3a3a3a;
+}
