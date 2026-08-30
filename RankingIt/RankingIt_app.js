@@ -71,11 +71,19 @@ const currentPlayerId =
 // =========================
 
 let alreadyAnswered = false;
-let alreadyJudged = false;
 let currentGameState = "Lobby";
-let currentAuthorId = null;
 let isGamePaused = false;
 let isHost = false;
+
+// QUADRO DE CLASSIFICAÇÃO (Judging + Refining): estado fica só em memória —
+// não recarrega a página entre as duas fases, então não precisa reler nada
+// do Firebase pra continuar de onde parou.
+let currentRound = null;
+let answersMap = {}; // authorId -> {authorName, text}  (todas as respostas da rodada, exceto a minha)
+let myGuesses = {}; // authorId -> nota (0-5) que EU dei
+let selectedCardAuthorId = null;
+let judgingProgressSent = false;
+let refiningReadySent = false;
 
 // =========================
 // SCREEN SYSTEM
@@ -105,6 +113,7 @@ window.onload = async function()
   ListenForGameState();
   ListenForTheme();
   ListenForMySecretGrade();
+  ListenForAllAnswers();
   ListenForPause();
 };
 
@@ -151,13 +160,14 @@ function UpdateHostButton(state)
     const btn = document.getElementById("hostButton");
 
     // ESCONDE nas fases onde os próprios jogadores é que fazem a ação
-    // (escrever ou julgar) — não faz sentido o host "pular" enquanto todo
-    // mundo ainda está com o teclado aberto. Tutorial tem seus próprios
-    // botões (SendTutorialAction), então o genérico também some lá.
+    // (escrever, julgar ou reclassificar) — não faz sentido o host "pular"
+    // enquanto todo mundo ainda está mexendo no quadro. Tutorial tem seus
+    // próprios botões (SendTutorialAction), então o genérico também some lá.
     const hidden =
         state === "Tutorial" ||
         state === "Writing" ||
-        state === "Judging";
+        state === "Judging" ||
+        state === "Refining";
 
     if (hidden)
     {
@@ -228,7 +238,7 @@ function ListenForTheme()
 
       document.getElementById("themeRevealAxis").innerText = axis;
       document.getElementById("writingAxis").innerText = axis;
-      document.getElementById("judgingAxis").innerText = axis;
+      document.getElementById("rankBoardAxis").innerText = axis;
     }
   );
 }
@@ -297,13 +307,13 @@ window.sendAnswer = async function()
       )
     );
 
-  const currentRound =
+  const currentRoundValue =
     roundSnapshot.val();
 
   await set(
     ref(
       db,
-      `rooms/${currentRoomCode}/history/round_${currentRound}/answers/${currentPlayerId}`
+      `rooms/${currentRoomCode}/history/round_${currentRoundValue}/answers/${currentPlayerId}`
     ),
     {
       playerName: currentPlayerName,
@@ -345,10 +355,16 @@ function ListenForGameState()
 
     UpdateHostButton(gameState);
 
+    const isBoardPhase =
+      gameState == "Judging" || gameState == "Refining";
+
+    document.getElementById("rankBoardWrapper").classList.toggle("active", isBoardPhase);
+    document.querySelector(".container").style.display = isBoardPhase ? "none" : "block";
+
     document
       .getElementById("themeBanner")
       .style.display =
-        (gameState == "Writing" || gameState == "Judging" || gameState == "AnswerResult")
+        (gameState == "Writing" || isBoardPhase || gameState == "Reveal")
           ? "block" : "none";
 
     if(gameState == "Lobby") { ShowScreen("lobbyScreen") }
@@ -373,10 +389,16 @@ function ListenForGameState()
       OpenJudging();
     }
 
-    if(gameState == "AnswerResult")
+    if(gameState == "Refining")
     {
-      ShowScreen("answerResultScreen");
-      OpenAnswerResult();
+      ShowScreen("refiningScreen");
+      OpenRefining();
+    }
+
+    if(gameState == "Reveal")
+    {
+      ShowScreen("revealScreen");
+      OpenReveal();
     }
 
     if(gameState == "RoundScore")
@@ -395,104 +417,287 @@ function ListenForGameState()
 
 
 // =========================
-// JUDGING
+// LISTEN FOR ALL ANSWERS (respostas públicas da rodada, sem nota nenhuma)
 // =========================
 
-function OpenJudging()
+function ListenForAllAnswers()
 {
-  const currentAnswerRef =
-    ref(db, `rooms/${currentRoomCode}/currentState/currentAnswer`);
-
-  onValue(currentAnswerRef, (snapshot) =>
-  {
-    if(!snapshot.exists()) return;
-
-    const data = snapshot.val();
-
-    // NOVA RESPOSTA (autor mudou): reseta o estado de julgamento local e o
-    // destaque visual dos botões de nota.
-    if(data.authorId !== currentAuthorId)
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/currentState/allAnswers`),
+    (snapshot) =>
     {
-      currentAuthorId = data.authorId;
-      alreadyJudged = false;
+      answersMap = {};
 
-      document
-        .querySelectorAll(".gradeButton")
-        .forEach(btn => btn.classList.remove("selected"));
+      snapshot.forEach((child) =>
+      {
+        if(child.key === currentPlayerId) return; // não julgo a própria resposta
 
-      document.getElementById("judgingWaitingText").innerText = "";
+        answersMap[child.key] = child.val();
+      });
+
+      RenderBoard();
+    }
+  );
+}
+
+
+// =========================
+// JUDGING (nota inicial em todas as respostas)
+// =========================
+
+async function OpenJudging()
+{
+  const roundSnapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/currentState/round`));
+
+  const round = roundSnapshot.val();
+
+  // RODADA NOVA: reseta o quadro (respostas voltam pra bandeja, sem nota).
+  if(round !== currentRound)
+  {
+    currentRound = round;
+    myGuesses = {};
+    judgingProgressSent = false;
+  }
+
+  refiningReadySent = false;
+  selectedCardAuthorId = null;
+
+  document.getElementById("rankBoardHint").innerText =
+    "Toque numa resposta e depois na nota que ela merece — dá pra trocar quantas vezes quiser.";
+
+  document.getElementById("refiningReadyBtn").style.display = "none";
+
+  UpdateAuthorReminder();
+  RenderBoard();
+  UpdateJudgingProgressUI();
+}
+
+
+// =========================
+// REFINING (dobro do tempo — rever e reorganizar as notas já dadas)
+// =========================
+
+function OpenRefining()
+{
+  selectedCardAuthorId = null;
+
+  document.getElementById("rankBoardHint").innerText =
+    "Última chance! Toque numa resposta pra mover ela pra outra nota antes da revelação.";
+
+  const readyBtn = document.getElementById("refiningReadyBtn");
+  readyBtn.style.display = "block";
+  readyBtn.disabled = false;
+  readyBtn.innerText = "Pronto!";
+
+  UpdateAuthorReminder();
+  RenderBoard();
+  document.getElementById("rankProgressText").innerText = "";
+}
+
+window.markRefiningReady = async function()
+{
+  if(isGamePaused) return;
+  if(refiningReadySent) return;
+
+  refiningReadySent = true;
+
+  await set(
+    ref(db, `rooms/${currentRoomCode}/currentState/refiningReady/${currentPlayerId}`),
+    true
+  );
+
+  const readyBtn = document.getElementById("refiningReadyBtn");
+  readyBtn.disabled = true;
+  readyBtn.innerText = "Aguardando os outros...";
+};
+
+
+// =========================
+// AVISO PRA QUEM ESCREVEU UMA RESPOSTA NESTA RODADA
+// "alreadyAnswered" já é exatamente esse sinal — vira true ao enviar a
+// resposta no Writing e só é resetado quando a próxima nota secreta chega
+// (ou seja, na próxima rodada).
+// =========================
+
+function UpdateAuthorReminder()
+{
+  document.getElementById("authorReminder").classList.toggle("active", alreadyAnswered);
+}
+
+
+// =========================
+// QUADRO: RENDERIZAÇÃO
+// =========================
+
+function RenderBoard()
+{
+  const tray = document.getElementById("rankTray");
+  tray.innerHTML = "";
+
+  document
+    .querySelectorAll(".rankColumnCards")
+    .forEach(col => col.innerHTML = "");
+
+  Object.keys(answersMap).forEach((authorId) =>
+  {
+    const answer = answersMap[authorId];
+
+    const card = document.createElement("div");
+    card.className = "answerCard";
+    card.dataset.authorId = authorId;
+
+    if(authorId === selectedCardAuthorId)
+    {
+      card.classList.add("selected");
     }
 
-    document.getElementById("judgingAuthorName").innerText = data.authorName ?? "???";
-    document.getElementById("judgingAnswerText").innerText = `"${data.text ?? ""}"`;
-    document.getElementById("judgingProgress").innerText =
-      `Resposta ${data.index ?? "?"}/${data.total ?? "?"}`;
+    const authorSpan = document.createElement("span");
+    authorSpan.className = "cardAuthor";
+    authorSpan.innerText = answer.authorName ?? "???";
 
-    const isAuthor = data.authorId === currentPlayerId;
+    const textSpan = document.createElement("span");
+    textSpan.className = "cardText";
+    textSpan.innerText = answer.text ?? "";
 
-    document.getElementById("authorWaitingBox").classList.toggle("active", isAuthor);
-    document.getElementById("judgeGradeBox").classList.toggle("hidden", isAuthor);
+    card.appendChild(authorSpan);
+    card.appendChild(textSpan);
+
+    card.onclick = () => HandleCardTap(authorId);
+
+    const grade = myGuesses[authorId];
+
+    if(grade === undefined || grade === null)
+    {
+      tray.appendChild(card);
+    }
+    else
+    {
+      const column = document.querySelector(`.rankColumnCards[data-grade="${grade}"]`);
+      if(column) column.appendChild(card);
+      else tray.appendChild(card);
+    }
   });
 }
 
-window.submitJudgment = async function(grade)
+function HandleCardTap(authorId)
 {
   if(isGamePaused) return;
-  if(alreadyJudged) return;
-  if(!currentAuthorId) return;
 
-  alreadyJudged = true;
+  // TOCOU DE NOVO NA MESMA CARTA JÁ SELECIONADA: desmarca.
+  if(selectedCardAuthorId === authorId)
+  {
+    selectedCardAuthorId = null;
+  }
+  else
+  {
+    selectedCardAuthorId = authorId;
+  }
 
-  document
-    .querySelectorAll(".gradeButton")
-    .forEach(btn => btn.classList.remove("selected"));
+  RenderBoard();
+}
 
-  document
-    .querySelectorAll(".gradeButton")[grade]
-    .classList.add("selected");
+// TOCAR NUMA COLUNA COM UMA CARTA SELECIONADA: aplica a nota. O script fica
+// no fim do <body> (e módulos já rodam depois do parse do documento), então
+// os elementos abaixo já existem — sem precisar esperar nenhum evento de load.
+document.querySelectorAll(".rankColumn").forEach((column) =>
+{
+  column.addEventListener("click", (event) =>
+  {
+    // SÓ conta clique na coluna em si (fora de uma carta específica, que já
+    // tem seu próprio onclick pra (des)selecionar).
+    if(event.target.closest(".answerCard")) return;
+
+    const grade = parseInt(column.querySelector(".rankColumnCards").dataset.grade, 10);
+    PlaceSelectedCard(grade);
+  });
+});
+
+async function PlaceSelectedCard(grade)
+{
+  if(isGamePaused) return;
+  if(selectedCardAuthorId === null) return;
+  if(currentGameState !== "Judging" && currentGameState !== "Refining") return;
+
+  const authorId = selectedCardAuthorId;
+  myGuesses[authorId] = grade;
+  selectedCardAuthorId = null;
+
+  RenderBoard();
 
   const roundSnapshot =
     await get(ref(db, `rooms/${currentRoomCode}/currentState/round`));
 
-  const currentRound = roundSnapshot.val();
+  const round = roundSnapshot.val();
 
   await set(
-    ref(
-      db,
-      `rooms/${currentRoomCode}/history/round_${currentRound}/judgments/${currentAuthorId}/${currentPlayerId}`
-    ),
+    ref(db, `rooms/${currentRoomCode}/history/round_${round}/judgments/${authorId}/${currentPlayerId}`),
     {
       playerName: currentPlayerName,
       guessedGrade: grade
     }
   );
 
-  document.getElementById("judgingWaitingText").innerText =
-    "Esperando os outros julgarem...";
-};
+  if(currentGameState === "Judging")
+  {
+    UpdateJudgingProgressUI();
+  }
+}
 
-
-// =========================
-// ANSWER RESULT
-// =========================
-
-async function OpenAnswerResult()
+// TODAS AS RESPOSTAS JÁ TÊM NOTA: avisa o host que terminei (só uma vez —
+// se eu mudar de ideia depois, continuo marcado como pronto mesmo assim).
+async function UpdateJudgingProgressUI()
 {
+  const totalToJudge = Object.keys(answersMap).length;
+  const totalJudged = Object.keys(myGuesses).filter(id => answersMap[id]).length;
+
+  document.getElementById("rankProgressText").innerText =
+    totalToJudge > 0 ? `${totalJudged}/${totalToJudge} respostas com nota` : "";
+
+  if(!judgingProgressSent && totalToJudge > 0 && totalJudged >= totalToJudge)
+  {
+    judgingProgressSent = true;
+
+    await set(
+      ref(db, `rooms/${currentRoomCode}/currentState/judgingProgress/${currentPlayerId}`),
+      true
+    );
+  }
+}
+
+
+// =========================
+// REVEAL (uma resposta por vez — só assistir)
+// =========================
+
+async function OpenReveal()
+{
+  const answerSnapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/currentState/currentAnswer`));
+
+  const answer = answerSnapshot.val() ?? {};
+
+  document.getElementById("revealProgress").innerText =
+    `Resposta ${answer.index ?? "?"}/${answer.total ?? "?"}`;
+
+  document.getElementById("revealAuthorName").innerText = answer.authorName ?? "???";
+  document.getElementById("revealAnswerText").innerText = `"${answer.text ?? ""}"`;
+
   const resultSnapshot =
     await get(ref(db, `rooms/${currentRoomCode}/currentState/answerResult`));
 
-  const mineDiv = document.getElementById("answerResultMine");
+  const mineDiv = document.getElementById("revealMine");
   mineDiv.innerHTML = "";
 
   if(!resultSnapshot.exists())
   {
-    document.getElementById("answerResultRealGrade").innerText = "?";
+    document.getElementById("revealRealGrade").innerText = "?";
     return;
   }
 
   const result = resultSnapshot.val();
 
-  document.getElementById("answerResultRealGrade").innerText =
+  document.getElementById("revealRealGrade").innerText =
     result.realGrade ?? "?";
 
   const myEntry = result.entries ? result.entries[currentPlayerId] : null;
@@ -503,7 +708,11 @@ async function OpenAnswerResult()
     mineDiv.innerText =
       `Você chutou ${myEntry.guessedGrade} (${points} pontos)`;
   }
-};
+  else if(answer.authorId === currentPlayerId)
+  {
+    mineDiv.innerText = "Era a sua resposta!";
+  }
+}
 
 
 // =========================

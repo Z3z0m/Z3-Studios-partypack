@@ -25,6 +25,57 @@
     Tema aqui...
   </p>
 
+  <!-- =========================
+       QUADRO DE CLASSIFICAÇÃO (persistente, fora do .container — usado
+       tanto no Judging quanto no Refining, ver RankingIt_app.js)
+  ========================== -->
+
+  <div id="rankBoardWrapper" class="rankBoardWrapper">
+
+    <p id="rankBoardAxis" class="axisText"></p>
+    <p id="rankBoardHint" class="rankBoardHint"></p>
+
+    <div id="authorReminder" class="authorReminder">
+      <strong>Sua resposta está aí!</strong> Não reaja nem dê pistas enquanto os outros julgam.
+    </div>
+
+    <div id="rankTray" class="cardTray"></div>
+
+    <div id="rankBoard" class="rankBoard">
+      <div class="rankColumn">
+        <div class="rankColumnLabel">0</div>
+        <div class="rankColumnCards" data-grade="0"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">1</div>
+        <div class="rankColumnCards" data-grade="1"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">2</div>
+        <div class="rankColumnCards" data-grade="2"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">3</div>
+        <div class="rankColumnCards" data-grade="3"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">4</div>
+        <div class="rankColumnCards" data-grade="4"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">5</div>
+        <div class="rankColumnCards" data-grade="5"></div>
+      </div>
+    </div>
+
+    <p id="rankProgressText" class="progressText"></p>
+
+    <button id="refiningReadyBtn" style="display:none" onclick="markRefiningReady()">
+      Pronto!
+    </button>
+
+  </div>
+
   <div class="container">
 
     <!-- =========================
@@ -154,64 +205,52 @@
 
 
     <!-- =========================
-         JUDGING SCREEN
+         JUDGING SCREEN (quadro fica em #rankBoardWrapper, fora daqui)
     ========================== -->
 
     <div
       id="judgingScreen"
       class="screen"
     >
-
-      <p id="judgingProgress" class="progressText">
-      </p>
-
-      <h2 id="judgingAuthorName">
-        Autor
-      </h2>
-
-      <p id="judgingAnswerText" class="answerQuote">
-        "Resposta aqui..."
-      </p>
-
-      <div id="authorWaitingBox" class="authorWaitingBox">
-        <p><strong>É a sua resposta!</strong></p>
-        <p>Não fale nem dê dicas enquanto os outros julgam.</p>
-      </div>
-
-      <div id="judgeGradeBox">
-
-        <p class="axisText" id="judgingAxis"></p>
-
-        <div id="gradeButtons" class="gradeButtons">
-          <button class="gradeButton" onclick="submitJudgment(0)">0</button>
-          <button class="gradeButton" onclick="submitJudgment(1)">1</button>
-          <button class="gradeButton" onclick="submitJudgment(2)">2</button>
-          <button class="gradeButton" onclick="submitJudgment(3)">3</button>
-          <button class="gradeButton" onclick="submitJudgment(4)">4</button>
-          <button class="gradeButton" onclick="submitJudgment(5)">5</button>
-        </div>
-
-        <p id="judgingWaitingText"></p>
-
-      </div>
-
     </div>
 
 
     <!-- =========================
-         ANSWER RESULT SCREEN
+         REFINING SCREEN (quadro fica em #rankBoardWrapper, fora daqui)
     ========================== -->
 
     <div
-      id="answerResultScreen"
+      id="refiningScreen"
+      class="screen"
+    >
+    </div>
+
+
+    <!-- =========================
+         REVEAL SCREEN
+    ========================== -->
+
+    <div
+      id="revealScreen"
       class="screen"
     >
 
-      <h2>
-        Nota real: <span id="answerResultRealGrade">?</span>
+      <p id="revealProgress" class="progressText">
+      </p>
+
+      <h2 id="revealAuthorName">
+        Autor
       </h2>
 
-      <div id="answerResultMine" class="answerResultMine">
+      <p id="revealAnswerText" class="answerQuote">
+        "Resposta aqui..."
+      </p>
+
+      <h2>
+        Nota real: <span id="revealRealGrade">?</span>
+      </h2>
+
+      <div id="revealMine" class="answerResultMine">
       </div>
 
       <p>
