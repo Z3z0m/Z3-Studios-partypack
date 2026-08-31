@@ -325,35 +325,43 @@
       class="screen"
     >
 
-      <p id="revealProgress" class="metaLabel"></p>
+      <div id="revealHostView" hidden>
 
-      <div id="revealCompareRow">
+        <p id="revealProgress" class="metaLabel"></p>
 
-        <div class="revealCompareCard">
-          <p class="metaLabel">você deu</p>
-          <p id="revealMyGuess" class="compareValue">?</p>
+        <div id="revealCompareRow">
+
+          <div class="revealCompareCard">
+            <p class="metaLabel">você deu</p>
+            <p id="revealMyGuess" class="compareValue">?</p>
+          </div>
+
+          <div class="revealCompareCard real">
+            <p class="metaLabel">era</p>
+            <p id="revealRealGrade" class="compareValue">?</p>
+          </div>
+
         </div>
 
-        <div class="revealCompareCard real">
-          <p class="metaLabel">era</p>
-          <p id="revealRealGrade" class="compareValue">?</p>
+        <h2 id="revealResultLabel" class="bigHeading"></h2>
+
+        <p id="revealPoints"></p>
+
+        <div class="spacer"></div>
+
+        <div id="revealTotalBox">
+          <p class="metaLabel">seu total</p>
+          <div id="revealTotalRow">
+            <span id="revealTotalRank"></span>
+            <span id="revealTotalScore"></span>
+          </div>
         </div>
 
       </div>
 
-      <h2 id="revealResultLabel" class="bigHeading"></h2>
-
-      <p id="revealPoints"></p>
-
-      <div class="spacer"></div>
-
-      <div id="revealTotalBox">
-        <p class="metaLabel">seu total</p>
-        <div id="revealTotalRow">
-          <span id="revealTotalRank"></span>
-          <span id="revealTotalScore"></span>
-        </div>
-      </div>
+      <p id="revealWaitingText">
+        Olhe pro host — o resultado tá saindo na tela dele!
+      </p>
 
     </div>
 

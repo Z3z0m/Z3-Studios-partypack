@@ -984,6 +984,14 @@ function ResultLabelForDiff(diff)
 
 async function OpenReveal()
 {
+  // O resultado detalhado só aparece na tela do host (segurando o celular
+  // pra galera ver junto) — os outros só acompanham por ali, igual no
+  // Tutorial. Evita ficar lendo o Firebase à toa em quem nem vai mostrar nada.
+  document.getElementById("revealHostView").hidden = !isHost;
+  document.getElementById("revealWaitingText").hidden = isHost;
+
+  if(!isHost) return;
+
   const answerSnapshot =
     await get(ref(db, `rooms/${currentRoomCode}/currentState/currentAnswer`));
 

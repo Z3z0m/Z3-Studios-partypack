@@ -992,6 +992,14 @@ input:focus, textarea:focus{
    RESULTADO PESSOAL (Reveal) SCREEN
 ========================= */
 
+#revealWaitingText{
+  font-size:21px;
+  font-weight:500;
+  line-height:1.35;
+
+  color:rgba(239,234,249,0.82);
+}
+
 #revealProgress{
   text-align:left;
 
