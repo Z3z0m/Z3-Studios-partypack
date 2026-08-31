@@ -74,6 +74,7 @@ let alreadyAnswered = false;
 let alreadyJudged = false;
 let currentGameState = "Lobby";
 let currentJudgingAuthorId = null;
+let pendingGrade = null; // nota selecionada no Julgar, ainda não confirmada
 let isGamePaused = false;
 let isHost = false;
 
@@ -82,8 +83,33 @@ let isHost = false;
 // Firebase pra já chegar no Refining com o quadro pré-preenchido.
 let answersMap = {}; // authorId -> {authorName, text}  (todas as respostas da rodada, exceto a minha)
 let myGuesses = {}; // authorId -> nota (0-5) que EU dei
+let originalGuesses = {}; // snapshot do myGuesses de quando o Refining abriu, só pra marcar quem mudou
 let refiningReadySent = false;
+let refiningReadyCount = 0;
+let refiningTotalPlayers = 0;
 let dragState = null; // { authorId, pointerId, offsetX, offsetY }
+
+// Tema/eixo/nota secreta chegam em listeners separados — guardados aqui pra
+// poder montar a frase combinada da tela "Nota secreta" assim que os dois já
+// tiverem chegado.
+let lastAxisText = "";
+let lastSecretGrade = null;
+
+// =========================
+// TUTORIAL (conteúdo é local — só o host navega, mas o texto de cada passo
+// mora aqui no client mesmo, não vem do Firebase).
+// =========================
+
+const TUTORIAL_STEPS =
+[
+  "Cada rodada tem um tema e um eixo, tipo \"quão associado ao Natal\". Todo mundo recebe uma nota secreta de 0 a 5 e escreve uma resposta que valha exatamente aquilo.",
+  "As respostas de todo mundo aparecem pra galera julgar — o nome de quem escreveu já vem junto. O desafio não é adivinhar o autor, é acertar a nota secreta dele.",
+  "As respostas aparecem uma de cada vez. Enquanto a sua estiver sendo julgada, você não pode falar nem dar dicas.",
+  "Depois de julgar todo mundo, dá uma última chance: reorganize as respostas arrastando — pode mudar de ideia quantas vezes quiser antes de confirmar.",
+  "No final, quem chegou mais perto da nota secreta de cada resposta ganha pontos. Quem tiver mais pontos depois de todas as rodadas vence!"
+];
+
+let tutorialStepIndex = 0;
 
 // =========================
 // SCREEN SYSTEM
@@ -109,11 +135,14 @@ function ShowScreen(screenId)
 
 window.onload = async function()
 {
+  document.getElementById("lobbyPlayerName").innerText = currentPlayerName ?? "Você";
+
   await CheckIfHost();
   ListenForGameState();
   ListenForTheme();
   ListenForMySecretGrade();
   ListenForAllAnswers();
+  ListenForLobbyPlayers();
   ListenForPause();
 };
 
@@ -133,6 +162,8 @@ async function CheckIfHost()
 
     isHost = snapshot.val() === true;
 
+    document.getElementById("lobbyHostBadge").hidden = !isHost;
+
     if (isHost)
         UpdateHostButton("Lobby");
 }
@@ -147,11 +178,32 @@ window.SendHostCommand = async function()
 
 window.SendTutorialAction = async function(action)
 {
+    if(action === "next" && tutorialStepIndex < TUTORIAL_STEPS.length - 1)
+    {
+        tutorialStepIndex++;
+    }
+
+    if(action === "prev" && tutorialStepIndex > 0)
+    {
+        tutorialStepIndex--;
+    }
+
+    RenderTutorialStep();
+
     await set(
         ref(db, `rooms/${currentRoomCode}/tutorialAction`),
         { action: action, t: Date.now() }
     );
 };
+
+function RenderTutorialStep()
+{
+    document.getElementById("tutorialStepBadge").innerText = tutorialStepIndex + 1;
+    document.getElementById("tutorialStepOf").innerText = `de ${TUTORIAL_STEPS.length}`;
+    document.getElementById("tutorialStepText").innerText = TUTORIAL_STEPS[tutorialStepIndex];
+
+    document.getElementById("tutorialPrevBtn").disabled = tutorialStepIndex === 0;
+}
 
 function UpdateHostButton(state)
 {
@@ -179,7 +231,7 @@ function UpdateHostButton(state)
 
     const labels =
     {
-        "Lobby":       "Começar Jogo",
+        "Lobby":       "Começar",
         "FinalScore":  "Jogar de Novo",
     };
 
@@ -209,6 +261,43 @@ function ListenForPause()
 
 
 // =========================
+// LISTEN FOR LOBBY PLAYERS
+// =========================
+
+function ListenForLobbyPlayers()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/players`),
+    (snapshot) =>
+    {
+      const listDiv = document.getElementById("lobbyPlayerList");
+      listDiv.innerHTML = "";
+
+      let count = 0;
+
+      snapshot.forEach((child) =>
+      {
+        count++;
+
+        const data = child.val();
+
+        const row = document.createElement("div");
+        row.className = "lobbyPlayerRow";
+
+        if(child.key === currentPlayerId) row.classList.add("isMe");
+
+        row.innerText = data.name ?? "???";
+
+        listDiv.appendChild(row);
+      });
+
+      document.getElementById("lobbyPlayerCount").innerText = `${count} na sala`;
+    }
+  );
+}
+
+
+// =========================
 // LISTEN THEME / EIXO-GUIA
 // =========================
 
@@ -222,7 +311,6 @@ function ListenForTheme()
 
       if(!theme) return;
 
-      document.getElementById("themeBanner").innerText = theme;
       document.getElementById("themeRevealTheme").innerText = theme;
       document.getElementById("writingTheme").innerText = theme;
     }
@@ -236,10 +324,12 @@ function ListenForTheme()
 
       if(!axis) return;
 
-      document.getElementById("themeRevealAxis").innerText = axis;
+      lastAxisText = axis;
+
       document.getElementById("writingAxis").innerText = axis;
-      document.getElementById("judgingAxis").innerText = axis;
       document.getElementById("rankBoardAxis").innerText = axis;
+
+      UpdateSecretSentence();
     }
   );
 }
@@ -262,8 +352,12 @@ function ListenForMySecretGrade()
 
       if(grade === null) return;
 
+      lastSecretGrade = grade;
+
       document.getElementById("secretGradeValue").innerText = grade;
       document.getElementById("writingSecretGradeValue").innerText = grade;
+
+      UpdateSecretSentence();
 
       alreadyAnswered = false;
       myGuesses = {};
@@ -275,6 +369,31 @@ function ListenForMySecretGrade()
       document.getElementById("waitingText").innerText = "";
     }
   );
+}
+
+// Monta a frase "Escreva algo que valha exatamente X no eixo 'Y'." assim que
+// o tema/eixo E a nota secreta já tiverem chegado (via DOM em vez de innerHTML
+// pra não depender de escapar o texto do eixo à mão).
+function UpdateSecretSentence()
+{
+  if(lastSecretGrade === null || !lastAxisText) return;
+
+  const sentence = document.getElementById("themeRevealSentence");
+  sentence.innerHTML = "";
+
+  sentence.append("Escreva algo que valha exatamente ");
+
+  const gradeStrong = document.createElement("strong");
+  gradeStrong.innerText = lastSecretGrade;
+  sentence.append(gradeStrong);
+
+  sentence.append(" no eixo ");
+
+  const axisStrong = document.createElement("strong");
+  axisStrong.innerText = `"${lastAxisText}"`;
+  sentence.append(axisStrong);
+
+  sentence.append(".");
 }
 
 
@@ -363,22 +482,21 @@ function ListenForGameState()
     document.getElementById("rankBoardWrapper").classList.toggle("active", isRefiningPhase);
     document.querySelector(".container").style.display = isRefiningPhase ? "none" : "block";
 
-    document
-      .getElementById("themeBanner")
-      .style.display =
-        (gameState == "Writing" || gameState == "Judging" || isRefiningPhase || gameState == "Reveal")
-          ? "block" : "none";
-
     if(gameState == "Lobby") { ShowScreen("lobbyScreen") }
 
     if(gameState == "Tutorial")
     {
       ShowScreen("tutorialScreen");
 
-      document
-        .getElementById("tutorialControls")
-        .style.display =
-        isHost ? "flex" : "none";
+      document.getElementById("tutorialHostView").hidden = !isHost;
+      document.getElementById("tutorialWaitingText").hidden = isHost;
+      document.getElementById("tutorialControls").style.display = isHost ? "flex" : "none";
+
+      if(isHost)
+      {
+        tutorialStepIndex = 0;
+        RenderTutorialStep();
+      }
     }
 
     if(gameState == "ThemeReveal") { ShowScreen("themeRevealScreen"); }
@@ -445,7 +563,33 @@ function ListenForAllAnswers()
 
 
 // =========================
-// JUDGING (sequencial — uma resposta por vez)
+// PLAYERS (ordenados por pontuação — usado no Reveal e no placar final)
+// =========================
+
+async function GetSortedPlayers()
+{
+  const snapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/players`));
+
+  if(!snapshot.exists()) return [];
+
+  const players = [];
+
+  snapshot.forEach((child) =>
+  {
+    players.push({ id: child.key, ...child.val() });
+  });
+
+  players.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  return players;
+}
+
+
+// =========================
+// JUDGING (sequencial — uma resposta por vez). O julgador SELECIONA uma nota
+// (fica destacada) e só grava no Firebase quando aperta "Confirmar" — dá pra
+// mudar de ideia antes de confirmar.
 // =========================
 
 function OpenJudging()
@@ -465,60 +609,81 @@ function OpenJudging()
     {
       currentJudgingAuthorId = data.authorId;
       alreadyJudged = myGuesses[data.authorId] !== undefined;
+      pendingGrade = alreadyJudged ? myGuesses[data.authorId] : null;
 
-      document
-        .querySelectorAll(".gradeButton")
-        .forEach(btn => btn.classList.remove("selected"));
+      RenderGradeSelection();
 
-      if(alreadyJudged)
-      {
-        const btn = document.querySelectorAll(".gradeButton")[myGuesses[data.authorId]];
-        if(btn) btn.classList.add("selected");
-      }
+      document.getElementById("judgingConfirmBtn").disabled = alreadyJudged || pendingGrade === null;
+      document.getElementById("judgingConfirmBtn").innerText = alreadyJudged ? "Julgado" : "Confirmar";
 
       document.getElementById("judgingWaitingText").innerText =
         alreadyJudged ? "Esperando os outros julgarem..." : "";
     }
 
-    document.getElementById("judgingAuthorName").innerText = data.authorName ?? "???";
-    document.getElementById("judgingAnswerText").innerText = `"${data.text ?? ""}"`;
+    document.getElementById("judgingAuthorLine").innerText = `${data.authorName ?? "???"} escreveu`;
+    document.getElementById("judgingAnswerText").innerText = data.text ?? "";
     document.getElementById("judgingProgress").innerText =
-      `Resposta ${data.index ?? "?"}/${data.total ?? "?"}`;
+      `resposta ${data.index ?? "?"} de ${data.total ?? "?"}`;
 
     const isAuthor = data.authorId === currentPlayerId;
 
-    document.getElementById("authorWaitingBox").classList.toggle("active", isAuthor);
-    document.getElementById("judgeGradeBox").classList.toggle("hidden", isAuthor);
+    document.getElementById("judgingScreen").classList.toggle("authorBlocked", isAuthor);
+    document.getElementById("judgingContent").hidden = isAuthor;
+    document.getElementById("authorBlockedContent").hidden = !isAuthor;
+
+    document.getElementById("authorBlockedAnswerText").innerText = data.text ?? "";
   });
 }
 
-window.submitJudgment = async function(grade)
+function RenderGradeSelection()
+{
+  document
+    .querySelectorAll(".gradeButton")
+    .forEach((btn, index) =>
+    {
+      btn.classList.toggle("selected", index === pendingGrade);
+      btn.disabled = alreadyJudged;
+    });
+}
+
+window.selectJudgmentGrade = function(grade)
 {
   if(isGamePaused) return;
   if(alreadyJudged) return;
+
+  pendingGrade = grade;
+
+  RenderGradeSelection();
+
+  document.getElementById("judgingConfirmBtn").disabled = false;
+};
+
+window.confirmJudgment = async function()
+{
+  if(isGamePaused) return;
+  if(alreadyJudged) return;
+  if(pendingGrade === null) return;
   if(!currentJudgingAuthorId) return;
 
   alreadyJudged = true;
-  myGuesses[currentJudgingAuthorId] = grade;
+  myGuesses[currentJudgingAuthorId] = pendingGrade;
 
-  document
-    .querySelectorAll(".gradeButton")
-    .forEach(btn => btn.classList.remove("selected"));
+  RenderGradeSelection();
 
-  document
-    .querySelectorAll(".gradeButton")[grade]
-    .classList.add("selected");
+  document.getElementById("judgingConfirmBtn").disabled = true;
+  document.getElementById("judgingConfirmBtn").innerText = "Julgado";
 
   const roundSnapshot =
     await get(ref(db, `rooms/${currentRoomCode}/currentState/round`));
 
-  const round = roundSnapshot.val();
+  const round =
+    roundSnapshot.val();
 
   await set(
     ref(db, `rooms/${currentRoomCode}/history/round_${round}/judgments/${currentJudgingAuthorId}/${currentPlayerId}`),
     {
       playerName: currentPlayerName,
-      guessedGrade: grade
+      guessedGrade: pendingGrade
     }
   );
 
@@ -535,14 +700,19 @@ function OpenRefining()
 {
   refiningReadySent = false;
 
+  // Guarda a nota que cada resposta tinha ANTES do rebalanceamento, só pra
+  // conseguir destacar visualmente quem mudou (ver RenderBoard).
+  originalGuesses = { ...myGuesses };
+
   const readyBtn = document.getElementById("refiningReadyBtn");
   readyBtn.disabled = false;
-  readyBtn.innerText = "Pronto!";
+  readyBtn.innerText = "Tô pronto";
 
   document.getElementById("authorReminder").classList.toggle("active", alreadyAnswered);
   document.getElementById("rankProgressText").innerText = "";
 
   RenderBoard();
+  ListenForRefiningReady();
 }
 
 window.markRefiningReady = async function()
@@ -562,6 +732,44 @@ window.markRefiningReady = async function()
   readyBtn.innerText = "Aguardando os outros...";
 };
 
+// Conta "X/Y prontos" a partir de dois nós que já existem no Firebase (não
+// inventa nenhum campo novo): a lista de jogadores da sala e o nó de
+// refiningReady que markRefiningReady já escreve.
+function ListenForRefiningReady()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/players`),
+    (snapshot) =>
+    {
+      let count = 0;
+      snapshot.forEach(() => { count++; });
+
+      refiningTotalPlayers = count;
+      UpdateRefiningProgressText();
+    }
+  );
+
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/currentState/refiningReady`),
+    (snapshot) =>
+    {
+      let count = 0;
+      snapshot.forEach((child) => { if(child.val() === true) count++; });
+
+      refiningReadyCount = count;
+      UpdateRefiningProgressText();
+    }
+  );
+}
+
+function UpdateRefiningProgressText()
+{
+  if(currentGameState !== "Refining") return;
+
+  document.getElementById("rankProgressText").innerText =
+    `${refiningReadyCount}/${refiningTotalPlayers} prontos`;
+}
+
 
 // =========================
 // QUADRO: RENDERIZAÇÃO
@@ -579,25 +787,45 @@ function RenderBoard()
   Object.keys(answersMap).forEach((authorId) =>
   {
     const answer = answersMap[authorId];
+    const grade = myGuesses[authorId];
+    const originalGrade = originalGuesses[authorId];
+    const hasChanged = originalGrade !== undefined && originalGrade !== grade;
 
     const card = document.createElement("div");
     card.className = "answerCard";
+    if(hasChanged) card.classList.add("changed");
     card.dataset.authorId = authorId;
 
-    const authorSpan = document.createElement("span");
-    authorSpan.className = "cardAuthor";
-    authorSpan.innerText = answer.authorName ?? "???";
+    const gradeChip = document.createElement("span");
+    gradeChip.className = "cardGrade";
+    gradeChip.innerText = (grade === undefined || grade === null) ? "?" : grade;
 
-    const textSpan = document.createElement("span");
-    textSpan.className = "cardText";
-    textSpan.innerText = answer.text ?? "";
+    const body = document.createElement("span");
+    body.className = "cardBody";
 
-    card.appendChild(authorSpan);
-    card.appendChild(textSpan);
+    const answerSpan = document.createElement("span");
+    answerSpan.className = "cardAuthor";
+    answerSpan.innerText = answer.text ?? "";
+
+    const metaSpan = document.createElement("span");
+    metaSpan.className = "cardMeta";
+    metaSpan.innerText =
+      hasChanged
+        ? `${answer.authorName ?? "???"} · ${originalGrade} → ${grade}`
+        : (answer.authorName ?? "???");
+
+    body.appendChild(answerSpan);
+    body.appendChild(metaSpan);
+
+    const handle = document.createElement("span");
+    handle.className = "cardHandle";
+    handle.innerText = "⠿";
+
+    card.appendChild(gradeChip);
+    card.appendChild(body);
+    card.appendChild(handle);
 
     AttachDragHandlers(card, authorId);
-
-    const grade = myGuesses[authorId];
 
     if(grade === undefined || grade === null)
     {
@@ -742,8 +970,17 @@ async function PlaceCard(authorId, grade)
 
 
 // =========================
-// REVEAL (uma resposta por vez — só assistir)
+// RESULTADO PESSOAL (Reveal) — uma resposta por vez, só assistir
 // =========================
+
+function ResultLabelForDiff(diff)
+{
+  if(diff === 0) return "Na mosca";
+  if(diff === 1) return "Quase lá";
+  if(diff === 2) return "Por pouco";
+  if(diff <= 4) return "Longe disso";
+  return "Muito longe";
+}
 
 async function OpenReveal()
 {
@@ -753,40 +990,51 @@ async function OpenReveal()
   const answer = answerSnapshot.val() ?? {};
 
   document.getElementById("revealProgress").innerText =
-    `Resposta ${answer.index ?? "?"}/${answer.total ?? "?"}`;
+    `resposta de ${answer.authorName ?? "???"} · ${answer.text ?? "?"}`;
 
-  document.getElementById("revealAuthorName").innerText = answer.authorName ?? "???";
-  document.getElementById("revealAnswerText").innerText = `"${answer.text ?? ""}"`;
+  // "seu total" — reaproveita o mesmo nó de players/score já usado no
+  // placar da rodada e no placar final, só pra saber a colocação atual.
+  const players = await GetSortedPlayers();
+  const myRank = players.findIndex((player) => player.id === currentPlayerId);
+  const myPlayer = myRank >= 0 ? players[myRank] : null;
+
+  document.getElementById("revealTotalRank").innerText =
+    myRank >= 0 ? `${myRank + 1}º lugar` : "";
+  document.getElementById("revealTotalScore").innerText =
+    myPlayer ? (myPlayer.score || 0) : 0;
 
   const resultSnapshot =
     await get(ref(db, `rooms/${currentRoomCode}/currentState/answerResult`));
 
-  const mineDiv = document.getElementById("revealMine");
-  mineDiv.innerHTML = "";
-
   if(!resultSnapshot.exists())
   {
+    document.getElementById("revealMyGuess").innerText = "?";
     document.getElementById("revealRealGrade").innerText = "?";
+    document.getElementById("revealResultLabel").innerText = "";
+    document.getElementById("revealPoints").innerText = "";
     return;
   }
 
   const result = resultSnapshot.val();
+  const realGrade = result.realGrade ?? "?";
 
-  document.getElementById("revealRealGrade").innerText =
-    result.realGrade ?? "?";
+  document.getElementById("revealRealGrade").innerText = realGrade;
 
   // MODO EXPERIMENTAL: pontos vão pro escritor (ver pointsGoToWriters no
   // GameManager) — mostra quanto o AUTOR ganhou em vez do chute individual.
   if(result.pointsGoToWriters)
   {
-    if(answer.authorId === currentPlayerId)
-    {
-      mineDiv.innerText = `Você ganhou ${result.authorPoints ?? 0} pontos!`;
-    }
-    else
-    {
-      mineDiv.innerText = `${answer.authorName ?? "O escritor"} ganhou ${result.authorPoints ?? 0} pontos!`;
-    }
+    document.getElementById("revealMyGuess").innerText = "—";
+
+    const isMeTheAuthor = answer.authorId === currentPlayerId;
+
+    document.getElementById("revealResultLabel").innerText =
+      isMeTheAuthor ? "Sua resposta" : (answer.authorName ?? "O escritor");
+
+    document.getElementById("revealPoints").innerText =
+      isMeTheAuthor
+        ? `+${result.authorPoints ?? 0} pontos pra você`
+        : `+${result.authorPoints ?? 0} pontos pro autor`;
 
     return;
   }
@@ -795,13 +1043,24 @@ async function OpenReveal()
 
   if(myEntry)
   {
+    const diff = Math.abs((myEntry.guessedGrade ?? 0) - (result.realGrade ?? 0));
     const points = myEntry.points >= 0 ? `+${myEntry.points}` : myEntry.points;
-    mineDiv.innerText =
-      `Você chutou ${myEntry.guessedGrade} (${points} pontos)`;
+
+    document.getElementById("revealMyGuess").innerText = myEntry.guessedGrade;
+    document.getElementById("revealResultLabel").innerText = ResultLabelForDiff(diff);
+    document.getElementById("revealPoints").innerText = `${points} pontos`;
   }
   else if(answer.authorId === currentPlayerId)
   {
-    mineDiv.innerText = "Era a sua resposta!";
+    document.getElementById("revealMyGuess").innerText = "—";
+    document.getElementById("revealResultLabel").innerText = "Era a sua resposta!";
+    document.getElementById("revealPoints").innerText = "";
+  }
+  else
+  {
+    document.getElementById("revealMyGuess").innerText = "—";
+    document.getElementById("revealResultLabel").innerText = "";
+    document.getElementById("revealPoints").innerText = "";
   }
 }
 
@@ -844,36 +1103,60 @@ function OpenRoundScore()
 
 
 // =========================
-// FINAL SCORE
+// FIM (Final Score)
 // =========================
 
 async function OpenFinalScore()
 {
-  const playersSnapshot =
-    await get(ref(db, `rooms/${currentRoomCode}/players`));
+  const players = await GetSortedPlayers();
 
-  const finalDiv =
-    document.getElementById("finalScores");
-
+  const finalDiv = document.getElementById("finalScores");
   finalDiv.innerHTML = "";
 
-  if(!playersSnapshot.exists()) return;
+  document.getElementById("finalWinnerBanner").innerHTML = "";
+  document.getElementById("finalMeta").innerText = "";
 
-  const players =
-    Object.values(playersSnapshot.val());
+  if(players.length <= 0) return;
 
-  players.sort((a, b) => (b.score || 0) - (a.score || 0));
+  const winner = players[0];
 
-  players.forEach((player) =>
-  {
-    const item =
-      document.createElement("div");
+  const banner = document.getElementById("finalWinnerBanner");
+  banner.append(`${winner.name ?? "???"} `);
 
-    item.className = "scoreItem";
+  const winnerTag = document.createElement("span");
+  winnerTag.innerText = "venceu";
+  banner.append(winnerTag);
 
-    item.innerText =
-      `${player.name} - ${player.score || 0}`;
+  const roundSnapshot =
+    await get(ref(db, `rooms/${currentRoomCode}/currentState/round`));
 
-    finalDiv.appendChild(item);
-  });
+  const round = roundSnapshot.val();
+
+  document.getElementById("finalMeta").innerText =
+    round
+      ? `${winner.score || 0} pontos · ${round} rodada${round === 1 ? "" : "s"}`
+      : `${winner.score || 0} pontos`;
+
+  players
+    .slice(1)
+    .forEach((player, index) =>
+    {
+      const rank = index + 2;
+
+      const row = document.createElement("div");
+      row.className = "finalScoreRow";
+      if(player.id === currentPlayerId) row.classList.add("isMe");
+
+      const nameSpan = document.createElement("span");
+      nameSpan.innerText = `${rank}º ${player.name ?? "???"}`;
+
+      const valueSpan = document.createElement("span");
+      valueSpan.className = "finalScoreValue";
+      valueSpan.innerText = player.score || 0;
+
+      row.appendChild(nameSpan);
+      row.appendChild(valueSpan);
+
+      finalDiv.appendChild(row);
+    });
 }

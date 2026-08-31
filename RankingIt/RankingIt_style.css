@@ -1,129 +1,277 @@
+/* =========================
+   TOKENS
+========================= */
+
+:root{
+  --bg:#0a0713;
+  --surface:#130f1e;
+  --surface-alt:rgba(239,234,249,0.08);
+  --surface-alt-strong:rgba(239,234,249,0.14);
+
+  --text:#efeaf9;
+  --text-dim:#9a8fb8;
+  --text-dim2:#8f83b3;
+
+  --purple:#8b5cff;
+  --purple-light:#b18cff;
+  --pink:#ff3d84;
+  --pink-light:#ff6f9f;
+
+  --panel:#efeaf9;
+  --panel-text:#130f1e;
+
+  --on-accent:#130f1e;
+
+  --sans:"Archivo", Arial, Helvetica, sans-serif;
+  --mono:"IBM Plex Mono", monospace;
+}
+
 *{
   margin:0;
   padding:0;
 
   box-sizing:border-box;
 
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+  font-family:var(--sans);
 }
 
 body{
-  width:100vw;
+  width:100%;
   min-height:100vh;
 
-  background:#111;
+  background:var(--bg);
 
-  display:flex;
-  flex-direction:column;
+  color:var(--text);
 
-  justify-content:center;
-  align-items:center;
-  gap:15px;
-
-  color:white;
-
-  overflow-y:auto;
-
-  padding:15px 0;
+  overflow-x:hidden;
 }
+
+a{
+  color:var(--purple-light);
+  text-decoration:none;
+}
+
+a:hover{
+  color:var(--pink-light);
+}
+
+
+/* =========================
+   SCREEN SYSTEM
+   Tela cheia (sem "cartão flutuante") — o jogo roda no celular do jogador,
+   então cada screen já É a tela inteira.
+========================= */
 
 .screen{
   display:none;
   flex-direction:column;
-  gap:15px;
+
+  flex:1;
+
+  box-sizing:border-box;
+
+  padding:
+    max(28px, env(safe-area-inset-top))
+    24px
+    max(28px, env(safe-area-inset-bottom))
+    24px;
+
+  background:var(--surface);
+  color:var(--text);
 }
 
 .screen.active{
   display:flex;
 }
 
+/* flex column indo até a altura toda da tela: assim, seja qual for a screen
+   ativa, o #hostButton (que fica FORA de todas as screens, ver HTML) sempre
+   gruda na borda inferior de verdade, em vez de sobrar lá embaixo de uma
+   screen com min-height:100vh (o que ia exigir rolar a página pra achá-lo). */
 .container{
-  width:90%;
-  max-width:400px;
+  display:flex;
+  flex-direction:column;
 
-  background:#1e1e1e;
-
-  padding:30px;
-
-  border-radius:20px;
-
-  box-shadow:
-    0 0 20px
-    rgba(0,0,0,0.4);
+  min-height:100vh;
 }
 
-h2{
-  text-align:center;
-}
+h1, h2{
+  font-weight:900;
+  font-stretch:125%;
 
-input, textarea{
-  width:100%;
-
-  padding:15px;
-
-  border:none;
-
-  border-radius:10px;
-
-  background:#2c2c2c;
-
-  color:white;
-
-  font-size:16px;
-
-  font-family:inherit;
-
-  resize:vertical;
-}
-
-textarea{
-  min-height:90px;
-}
-
-input:focus, textarea:focus{
-  outline:2px solid #5c8dff;
+  text-transform:uppercase;
 }
 
 button{
   width:100%;
 
-  padding:15px;
-
   border:none;
 
-  border-radius:10px;
+  background:var(--purple);
+  color:var(--on-accent);
 
-  background:#5c8dff;
+  font-family:var(--sans);
+  font-weight:900;
+  font-stretch:125%;
+  font-size:24px;
 
-  color:white;
+  text-transform:uppercase;
 
-  font-size:16px;
-  font-weight:bold;
+  height:64px;
 
   cursor:pointer;
 
-  transition:0.2s;
+  transition:0.15s;
 }
 
 button:hover{
-  transform:scale(1.02);
+  filter:brightness(1.08);
+}
+
+button:active{
+  filter:brightness(0.94);
+}
+
+button:disabled{
+  cursor:default;
+
+  filter:none;
+
+  opacity:0.55;
+}
+
+input, textarea{
+  width:100%;
+
+  border:2px solid var(--purple);
+
+  background:transparent;
+  color:var(--text);
+
+  font-family:var(--sans);
+  font-weight:900;
+  font-stretch:108%;
+  font-size:28px;
+
+  padding:18px;
+
+  resize:vertical;
+}
+
+textarea{
+  min-height:140px;
+
+  line-height:1.15;
+}
+
+input:focus, textarea:focus{
+  outline:none;
+
+  border-color:var(--purple-light);
+}
+
+::placeholder{
+  color:var(--text-dim2);
+
+  font-weight:500;
+  font-stretch:100%;
+  text-transform:none;
 }
 
 
 /* =========================
-   THEME BANNER
+   SHARED TEXT STYLES
 ========================= */
 
-.themeBanner{
-  width:90%;
-  max-width:400px;
+.metaLabel{
+  font-family:var(--mono);
+  font-size:15px;
 
-  text-align:center;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
 
-  opacity:0.6;
+  color:var(--text-dim);
+}
+
+.bigHeading{
+  font-weight:900;
+  font-stretch:125%;
+  font-size:46px;
+  line-height:0.94;
+
+  letter-spacing:-0.035em;
+  text-transform:uppercase;
+}
+
+.badgeChip{
+  display:inline-grid;
+  place-items:center;
+
+  min-width:38px;
+  height:38px;
+
+  padding:0 8px;
+
+  background:var(--purple);
+  color:var(--on-accent);
+
+  font-weight:900;
+  font-stretch:125%;
+  font-size:22px;
+}
+
+.hostTag{
+  padding:7px 12px;
+
+  background:var(--purple);
+  color:var(--on-accent);
+
+  font-family:var(--mono);
+  font-size:14px;
+
+  letter-spacing:0.16em;
+  text-transform:uppercase;
+}
+
+.btnGhost{
+  height:52px;
+
+  background:none;
+
+  color:var(--text-dim2);
+
+  font-family:var(--mono);
+  font-weight:400;
+  font-size:16px;
+
+  letter-spacing:0.16em;
+  text-transform:uppercase;
+}
+
+.btnGhost:hover{
+  filter:none;
+
+  color:var(--text-dim);
+}
+
+.btnOutline{
+  border:2px solid var(--surface-alt-strong);
+
+  background:none;
+
+  color:var(--text-dim);
+
+  font-size:22px;
+}
+
+.btnOutline:hover{
+  filter:none;
+
+  border-color:var(--text-dim2);
+}
+
+.spacer{
+  flex:1;
 }
 
 
@@ -132,92 +280,262 @@ button:hover{
 ========================= */
 
 .axisText{
-  text-align:center;
+  font-size:18px;
+  font-weight:500;
+  line-height:1.35;
 
-  opacity:0.7;
+  color:rgba(239,234,249,0.82);
 
-  font-size:14px;
-
-  line-height:1.4;
+  text-wrap:pretty;
 }
 
 
 /* =========================
-   SECRET GRADE CARD
+   LOBBY SCREEN
 ========================= */
 
-.secretGradeCard{
+.lobbyHeader{
   display:flex;
-  flex-direction:column;
   align-items:center;
-  gap:6px;
+  justify-content:space-between;
 
-  background:#2c2c2c;
-
-  border-radius:14px;
-
-  padding:20px;
-
-  border:2px solid #5c8dff;
+  margin-bottom:26px;
 }
 
-.secretGradeCard.small{
-  padding:12px;
-}
-
-.secretGradeLabel{
-  font-size:13px;
-
-  opacity:0.7;
+#lobbyPlayerName{
+  font-weight:900;
+  font-stretch:112%;
+  font-size:26px;
 
   text-transform:uppercase;
-
-  letter-spacing:1px;
 }
 
-.secretGradeValue{
-  font-size:48px;
-  font-weight:bold;
-
-  color:#5c8dff;
+#lobbyPlayerCount{
+  margin:8px 0 24px 0;
 }
 
-.secretGradeCard.small .secretGradeValue{
-  font-size:32px;
+#lobbyPlayerList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+
+  overflow-y:auto;
+}
+
+.lobbyPlayerRow{
+  padding:14px 16px;
+
+  background:var(--surface-alt);
+
+  font-weight:900;
+  font-stretch:112%;
+  font-size:22px;
+
+  text-transform:uppercase;
+}
+
+.lobbyPlayerRow.isMe{
+  background:var(--purple);
+  color:var(--on-accent);
 }
 
 
 /* =========================
-   WAITING
+   TUTORIAL SCREEN
 ========================= */
 
-#waitingText{
-  text-align:center;
+#tutorialStepRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
 
-  opacity:0.8;
+  margin:20px 0;
+}
+
+#tutorialStepOf{
+  font-family:var(--mono);
+  font-size:16px;
+
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+
+  color:var(--text-dim);
+}
+
+#tutorialStepText{
+  font-size:26px;
+  font-weight:500;
+  line-height:1.3;
+
+  color:rgba(239,234,249,0.82);
+
+  text-wrap:pretty;
+}
+
+#tutorialWaitingText{
+  font-size:22px;
+  font-weight:500;
+  line-height:1.35;
+
+  color:rgba(239,234,249,0.82);
+}
+
+#tutorialControls{
+  display:none;
+
+  flex-direction:column;
+  gap:12px;
+}
+
+.tutorialNavRow{
+  display:flex;
+  gap:10px;
+}
+
+.tutorialNavRow button{
+  flex:2;
+}
+
+.tutorialNavRow button.btnOutline{
+  flex:1;
+
+  height:62px;
 }
 
 
 /* =========================
-   SHARED (Judging/Refining/Reveal)
+   NOTA SECRETA (theme reveal) SCREEN
 ========================= */
 
-.progressText{
+#themeRevealScreen.active{
+  background:var(--purple);
+  color:var(--on-accent);
+}
+
+#themeRevealScreen .metaLabel{
+  color:var(--on-accent);
+  opacity:0.7;
+}
+
+#themeRevealTheme{
+  font-size:30px;
+  line-height:1.05;
+
+  margin:6px 0 26px 0;
+}
+
+#themeRevealGradeLabel{
+  font-family:var(--mono);
+  font-size:17px;
+
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+}
+
+#secretGradeValue{
+  font-weight:900;
+  font-stretch:125%;
+  font-size:min(260px, 34vh);
+  line-height:0.78;
+
+  letter-spacing:-0.06em;
+
+  margin:4px 0 0 -0.03em;
+}
+
+#themeRevealSentence{
+  font-size:24px;
+  font-weight:500;
+  line-height:1.3;
+
+  margin-top:14px;
+
+  text-wrap:pretty;
+}
+
+#themeRevealSentence strong{
+  font-weight:900;
+}
+
+#themeRevealFooter{
+  padding:16px 18px;
+
+  background:var(--surface);
+  color:var(--text);
+
+  font-weight:900;
+  font-stretch:112%;
+  font-size:22px;
+
   text-align:center;
+  text-transform:uppercase;
+}
 
-  opacity:0.6;
 
+/* =========================
+   WRITING SCREEN
+========================= */
+
+#writingHeaderRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+
+  margin-bottom:12px;
+}
+
+#writingTheme{
+  flex:1;
+  min-width:0;
+
+  font-weight:900;
+  font-stretch:112%;
+  font-size:22px;
+
+  text-transform:uppercase;
+}
+
+#writingGradeTag{
+  flex:none;
+
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+#writingGradeTag .metaLabel{
   font-size:14px;
 }
 
-.answerQuote{
+#writingAxis{
+  padding:14px 16px;
+
+  border-left:4px solid var(--purple);
+  background:rgba(139,92,255,0.1);
+
+  margin-bottom:12px;
+}
+
+#answerInput{
+  flex:1;
+
+  min-height:150px;
+
+  margin-bottom:12px;
+}
+
+#waitingText{
+  font-family:var(--mono);
+  font-size:16px;
+
+  letter-spacing:0.1em;
+
+  color:var(--text-dim2);
+
   text-align:center;
 
-  font-size:20px;
-
-  font-style:italic;
-
-  line-height:1.4;
+  margin-top:8px;
 }
 
 
@@ -225,77 +543,177 @@ button:hover{
    JUDGING SCREEN (sequencial — uma resposta por vez)
 ========================= */
 
-.authorWaitingBox{
-  display:none;
+.answerCardQuote{
+  padding:22px 20px;
 
-  text-align:center;
+  background:var(--panel);
+  color:var(--panel-text);
 
-  background:#3a2c00;
-
-  border:2px solid #f59e0b;
-
-  border-radius:14px;
-
-  padding:20px;
-
-  gap:8px;
-
-  flex-direction:column;
+  margin-bottom:22px;
 }
 
-.authorWaitingBox.active{
+.answerCardQuote .metaLabel{
+  color:#6b6285;
+
+  margin-bottom:8px;
+}
+
+#judgingAnswerText{
+  font-weight:900;
+  font-stretch:108%;
+  font-size:32px;
+  line-height:1.08;
+}
+
+#judgingContent:not([hidden]){
   display:flex;
-}
+  flex-direction:column;
 
-#judgeGradeBox.hidden{
-  display:none;
+  flex:1;
 }
 
 .gradeButtons{
   display:grid;
 
   grid-template-columns:repeat(3, 1fr);
-
   gap:10px;
+
+  margin-bottom:16px;
 }
 
 .gradeButton{
-  padding:20px 0;
+  display:grid;
+  place-items:center;
 
-  border:none;
+  height:78px;
 
-  border-radius:12px;
+  border:2px solid rgba(239,234,249,0.2);
+  background:none;
 
-  background:#2c2c2c;
+  color:var(--text-dim);
 
-  color:white;
-
-  font-size:22px;
-  font-weight:bold;
+  font-weight:900;
+  font-stretch:125%;
+  font-size:38px;
 
   cursor:pointer;
 
-  transition:0.2s;
+  transition:0.15s;
 }
 
 .gradeButton:hover{
-  transform:scale(1.05);
+  filter:none;
 
-  background:#3a3a3a;
+  border-color:var(--purple-light);
 }
 
 .gradeButton.selected{
-  background:#5c8dff;
+  border-color:var(--purple);
+  background:var(--purple);
 
-  border:2px solid white;
+  color:var(--on-accent);
+}
 
-  transform:scale(1.05);
+.gradeButton:disabled{
+  cursor:default;
+
+  opacity:1;
+}
+
+#judgingHint{
+  font-family:var(--mono);
+  font-size:15px;
+
+  letter-spacing:0.1em;
+
+  color:var(--text-dim2);
+
+  margin-bottom:12px;
 }
 
 #judgingWaitingText{
+  font-family:var(--mono);
+  font-size:16px;
+
+  letter-spacing:0.1em;
+
+  color:var(--text-dim2);
+
   text-align:center;
 
-  opacity:0.8;
+  margin-top:10px;
+}
+
+
+/* =========================
+   AUTOR BLOQUEADO (sua resposta está sendo julgada)
+========================= */
+
+#judgingScreen.authorBlocked{
+  background:var(--pink);
+  color:var(--panel-text);
+}
+
+#judgingScreen.authorBlocked .metaLabel{
+  color:var(--panel-text);
+  opacity:0.75;
+}
+
+#authorBlockedContent:not([hidden]){
+  display:flex;
+  flex-direction:column;
+
+  flex:1;
+}
+
+#authorBlockedHeading{
+  font-weight:900;
+  font-stretch:125%;
+  font-size:60px;
+  line-height:0.92;
+
+  letter-spacing:-0.035em;
+  text-transform:uppercase;
+
+  margin-top:22px;
+}
+
+#authorBlockedBody{
+  font-size:22px;
+  font-weight:500;
+  line-height:1.3;
+
+  margin-top:18px;
+}
+
+#authorBlockedAnswerBox{
+  margin-top:28px;
+  padding:18px 20px;
+
+  background:var(--surface);
+  color:var(--text);
+}
+
+#authorBlockedAnswerBox .metaLabel{
+  color:var(--text-dim);
+  opacity:1;
+
+  margin-bottom:6px;
+}
+
+#authorBlockedAnswerText{
+  font-weight:900;
+  font-stretch:108%;
+  font-size:28px;
+  line-height:1.1;
+}
+
+#authorBlockedFooter{
+  font-family:var(--mono);
+  font-size:16px;
+
+  letter-spacing:0.16em;
+  text-transform:uppercase;
 }
 
 
@@ -307,42 +725,56 @@ button:hover{
 .rankBoardWrapper{
   display:none;
   flex-direction:column;
-  gap:14px;
 
-  width:96vw;
-  max-width:720px;
+  min-height:100vh;
 
-  align-items:stretch;
+  box-sizing:border-box;
+
+  padding:
+    max(28px, env(safe-area-inset-top))
+    22px
+    max(28px, env(safe-area-inset-bottom))
+    22px;
+
+  background:var(--surface);
+  color:var(--text);
 }
 
 .rankBoardWrapper.active{
   display:flex;
 }
 
-.rankBoardHint{
-  text-align:center;
+#rankBoardTopRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
 
+  margin-bottom:6px;
+}
+
+.rankBoardHint{
+  font-family:var(--mono);
   font-size:15px;
 
-  opacity:0.85;
+  letter-spacing:0.08em;
+
+  color:var(--text-dim2);
+
+  margin-bottom:18px;
 }
 
 .authorReminder{
   display:none;
 
-  text-align:center;
-
-  background:#3a2c00;
-
-  border:2px solid #f59e0b;
-
-  border-radius:14px;
+  background:rgba(255,61,132,0.12);
+  color:var(--pink-light);
 
   padding:14px;
 
   font-size:14px;
-
   line-height:1.4;
+
+  margin-bottom:12px;
 }
 
 .authorReminder.active{
@@ -351,14 +783,13 @@ button:hover{
 
 .cardTray{
   display:flex;
-
   flex-wrap:wrap;
 
   gap:8px;
 
-  justify-content:center;
-
   min-height:10px;
+
+  margin-bottom:10px;
 }
 
 .cardTray:empty{
@@ -366,70 +797,46 @@ button:hover{
 }
 
 .rankBoard{
-  display:grid;
-
-  grid-template-columns:repeat(3, 1fr);
-
-  gap:8px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
 }
 
 .rankColumn{
-  background:#1e1e1e;
-
-  border-radius:12px;
-
-  padding:8px;
-
   display:flex;
   flex-direction:column;
   gap:6px;
-
-  min-height:90px;
-
-  border:2px solid transparent;
-
-  transition:border-color 0.1s, background 0.1s;
 }
 
-.rankColumn.dragOver{
-  border-color:#5c8dff;
-
-  background:#232d45;
+.rankColumn.dragOver .rankColumnCards{
+  outline:2px solid var(--purple-light);
 }
 
 .rankColumnLabel{
-  text-align:center;
-
-  font-weight:bold;
-  font-size:18px;
-
-  opacity:0.6;
+  display:none;
 }
 
 .rankColumnCards{
   display:flex;
   flex-direction:column;
-  gap:6px;
+  gap:8px;
 
-  flex:1;
+  min-height:14px;
 }
 
 .answerCard{
-  background:#2c2c2c;
+  display:flex;
+  align-items:center;
+  gap:12px;
 
-  border:2px solid transparent;
+  padding:12px 14px;
 
-  border-radius:10px;
-
-  padding:8px 10px;
+  background:var(--panel);
+  color:var(--panel-text);
 
   cursor:grab;
 
   transition:0.15s;
-
-  font-size:12px;
-
-  line-height:1.3;
 
   /* ESSENCIAL pro arrastar no touch: sem isso o navegador tenta rolar a
      página assim que o dedo encosta na carta, em vez de deixar o JS
@@ -443,131 +850,292 @@ button:hover{
 .answerCard.dragging{
   cursor:grabbing;
 
-  opacity:0.9;
+  opacity:0.92;
 
   box-shadow:0 6px 16px rgba(0,0,0,0.5);
 
-  transform:scale(1.04);
+  transform:scale(1.03);
+}
+
+.answerCard.changed{
+  outline:3px solid var(--pink);
+
+  box-shadow:8px 10px 0 rgba(6,4,12,0.55);
+
+  transform:rotate(-1.5deg);
+}
+
+.answerCard.changed.dragging{
+  transform:scale(1.03) rotate(-1.5deg);
+}
+
+.answerCard .cardGrade{
+  display:grid;
+  place-items:center;
+
+  flex:none;
+
+  width:46px;
+  height:46px;
+
+  background:var(--surface);
+  color:var(--text);
+
+  font-weight:900;
+  font-stretch:125%;
+  font-size:26px;
+}
+
+.answerCard.changed .cardGrade{
+  background:var(--pink);
+  color:var(--panel-text);
+}
+
+.answerCard .cardBody{
+  flex:1;
+  min-width:0;
 }
 
 .answerCard .cardAuthor{
   display:block;
 
-  font-weight:bold;
-  color:#f5c86a;
-
-  font-size:12px;
-
-  margin-bottom:2px;
+  font-weight:900;
+  font-stretch:108%;
+  font-size:22px;
+  line-height:1.1;
 }
 
-.answerCard .cardText{
+.answerCard .cardMeta{
   display:block;
 
-  opacity:0.9;
+  font-family:var(--mono);
+  font-size:14px;
+
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+
+  color:#6b6285;
+}
+
+.answerCard.changed .cardMeta{
+  color:#c92050;
+}
+
+.answerCard .cardHandle{
+  flex:none;
+
+  font-family:var(--mono);
+  font-size:20px;
+
+  color:#6b6285;
+}
+
+.answerCard.changed .cardHandle{
+  color:#c92050;
 }
 
 #refiningReadyBtn{
-  background:#3ba55c;
+  margin-top:16px;
 }
 
-#refiningReadyBtn:disabled{
-  opacity:0.6;
+.progressText{
+  font-family:var(--mono);
+  font-size:15px;
 
-  cursor:default;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
 
-  transform:none;
-}
+  color:var(--text-dim2);
 
-
-/* =========================
-   REVEAL
-========================= */
-
-#revealRealGrade{
-  color:#5c8dff;
-}
-
-.answerResultMine{
   text-align:center;
 
-  background:#2c2c2c;
-
-  border-radius:12px;
-
-  padding:15px;
-
-  font-size:16px;
+  margin-top:10px;
 }
 
 
 /* =========================
-   RESULTS / SCORES
+   RESULTADO PESSOAL (Reveal) SCREEN
 ========================= */
 
-.scoreItem{
-  background:#2c2c2c;
+#revealProgress{
+  text-align:left;
 
-  padding:15px;
-
-  border-radius:12px;
-
-  font-size:18px;
-
-  font-weight:bold;
-
-  text-align:center;
+  margin-bottom:18px;
 }
 
-#roundScores, #finalScores{
+#revealCompareRow{
   display:flex;
+  gap:12px;
 
-  flex-direction:column;
-
-  gap:10px;
-
-  width:100%;
+  margin-bottom:26px;
 }
 
-
-/* =========================
-   TUTORIAL SCREEN
-========================= */
-
-#tutorialControls{
-  display:none;
-
-  flex-direction:column;
-
-  gap:10px;
-
-  width:100%;
-}
-
-.tutorialNavRow{
-  display:flex;
-
-  gap:10px;
-
-  width:100%;
-}
-
-.tutorialNavRow button{
+.revealCompareCard{
   flex:1;
+
+  padding:18px 16px;
+
+  background:var(--surface-alt);
 }
 
-#skipTutorialBtn{
-  background:#444;
+.revealCompareCard.real{
+  background:var(--purple);
+  color:var(--on-accent);
+}
 
-  color:#aaa;
-
+.revealCompareCard .metaLabel{
   font-size:14px;
 }
 
-#skipTutorialBtn:hover{
-  background:#555;
+.revealCompareCard.real .metaLabel{
+  color:var(--on-accent);
+  opacity:0.75;
+}
 
-  transform:none;
+.revealCompareCard .compareValue{
+  font-weight:900;
+  font-stretch:125%;
+  font-size:74px;
+  line-height:1;
+}
+
+#revealResultLabel{
+  color:var(--purple-light);
+}
+
+#revealPoints{
+  font-weight:900;
+  font-stretch:125%;
+  font-size:46px;
+
+  margin-top:10px;
+}
+
+#revealTotalBox{
+  padding:16px 18px;
+
+  border:2px solid rgba(239,234,249,0.18);
+
+  margin-top:auto;
+}
+
+#revealTotalBox .metaLabel{
+  margin-bottom:6px;
+}
+
+#revealTotalRow{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+}
+
+#revealTotalRank{
+  font-weight:900;
+  font-stretch:112%;
+  font-size:26px;
+
+  text-transform:uppercase;
+}
+
+#revealTotalScore{
+  font-weight:900;
+  font-stretch:125%;
+  font-size:40px;
+}
+
+
+/* =========================
+   RESULTS / SCORES (round score screen)
+========================= */
+
+.scoreItem{
+  background:var(--surface-alt);
+
+  padding:15px;
+
+  font-size:18px;
+  font-weight:900;
+  font-stretch:112%;
+
+  text-transform:uppercase;
+
+  text-align:center;
+}
+
+#roundScores{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+
+  margin-top:16px;
+}
+
+
+/* =========================
+   FIM (Final Score) SCREEN
+========================= */
+
+#finalWinnerBanner{
+  font-weight:900;
+  font-stretch:125%;
+  font-size:52px;
+  line-height:0.92;
+
+  letter-spacing:-0.035em;
+  text-transform:uppercase;
+
+  margin-top:14px;
+}
+
+#finalWinnerBanner span{
+  color:var(--purple-light);
+}
+
+#finalMeta{
+  font-family:var(--mono);
+  font-size:18px;
+
+  letter-spacing:0.1em;
+
+  color:var(--text-dim);
+
+  margin-top:10px;
+}
+
+#finalScores{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+
+  margin-top:26px;
+}
+
+.finalScoreRow{
+  display:flex;
+  justify-content:space-between;
+
+  padding:12px 14px;
+
+  background:var(--surface-alt);
+
+  font-weight:900;
+  font-stretch:112%;
+  font-size:20px;
+
+  text-transform:uppercase;
+}
+
+.finalScoreRow.isMe{
+  background:rgba(255,61,132,0.12);
+  color:var(--pink-light);
+}
+
+.finalScoreRow .finalScoreValue{
+  font-stretch:125%;
+}
+
+.homeButton{
+  margin-top:10px;
 }
 
 
@@ -576,32 +1144,7 @@ button:hover{
 ========================= */
 
 #hostButton{
-  width:100%;
-
-  padding:18px;
-
-  border:none;
-
-  border-radius:14px;
-
-  background:#f59e0b;
-
-  color:#111;
-
-  font-size:17px;
-  font-weight:bold;
-
-  cursor:pointer;
-
-  transition:0.2s;
-
-  letter-spacing:1px;
-}
-
-#hostButton:hover{
-  background:#fbbf24;
-
-  transform:scale(1.02);
+  margin-top:auto;
 }
 
 
@@ -615,7 +1158,7 @@ button:hover{
   position:fixed;
   inset:0;
 
-  background:rgba(0,0,0,0.75);
+  background:rgba(10,7,19,0.88);
 
   z-index:9999;
 
@@ -630,41 +1173,19 @@ button:hover{
 }
 
 .pauseOverlayCard{
-  background:#1e1e1e;
+  background:var(--surface);
 
-  border-radius:20px;
+  border:2px solid var(--purple);
 
   padding:30px 40px;
 }
 
-
-/* =========================
-   HOME BUTTON
-========================= */
-
-.homeButton{
-  width:100%;
-
-  padding:15px;
-
-  border:none;
-
-  border-radius:10px;
-
-  background:#2c2c2c;
-
-  color:white;
-
-  font-size:16px;
-  font-weight:bold;
-
-  cursor:pointer;
-
-  transition:0.2s;
+.pauseOverlayCard h2{
+  font-size:26px;
 }
 
-.homeButton:hover{
-  transform:scale(1.02);
+.pauseOverlayCard p{
+  margin-top:10px;
 
-  background:#3a3a3a;
+  color:var(--text-dim);
 }

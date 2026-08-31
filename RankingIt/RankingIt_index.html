@@ -12,6 +12,13 @@
 
   <title>RankingIt</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
   <link
     rel="stylesheet"
     href="RankingIt_style.css"
@@ -21,19 +28,19 @@
 
 <body>
 
-  <p id="themeBanner" class="themeBanner">
-    Tema aqui...
-  </p>
-
   <!-- =========================
        QUADRO DE CLASSIFICAÇÃO (persistente, fora do .container — só usado no
-       Refining, ver RankingIt_app.js). Arraste as cartas entre as colunas.
+       Refining, ver RankingIt_app.js). Arraste as cartas pra nota que elas merecem.
   ========================== -->
 
   <div id="rankBoardWrapper" class="rankBoardWrapper">
 
-    <p id="rankBoardAxis" class="axisText"></p>
-    <p class="rankBoardHint">Arraste cada resposta pra nota que ela merece — dá pra mudar quantas vezes quiser.</p>
+    <div id="rankBoardTopRow">
+      <span class="hostTag">rebalanceia</span>
+    </div>
+
+    <p id="rankBoardAxis" class="axisText" style="margin-bottom:6px;"></p>
+    <p class="rankBoardHint">segura e arrasta pra reordenar</p>
 
     <div id="authorReminder" class="authorReminder">
       <strong>Sua resposta está aí!</strong> Não reaja nem dê pistas enquanto os outros reclassificam.
@@ -43,36 +50,38 @@
 
     <div id="rankBoard" class="rankBoard">
       <div class="rankColumn">
-        <div class="rankColumnLabel">0</div>
-        <div class="rankColumnCards" data-grade="0"></div>
-      </div>
-      <div class="rankColumn">
-        <div class="rankColumnLabel">1</div>
-        <div class="rankColumnCards" data-grade="1"></div>
-      </div>
-      <div class="rankColumn">
-        <div class="rankColumnLabel">2</div>
-        <div class="rankColumnCards" data-grade="2"></div>
-      </div>
-      <div class="rankColumn">
-        <div class="rankColumnLabel">3</div>
-        <div class="rankColumnCards" data-grade="3"></div>
+        <div class="rankColumnLabel">5</div>
+        <div class="rankColumnCards" data-grade="5"></div>
       </div>
       <div class="rankColumn">
         <div class="rankColumnLabel">4</div>
         <div class="rankColumnCards" data-grade="4"></div>
       </div>
       <div class="rankColumn">
-        <div class="rankColumnLabel">5</div>
-        <div class="rankColumnCards" data-grade="5"></div>
+        <div class="rankColumnLabel">3</div>
+        <div class="rankColumnCards" data-grade="3"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">2</div>
+        <div class="rankColumnCards" data-grade="2"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">1</div>
+        <div class="rankColumnCards" data-grade="1"></div>
+      </div>
+      <div class="rankColumn">
+        <div class="rankColumnLabel">0</div>
+        <div class="rankColumnCards" data-grade="0"></div>
       </div>
     </div>
 
-    <p id="rankProgressText" class="progressText"></p>
+    <div class="spacer"></div>
 
     <button id="refiningReadyBtn" onclick="markRefiningReady()">
-      Pronto!
+      Tô pronto
     </button>
+
+    <p id="rankProgressText" class="progressText"></p>
 
   </div>
 
@@ -87,13 +96,20 @@
       class="screen active"
     >
 
-      <h1>
-        RankingIt
+      <div class="lobbyHeader">
+        <span id="lobbyPlayerName">Você</span>
+        <span id="lobbyHostBadge" class="hostTag" hidden>host</span>
+      </div>
+
+      <h1 class="bigHeading">
+        Esperando<br />a galera
       </h1>
 
-      <p>
-        Esperando o anfitrião começar...
-      </p>
+      <p id="lobbyPlayerCount" class="metaLabel"></p>
+
+      <div id="lobbyPlayerList"></div>
+
+      <div class="spacer"></div>
 
     </div>
 
@@ -107,42 +123,58 @@
       class="screen"
     >
 
-      <h2>
-        COMO JOGAR
-      </h2>
+      <div id="tutorialHostView" hidden>
 
-      <p>
-        Acompanhem a explicação das regras na tela principal!
-      </p>
+        <p class="metaLabel">controle do tutorial</p>
 
-      <div id="tutorialControls">
+        <div id="tutorialStepRow">
+          <span id="tutorialStepBadge" class="badgeChip">1</span>
+          <span id="tutorialStepOf">de 5</span>
+        </div>
 
-        <div class="tutorialNavRow">
+        <p id="tutorialStepText" class="axisText"></p>
 
-          <button onclick="SendTutorialAction('prev')">
-            ← Anterior
-          </button>
+        <div class="spacer"></div>
 
-          <button onclick="SendTutorialAction('next')">
-            Próxima →
+        <div id="tutorialControls">
+
+          <div class="tutorialNavRow">
+
+            <button
+              id="tutorialPrevBtn"
+              class="btnOutline"
+              onclick="SendTutorialAction('prev')"
+            >
+              ‹ Voltar
+            </button>
+
+            <button onclick="SendTutorialAction('next')">
+              Avançar ›
+            </button>
+
+          </div>
+
+          <button
+            id="skipTutorialBtn"
+            class="btnGhost"
+            onclick="SendTutorialAction('skip')"
+          >
+            Pular tutorial
           </button>
 
         </div>
 
-        <button
-          id="skipTutorialBtn"
-          onclick="SendTutorialAction('skip')"
-        >
-          Pular Tutorial
-        </button>
-
       </div>
+
+      <p id="tutorialWaitingText">
+        Acompanhe a explicação das regras — o host está passando as telas.
+      </p>
 
     </div>
 
 
     <!-- =========================
-         THEME REVEAL SCREEN
+         NOTA SECRETA (theme reveal) SCREEN
     ========================== -->
 
     <div
@@ -150,17 +182,19 @@
       class="screen"
     >
 
-      <h2 id="themeRevealTheme">
-        Tema aqui...
-      </h2>
+      <p class="metaLabel">tema</p>
 
-      <p id="themeRevealAxis" class="axisText">
-      </p>
+      <h2 id="themeRevealTheme">Tema aqui...</h2>
 
-      <div class="secretGradeCard">
-        <p class="secretGradeLabel">Sua nota secreta é</p>
-        <p id="secretGradeValue" class="secretGradeValue">?</p>
-      </div>
+      <p id="themeRevealGradeLabel">sua nota é</p>
+
+      <p id="secretGradeValue">?</p>
+
+      <p id="themeRevealSentence"></p>
+
+      <div class="spacer"></div>
+
+      <p id="themeRevealFooter">Não mostra pra ninguém</p>
 
     </div>
 
@@ -174,17 +208,18 @@
       class="screen"
     >
 
-      <h2 id="writingTheme">
-        Tema aqui...
-      </h2>
+      <div id="writingHeaderRow">
 
-      <p id="writingAxis" class="axisText">
-      </p>
+        <span id="writingTheme">Tema aqui...</span>
 
-      <div class="secretGradeCard small">
-        <p class="secretGradeLabel">Mire na nota</p>
-        <p id="writingSecretGradeValue" class="secretGradeValue">?</p>
+        <span id="writingGradeTag">
+          <span class="metaLabel">sua nota</span>
+          <span id="writingSecretGradeValue" class="badgeChip">?</span>
+        </span>
+
       </div>
+
+      <p id="writingAxis" class="axisText"></p>
 
       <textarea
         id="answerInput"
@@ -195,17 +230,18 @@
         id="sendButton"
         onclick="sendAnswer()"
       >
-        Enviar Resposta
+        Enviar
       </button>
 
-      <p id="waitingText">
-      </p>
+      <p id="waitingText"></p>
 
     </div>
 
 
     <!-- =========================
-         JUDGING SCREEN (sequencial — uma resposta por vez)
+         JUDGING SCREEN (sequencial — uma resposta por vez).
+         #judgingContent (julgadores) e #authorBlockedContent (autor da vez,
+         que não pode falar nem dar dicas) se alternam dentro da mesma screen.
     ========================== -->
 
     <div
@@ -213,36 +249,56 @@
       class="screen"
     >
 
-      <p id="judgingProgress" class="progressText">
-      </p>
+      <div id="judgingContent">
 
-      <h2 id="judgingAuthorName">
-        Autor
-      </h2>
+        <p id="judgingProgress" class="metaLabel" style="margin-bottom:16px;"></p>
 
-      <p id="judgingAnswerText" class="answerQuote">
-        "Resposta aqui..."
-      </p>
-
-      <div id="authorWaitingBox" class="authorWaitingBox">
-        <p><strong>É a sua resposta!</strong></p>
-        <p>Não fale nem dê dicas enquanto os outros julgam.</p>
-      </div>
-
-      <div id="judgeGradeBox">
-
-        <p class="axisText" id="judgingAxis"></p>
-
-        <div id="gradeButtons" class="gradeButtons">
-          <button class="gradeButton" onclick="submitJudgment(0)">0</button>
-          <button class="gradeButton" onclick="submitJudgment(1)">1</button>
-          <button class="gradeButton" onclick="submitJudgment(2)">2</button>
-          <button class="gradeButton" onclick="submitJudgment(3)">3</button>
-          <button class="gradeButton" onclick="submitJudgment(4)">4</button>
-          <button class="gradeButton" onclick="submitJudgment(5)">5</button>
+        <div class="answerCardQuote">
+          <p id="judgingAuthorLine" class="metaLabel"></p>
+          <p id="judgingAnswerText"></p>
         </div>
 
+        <p class="metaLabel" style="margin-bottom:12px;">que nota isso vale?</p>
+
+        <div id="gradeButtons" class="gradeButtons">
+          <button class="gradeButton" onclick="selectJudgmentGrade(0)">0</button>
+          <button class="gradeButton" onclick="selectJudgmentGrade(1)">1</button>
+          <button class="gradeButton" onclick="selectJudgmentGrade(2)">2</button>
+          <button class="gradeButton" onclick="selectJudgmentGrade(3)">3</button>
+          <button class="gradeButton" onclick="selectJudgmentGrade(4)">4</button>
+          <button class="gradeButton" onclick="selectJudgmentGrade(5)">5</button>
+        </div>
+
+        <div class="spacer"></div>
+
+        <p id="judgingHint" class="metaLabel">dá pra mudar tudo depois, no rebalanceamento.</p>
+
+        <button id="judgingConfirmBtn" onclick="confirmJudgment()" disabled>
+          Confirmar
+        </button>
+
         <p id="judgingWaitingText"></p>
+
+      </div>
+
+      <div id="authorBlockedContent" hidden>
+
+        <p class="metaLabel">sua resposta está no ar</p>
+
+        <h2 id="authorBlockedHeading">Boca<br />fechada</h2>
+
+        <p id="authorBlockedBody">
+          Sem defender, sem dar dica, sem cara de indignado. Regra de honra.
+        </p>
+
+        <div id="authorBlockedAnswerBox">
+          <p class="metaLabel">você escreveu</p>
+          <p id="authorBlockedAnswerText"></p>
+        </div>
+
+        <div class="spacer"></div>
+
+        <p id="authorBlockedFooter">Aguarde os outros julgarem</p>
 
       </div>
 
@@ -261,7 +317,7 @@
 
 
     <!-- =========================
-         REVEAL SCREEN
+         RESULTADO PESSOAL (Reveal) SCREEN
     ========================== -->
 
     <div
@@ -269,27 +325,35 @@
       class="screen"
     >
 
-      <p id="revealProgress" class="progressText">
-      </p>
+      <p id="revealProgress" class="metaLabel"></p>
 
-      <h2 id="revealAuthorName">
-        Autor
-      </h2>
+      <div id="revealCompareRow">
 
-      <p id="revealAnswerText" class="answerQuote">
-        "Resposta aqui..."
-      </p>
+        <div class="revealCompareCard">
+          <p class="metaLabel">você deu</p>
+          <p id="revealMyGuess" class="compareValue">?</p>
+        </div>
 
-      <h2>
-        Nota real: <span id="revealRealGrade">?</span>
-      </h2>
+        <div class="revealCompareCard real">
+          <p class="metaLabel">era</p>
+          <p id="revealRealGrade" class="compareValue">?</p>
+        </div>
 
-      <div id="revealMine" class="answerResultMine">
       </div>
 
-      <p>
-        Veja o placar completo na tela principal!
-      </p>
+      <h2 id="revealResultLabel" class="bigHeading"></h2>
+
+      <p id="revealPoints"></p>
+
+      <div class="spacer"></div>
+
+      <div id="revealTotalBox">
+        <p class="metaLabel">seu total</p>
+        <div id="revealTotalRow">
+          <span id="revealTotalRank"></span>
+          <span id="revealTotalScore"></span>
+        </div>
+      </div>
 
     </div>
 
@@ -314,7 +378,7 @@
 
 
     <!-- =========================
-         FINAL SCORE SCREEN
+         FIM (Final Score) SCREEN
     ========================== -->
 
     <div
@@ -322,19 +386,23 @@
       class="screen"
     >
 
-      <h2>
-        RESULTADO FINAL
-      </h2>
+      <p class="metaLabel">acabou</p>
+
+      <h2 id="finalWinnerBanner"></h2>
+
+      <p id="finalMeta"></p>
 
       <div id="finalScores">
       </div>
 
       <button
-        class="homeButton"
+        class="homeButton btnGhost"
         onclick="window.location.href='../index.html'"
       >
-        Voltar ao Início
+        sair da sala
       </button>
+
+      <div class="spacer"></div>
 
     </div>
 
@@ -343,7 +411,7 @@
       style="display:none"
       onclick="SendHostCommand()"
     >
-      Começar Jogo
+      Começar
     </button>
 
   </div>
