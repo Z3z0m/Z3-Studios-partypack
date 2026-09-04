@@ -302,6 +302,18 @@ input:focus, textarea:focus{
   margin-bottom:26px;
 }
 
+/* Como em todos os outros jogos do pack, o conteúdo de espera fica
+   centralizado verticalmente na tela (em vez de grudado no topo com um
+   vazio enorme embaixo) — só o lobbyHeader (nome/badge de host) fica fixo
+   no topo, como uma barrinha de status. */
+#lobbyScreen h1.bigHeading{
+  margin-top:auto;
+}
+
+#lobbyPlayerList{
+  margin-bottom:auto;
+}
+
 #lobbyPlayerName{
   font-weight:900;
   font-stretch:112%;
@@ -372,12 +384,17 @@ input:focus, textarea:focus{
   text-wrap:pretty;
 }
 
+/* mesma lógica do lobby: sem #tutorialHostView (só o host vê), essa é a
+   única coisa na tela — centraliza em vez de ficar grudada no topo. */
 #tutorialWaitingText{
   font-size:21px;
   font-weight:500;
   line-height:1.35;
 
   color:rgba(239,234,249,0.82);
+
+  margin-top:auto;
+  margin-bottom:auto;
 }
 
 #tutorialControls{
@@ -992,12 +1009,17 @@ input:focus, textarea:focus{
    RESULTADO PESSOAL (Reveal) SCREEN
 ========================= */
 
+/* mesma lógica: sem #revealHostView (só o host vê), essa é a única coisa
+   na tela — centraliza em vez de ficar grudada no topo. */
 #revealWaitingText{
   font-size:21px;
   font-weight:500;
   line-height:1.35;
 
   color:rgba(239,234,249,0.82);
+
+  margin-top:auto;
+  margin-bottom:auto;
 }
 
 #revealProgress{

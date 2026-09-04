@@ -21,32 +21,60 @@
 
 <body>
 
-  <p id="categoryText" class="categoryBanner">
-    Escreva como se fosse um...
-  </p>
+  <div id="rain" class="rain" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
 
-  <h2 id="voteCategoryText" class="categoryBanner">
-    Vote na resposta que parece um...
-  </h2>
+  <header class="topbar">
 
-  <div class="container">
+    <img class="brandMascot" src="assets/mascot.png" alt="" />
+
+    <div class="brand">FIND<span class="accent">AI</span><span class="accent cursor">_</span></div>
+
+    <div class="topbarRight">
+      <div id="roundLabel" class="roundLabel"></div>
+      <div id="identityTag" class="tag"></div>
+      <div id="hostTag" class="tag tagHost hostOnly">HOST</div>
+    </div>
+
+  </header>
+
+  <div id="timerBar" class="timerBar" style="visibility:hidden;">
+    <div id="timerFill" class="timerFill"></div>
+  </div>
+
+  <main class="container">
 
     <!-- =========================
          LOBBY SCREEN
     ========================== -->
 
-    <div
-      id="lobbyScreen"
-      class="screen active"
-    >
+    <div id="lobbyScreen" class="screen active">
 
-      <h1>
-        FindAI
-      </h1>
+      <img class="mascotBig" src="assets/mascot.png" alt="" />
 
-      <p>
-        Esperando o anfitrião começar...
-      </p>
+      <div class="centerText">
+        <h2>VOCÊ ESTÁ DENTRO</h2>
+        <p class="dim">Deixe o celular na mão. A pergunta aparece aqui.</p>
+      </div>
+
+      <div class="card blueprint">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="cardKicker">NA SALA · <span id="lobbyPlayerCount">0</span></div>
+        <div id="lobbyPlayers" class="tagRow"></div>
+      </div>
+
+      <button
+        id="startButton"
+        class="btn btnPrimary btnBlock hostOnly"
+        onclick="SendHostCommand()"
+      >
+        INICIAR PARTIDA
+      </button>
+
+      <div class="waitRow playerOnly">
+        <span class="dot pulse"></span>
+        <span class="dim">Aguardando o host iniciar…</span>
+      </div>
 
     </div>
 
@@ -55,39 +83,39 @@
          TUTORIAL SCREEN
     ========================== -->
 
-    <div
-      id="tutorialScreen"
-      class="screen"
-    >
+    <div id="tutorialScreen" class="screen">
 
-      <h2>
-        COMO JOGAR
-      </h2>
+      <div class="tutorialHost hostOnly">
 
-      <p>
-        Acompanhem a explicação das regras na tela principal!
-      </p>
-
-      <div id="tutorialControls">
-
-        <div class="tutorialNavRow">
-
-          <button onclick="SendTutorialAction('prev')">
-            ← Anterior
-          </button>
-
-          <button onclick="SendTutorialAction('next')">
-            Próxima →
-          </button>
-
+        <div>
+          <div class="kicker accent">Controle do host</div>
+          <h2>TUTORIAL NA TV</h2>
         </div>
 
-        <button
-          id="skipTutorialBtn"
-          onclick="SendTutorialAction('skip')"
-        >
-          Pular Tutorial
-        </button>
+        <div class="card blueprint">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div id="tutorialPageNum" class="cardKicker accent mono">PÁGINA 1/4</div>
+          <p id="tutorialPageText" class="tutorialText"></p>
+        </div>
+
+        <div class="row gap">
+          <button class="btn btnSecondary" style="flex:1;" onclick="SendTutorialAction('prev')">‹ ANTERIOR</button>
+          <button class="btn btnPrimary" style="flex:1;" onclick="SendTutorialAction('next')">PRÓXIMO ›</button>
+        </div>
+
+        <button class="btn btnGhost btnBlock" onclick="SendTutorialAction('skip')">PULAR TUTORIAL</button>
+
+        <div id="tutorialDotsHost" class="dotsRow" style="margin-top:auto;"></div>
+
+      </div>
+
+      <div class="tutorialPlayer playerOnly">
+
+        <img class="mascotBig" src="assets/mascot.png" alt="" />
+        <h2>OLHE PARA A TV</h2>
+        <p class="dim maxw">O host está passando as regras. Você joga por aqui daqui a pouco.</p>
+
+        <div id="tutorialDotsPlayer" class="dotsRow"></div>
 
       </div>
 
@@ -98,31 +126,70 @@
          PROMPT SCREEN
     ========================== -->
 
-    <div
-      id="promptScreen"
-      class="screen"
-    >
+    <div id="promptScreen" class="screen">
 
-      <h2 id="promptText">
-        Prompt aqui...
-      </h2>
+      <div class="row spread">
+        <div id="promptCategoryTag" class="tag tagOutline"></div>
+      </div>
 
-      <input
-        type="text"
-        id="answerInput"
-        placeholder="Sua resposta..."
-        onkeydown="HandleEnterKey(event, sendAnswer)"
-      />
+      <h1 id="promptText">Prompt aqui...</h1>
+
+      <div id="promptCategoryHint" class="dim small"></div>
+
+      <div class="card blueprint growCard">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <textarea
+          id="answerInput"
+          maxlength="160"
+          placeholder="Digite sua resposta…"
+          onkeydown="HandleEnterKey(event, sendAnswer)"
+        ></textarea>
+        <div class="counter mono"><span id="draftCount">0</span>/160</div>
+      </div>
 
       <button
         id="sendButton"
+        class="btn btnPrimary btnBlock"
         onclick="sendAnswer()"
       >
-        Enviar Resposta
+        ENVIAR RESPOSTA
       </button>
 
-      <p id="waitingText">
-      </p>
+    </div>
+
+
+    <!-- =========================
+         SENT SCREEN
+         (mesmo estado "Prompt" do servidor — vira uma sub-tela
+         local quando o jogador já respondeu)
+    ========================== -->
+
+    <div id="sentScreen" class="screen">
+
+      <div class="checkBadge">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+      </div>
+
+      <div class="centerText">
+        <h2>RESPOSTA ENVIADA</h2>
+        <p class="dim">Agora é esperar o resto da mesa.</p>
+      </div>
+
+      <div class="card blueprint">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="cardKicker">SUA RESPOSTA</div>
+        <div id="sentAnswerText"></div>
+      </div>
+
+      <div class="progressBlock">
+        <div id="sentProgressLabel" class="mono small dim"></div>
+        <div id="sentProgressSlots" class="slotsRow"></div>
+      </div>
+
+      <div class="waitRow pushBottom">
+        <span class="dot pulse"></span>
+        <span id="sentWaitingText" class="dim">Aguardando outros jogadores…</span>
+      </div>
 
     </div>
 
@@ -131,36 +198,55 @@
          VOTING SCREEN
     ========================== -->
 
-    <div
-      id="votingScreen"
-      class="screen"
-    >
+    <div id="votingScreen" class="screen">
 
-      <p id="votingPrompt">
-        Prompt aqui...
-      </p>
-
-      <div id="votingAnswers">
+      <div class="votingHeader">
+        <div class="row spread">
+          <div id="votingKicker" class="kicker accent" style="margin:0;">Vote na IA de verdade</div>
+        </div>
+        <div id="votingPrompt" class="votingPromptText">Prompt aqui...</div>
       </div>
 
-      <p id="votingWaitingText">
-      </p>
+      <div id="votingAnswers" class="votingList"></div>
+
+      <div class="votingFooter">
+        <button
+          id="confirmVoteButton"
+          class="btn btnPrimary btnBlock"
+          onclick="confirmVote()"
+          disabled
+        >
+          CONFIRMAR VOTO
+        </button>
+        <p id="votingWaitingText" class="dim small center" style="display:none;"></p>
+      </div>
 
     </div>
 
 
     <!-- =========================
-         SHOW ANSWERS SCREEN
+         SHOW ANSWERS / REVEAL SCREEN
     ========================== -->
 
-    <div
-      id="showAnswersScreen"
-      class="screen"
-    >
+    <div id="showAnswersScreen" class="screen">
 
-      <h2>
-        Mostrando respostas no Host
-      </h2>
+      <img class="mascotBig" src="assets/mascot.png" alt="" />
+
+      <div class="centerText">
+        <div class="kicker accent">Revelação na TV</div>
+        <h2>A IA DE VERDADE ERA…</h2>
+      </div>
+
+      <div class="card blueprint highlight">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="cardKicker accent">RESPOSTA · IA DE VERDADE</div>
+        <div id="revealFakeAnswer"></div>
+      </div>
+
+      <div class="waitRow pushBottom">
+        <span class="dot pulse"></span>
+        <span class="dim">Calculando o placar…</span>
+      </div>
 
     </div>
 
@@ -169,16 +255,25 @@
          RESULT SCREEN
     ========================== -->
 
-    <div
-      id="resultScreen"
-      class="screen"
-    >
+    <div id="resultScreen" class="screen">
 
-      <h2>
-        PLACAR
-      </h2>
+      <div>
+        <div class="kicker dim">Placar</div>
+        <h2>RODADA <span id="resultRoundNum"></span></h2>
+      </div>
 
-      <div id="resultScores">
+      <div id="resultScores" class="scoreList"></div>
+
+      <div class="card blueprint highlight center" style="align-items:center;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="cardKicker accent">SUA POSIÇÃO</div>
+        <div class="bigRank"><span id="resultMyRank"></span><span class="rankOf"> / <span id="resultTotalPlayers"></span></span></div>
+        <div id="resultMyScore" class="mono accent"></div>
+      </div>
+
+      <div class="waitRow pushBottom">
+        <span class="dot pulse"></span>
+        <span class="dim">Próxima rodada começando…</span>
       </div>
 
     </div>
@@ -188,20 +283,33 @@
          FINAL SCORE SCREEN
     ========================== -->
 
-    <div
-      id="finalScoreScreen"
-      class="screen"
-    >
+    <div id="finalScoreScreen" class="screen">
 
-      <h2>
-        RESULTADO FINAL
-      </h2>
+      <img class="mascotBig" src="assets/mascot.png" alt="" />
 
-      <div id="finalScores">
+      <div class="centerText">
+        <div class="kicker dim">Fim de jogo</div>
+        <div id="finalMyRank" class="finalRank"></div>
+        <div id="finalMyScore" class="mono"></div>
+      </div>
+
+      <div id="finalScores" class="finalList"></div>
+
+      <button
+        id="hostButton"
+        class="btn btnPrimary btnBlock hostOnly"
+        onclick="SendHostCommand()"
+      >
+        JOGAR DE NOVO
+      </button>
+
+      <div class="waitRow playerOnly pushBottom">
+        <span class="dot pulse"></span>
+        <span class="dim">O host pode iniciar outra partida</span>
       </div>
 
       <button
-        class="homeButton"
+        class="btn btnGhost btnBlock"
         onclick="window.location.href='../index.html'"
       >
         Voltar ao Início
@@ -209,23 +317,13 @@
 
     </div>
 
-    <button
-      id="hostButton"
-      style="display:none"
-      onclick="SendHostCommand()"
-    >
-      Começar Jogo
-    </button>
+  </main>
 
-  </div>
-
-  <div
-    id="pauseOverlay"
-    class="pauseOverlay"
-  >
-    <div class="pauseOverlayCard">
-      <h2>Jogo Pausado</h2>
-      <p>Aguarde o host retomar...</p>
+  <div id="pauseOverlay" class="pauseOverlay">
+    <div class="card blueprint pauseCard">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <h2>JOGO PAUSADO</h2>
+      <p class="dim">Aguarde o host retomar...</p>
     </div>
   </div>
 
