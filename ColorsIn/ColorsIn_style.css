@@ -1,133 +1,423 @@
+/* =========================================================
+   COLORS IN — design tokens
+   Ateliê de tinta: fundo escuro texturizado, papel claro para
+   cartões de conteúdo, laranja como cor de ação principal.
+========================================================= */
+
+:root{
+  /* fundo (jogo) */
+  --bg-top:#1D3C44;
+  --bg-mid:#0F2126;
+  --bg-bottom:#060F10;
+
+  /* fundo (placar final) */
+  --bg-final-top:#3A2C14;
+  --bg-final-mid:#17140D;
+  --bg-final-bottom:#080706;
+
+  /* papel / cartões claros */
+  --paper-top:#F7EFDD;
+  --paper-bottom:#EADFC6;
+  --paper-text:#231508;
+  --paper-text-soft:#8A6B3D;
+
+  /* tinta clara (texto sobre fundo escuro) */
+  --ink:#F4EBDA;
+  --ink-70:rgba(244,235,218,.75);
+  --ink-55:rgba(244,235,218,.55);
+  --ink-40:rgba(244,235,218,.4);
+
+  /* superfícies escuras */
+  --surface:rgba(244,235,218,.07);
+  --surface-border:rgba(244,235,218,.14);
+
+  /* cores de marca */
+  --orange:#F58220;
+  --orange-text:#2B1808;
+  --teal:#2ED3C0;
+  --teal-text:#062120;
+  --amber:#F5B301;
+  --green:#7BC618;
+  --pink:#E5218A;
+  --purple:#8B3DBE;
+  --blue:#4DC3FF;
+
+  /* forma */
+  --radius-btn:16px;
+  --radius-card:22px;
+  --radius-cell:5px;
+  --radius-context-cell:8px;
+
+  --shadow-card:0 16px 32px rgba(0,0,0,.45);
+  --shadow-cta:0 10px 22px rgba(245,130,32,.28);
+}
+
 *{
   margin:0;
   padding:0;
   box-sizing:border-box;
+  font-family:Rubik,system-ui,sans-serif;
+}
 
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+.visually-hidden{
+  position:absolute;
+  width:1px;height:1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+}
+
+html,body{
+  height:100%;
 }
 
 body{
-  width:100vw;
-  height:100vh;
+  min-height:100dvh;
 
-  background:#111;
+  /* o degradê e a textura ficam aqui (não no .container) pra cobrirem a
+     janela inteira — em telas largas (PC) o .container fica limitado a
+     480px e centralizado, então um fundo só nele deixa sobra lisa dos
+     dois lados. Aqui eles se estendem por trás do .container sem costura. */
+  background:
+    radial-gradient(120% 60% at 50% -10%, var(--bg-top) 0%, var(--bg-mid) 46%, var(--bg-bottom) 100%);
 
   display:flex;
-
   justify-content:center;
-  align-items:center;
 
-  color:white;
+  color:var(--ink);
+
+  overflow-x:hidden;
+}
+
+/* placar final usa um fundo mais quente — troca o degradê do body inteiro
+   enquanto #finalResultScreen for a tela ativa (display:flex via JS) */
+body:has(#finalResultScreen[style*="flex"]){
+  background:
+    radial-gradient(120% 60% at 50% -10%, var(--bg-final-top) 0%, var(--bg-final-mid) 46%, var(--bg-final-bottom) 100%);
+}
+
+/* lona / textura sobre a tela inteira, não só o .container */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:.4;
+  background:repeating-linear-gradient(48deg, rgba(255,255,255,.035) 0 2px, transparent 2px 5px);
 }
 
 .container{
-  width:90%;
-  max-width:700px;
+  position:relative;
+  z-index:1;
+  width:100%;
+  max-width:480px;
+  min-height:100dvh;
 
-  padding:40px;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
 
-  border-radius:25px;
+/* =========================
+   TELAS (raiz alternada via display:none/flex pelo JS)
+========================= */
 
-  background:#1e1e1e;
+#LobbyScreen,
+#tutorialScreen,
+#roundResultScreen,
+#roundScoreScreen,
+#finalResultScreen,
+#hintScreen,
+#waitingHintScreen,
+#guessScreen,
+#waitingGuessScreen{
+  /* #LobbyScreen fica de fora do display:none abaixo de propósito: é a
+     tela padrão antes de qualquer evento do Firebase chegar (o JS só
+     esconde telas dentro de HideAllScreens(), que só roda a partir de um
+     Open*() — nunca no carregamento inicial da página). Se currentState
+     ainda não existe no Firebase (sala recém-criada, Unity ainda
+     inicializando), o jogador continua vendo o lobby em vez de tela em
+     branco. As outras telas devem ficar ocultas até serem ativadas. */
+  display:none;
 
-  display:flex;
+  position:relative;
+  z-index:1;
+  overflow:hidden;
+
+  width:100%;
+  min-height:100dvh;
 
   flex-direction:column;
-
   align-items:center;
 
-  gap:25px;
+  gap:18px;
+
+  padding:calc(24px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
 
   text-align:center;
 }
 
 #LobbyScreen{
-  width:100%;
-
-  flex-direction:column;
-
-  align-items:center;
-
-  gap:25px;
-}
-
-h1{
-  font-size:42px;
-
-  letter-spacing:4px;
-}
-
-#subtitle{
-  opacity:0.8;
+  display:flex;
 }
 
 /* =========================
-   GRID
+   RESPINGOS DE TINTA (decorativos)
 ========================= */
+
+.splat{
+  position:absolute;
+  z-index:-1;
+
+  pointer-events:none;
+  user-select:none;
+}
+
+.splat-lobby-a{
+  top:-70px; right:-90px;
+  width:260px;
+  opacity:.6;
+  animation:bobS 9s ease-in-out infinite;
+}
+
+.splat-lobby-b{
+  left:-70px; bottom:150px;
+  width:190px;
+  opacity:.45;
+  animation:bobS 11s ease-in-out infinite;
+}
+
+.splat-lobby-c{
+  left:-30px; top:10px;
+  width:120px;
+  opacity:.85;
+}
+
+.splat-tutorial{
+  right:-60px; top:120px;
+  width:200px;
+  opacity:.45;
+  animation:bobS 12s ease-in-out infinite;
+}
+
+.splat-waiting-hint{
+  left:-90px; bottom:-50px;
+  width:250px;
+  opacity:.45;
+  animation:bobS 11s ease-in-out infinite;
+}
+
+.splat-guess-sent{
+  left:-50px; top:90px;
+  width:190px;
+  opacity:.4;
+  animation:bobS 13s ease-in-out infinite;
+}
+
+.splat-final{
+  right:-100px; top:-80px;
+  width:250px;
+  opacity:.5;
+}
+
+#LobbyScreen{
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+
+/* =========================
+   COMPONENTES COMPARTILHADOS
+========================= */
+
+.eyebrow{
+  font:500 13px/1.4 Rubik,sans-serif;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--ink-55);
+}
+
+#sendHintButton,
+#confirmGuessButton,
+#hostButton{
+  width:100%;
+  max-width:340px;
+  height:60px;
+
+  margin-top:auto;
+
+  border:none;
+  border-radius:var(--radius-btn);
+
+  background:var(--orange);
+  color:var(--orange-text);
+
+  font:700 19px/1 Fredoka,sans-serif;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease;
+
+  box-shadow:var(--shadow-cta);
+}
+
+#sendHintButton:hover,
+#confirmGuessButton:hover,
+#hostButton:hover{
+  transform:translateY(-1px) scale(1.01);
+}
+
+#confirmGuessButton:disabled,
+#sendHintButton:disabled{
+  background:var(--surface);
+  color:var(--ink-40);
+  box-shadow:none;
+  cursor:default;
+  transform:none;
+}
+
+.secondaryButton{
+  width:100%;
+  max-width:340px;
+
+  height:48px;
+
+  border:2px solid rgba(46,211,192,.5);
+  border-radius:14px;
+
+  background:rgba(46,211,192,.10);
+  color:var(--teal);
+
+  font:600 15px Rubik,sans-serif;
+
+  cursor:pointer;
+  transition:background .2s ease;
+}
+
+.secondaryButton:hover{
+  background:rgba(46,211,192,.18);
+}
+
+#hostButton{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(22px + env(safe-area-inset-bottom));
+  z-index:5;
+  max-width:calc(480px - 52px);
+  width:calc(100% - 52px);
+}
+
+#hostButton:hover{
+  transform:translateX(-50%) translateY(-1px) scale(1.01);
+}
+
+/* =========================
+   01 · LOBBY / AVATAR
+========================= */
+
+#gameTitle{
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  gap:6px;
+
+  font:700 clamp(34px, 9vw, 48px)/1 Fredoka,sans-serif;
+  letter-spacing:-.03em;
+}
+
+.c1,.c2,.c3,.c4,.c5,.c6{
+  text-shadow:3px 3px 0 #14110D;
+}
+
+.c1{ color:var(--teal); }
+.c2{ color:var(--amber); }
+.c3{ color:var(--pink); }
+.c4{ color:var(--purple); }
+.c5{ color:#7BC618; }
+.c6{ color:var(--blue); }
+
+.separator{
+  display:inline-block;
+  width:2px;
+}
+
+.inBadge{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  width:52px;
+  height:50px;
+  margin-top:2px;
+
+  background:var(--orange);
+  border-radius:56% 44% 48% 52%/50% 54% 46% 50%;
+  transform:rotate(-8deg);
+
+  box-shadow:0 6px 12px rgba(0,0,0,.45);
+}
+
+.inBadge .c7,
+.inBadge .c8{
+  color:var(--orange-text);
+  text-shadow:none;
+  transform:rotate(8deg);
+  font:700 31px Fredoka,sans-serif;
+}
+
+.inBadge .c7{ margin-right:-4px; }
+
+#subtitle{
+  font:500 17px Rubik,sans-serif;
+  color:#bfe6df;
+}
 
 #avatarGrid{
   width:100%;
+  max-width:340px;
 
   display:grid;
-
-  grid-template-columns:
-    repeat(3, 1fr);
-
-  gap:20px;
+  grid-template-columns:repeat(3, 1fr);
+  gap:14px;
 }
 
-/* =========================
-   AVATAR
-========================= */
-
 .avatarItem{
+  position:relative;
   aspect-ratio:1/1;
 
   border-radius:50%;
-
   overflow:hidden;
 
-  border:4px solid transparent;
+  background:var(--surface);
+  border:3px solid var(--surface-border);
 
   cursor:pointer;
-
-  transition:0.2s;
-
-  background:#2a2a2a;
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
 }
 
 .avatarItem img{
   width:100%;
   height:100%;
-
   object-fit:cover;
 }
-
-/* HOVER */
 
 .avatarItem:hover{
   transform:scale(1.05);
 }
 
-/* SELECTED BY YOU */
-
 .avatarItem.selected{
-  border:4px solid #4dff88;
-
-  box-shadow:
-    0 0 20px rgba(77,255,136,0.5);
+  border-color:var(--teal);
+  box-shadow:0 0 0 4px rgba(46,211,192,.22), 0 8px 18px rgba(0,0,0,.45);
+  transform:scale(1.06);
 }
 
-/* TAKEN */
+.avatarItem.selected:hover{
+  transform:scale(1.06);
+}
 
 .avatarItem.taken{
   filter:grayscale(1);
-
-  opacity:0.35;
-
+  opacity:.32;
   cursor:not-allowed;
 }
 
@@ -135,668 +425,735 @@ h1{
   transform:none;
 }
 
-/* =========================
-   SHOW PLAYERS
-========================= */
-
-#showPlayersScreen{
-  display:none;
-
-  width:100%;
-
-  flex-direction:column;
-
+#lobbyWaitingText{
+  display:inline-flex;
   align-items:center;
+  gap:9px;
 
-  gap:30px;
+  padding:9px 18px;
+  margin-top:auto;
+
+  border-radius:999px;
+  background:rgba(46,211,192,.12);
+  border:2px solid rgba(46,211,192,.35);
+
+  font:500 15px Rubik,sans-serif;
+  color:#8fe8dc;
 }
 
-/* DEFENDANT */
-
-#defendantContainer{
-  display:flex;
-
-  flex-direction:column;
-
-  align-items:center;
-
-  gap:20px;
-}
-
-#defendantImage{
-  width:180px;
-  height:180px;
-
+#lobbyWaitingText::before{
+  content:"";
+  width:9px;
+  height:9px;
   border-radius:50%;
-}
-
-#crimeText{
-  font-size:28px;
-
-  text-align:center;
-
-  max-width:600px;
-}
-
-/* DEFENSE / PROSECUTION */
-
-#defenseContainer,
-#prosecutionContainer{
-  position:absolute;
-
-  bottom:80px;
-
-  display:flex;
-
-  flex-direction:column;
-
-  align-items:center;
-
-  gap:15px;
-
-  transition:1s;
-}
-
-#defenseContainer{
-  left:-400px;
-}
-
-#prosecutionContainer{
-  right:-400px;
-}
-
-#defenseContainer img,
-#prosecutionContainer img{
-  width:140px;
-  height:140px;
-
-  border-radius:50%;
-}
-#gameTitle{
-  font-size:42px;
-  letter-spacing:4px;
-  font-weight:bold;
-}
-
-.c1{ color:#ff4d4d; } /* vermelho */
-.c2{ color:#ff9f43; } /* laranja */
-.c3{ color:#ffd93d; } /* amarelo */
-.c4{ color:#6bff6b; } /* verde */
-.c5{ color:#4dc3ff; } /* azul claro */
-.c6{ color:#6c63ff; } /* azul */
-.c7{ color:#b84dff; } /* roxo */
-.c8{ color:#ff66cc; } /* rosa */
-
-.separator{
-  display:inline-block;
-  width:12px;
-}
-
-#hintScreen,
-#waitingHintScreen{
-    display:none;
-
-    width:100%;
-
-    flex-direction:column;
-
-    align-items:center;
-
-    justify-content:center;
-
-    gap:20px;
-
-    text-align:center;
-}
-
-#myColorPreview
-{
-    width:180px;
-    height:180px;
-
-    border-radius:20px;
-
-    border:4px solid white;
-
-    box-shadow:
-        0 0 30px rgba(255,255,255,0.15);
-}
-
-#myColorTitle
-{
-    font-size:32px;
-    font-weight:bold;
-}
-
-#guessScreen
-{
-    display:none;
-
-    width:100%;
-
-    flex-direction:column;
-
-    align-items:center;
-
-    gap:25px;
-}
-
-#guessHintText
-{
-    font-size:32px;
-    font-weight:bold;
-}
-
-#guessGrid
-{
-    display:grid;
-
-    grid-template-columns:
-        repeat(12, 1fr);
-
-    gap:4px;
-
-    width:100%;
-}
-
-.guessCell
-{
-    aspect-ratio:1;
-
-    border-radius:6px;
-
-    cursor:pointer;
-
-    transition:0.15s;
-}
-
-.guessCell:hover
-{
-    transform:scale(1.1);
-}
-
-#guessHintText
-{
-    font-size:24px;
-
-    font-weight:bold;
-
-    text-align:center;
-}
-
-.guessCell.selected
-{
-    outline:4px solid white;
-
-    transform:scale(1.08);
-}
-
-#sendHintButton,
-#confirmGuessButton
-{
-    width:100%;
-
-    max-width:300px;
-
-    padding:15px;
-
-    border:none;
-
-    border-radius:10px;
-
-    background:#5c8dff;
-
-    color:white;
-
-    font-size:16px;
-    font-weight:bold;
-
-    cursor:pointer;
-
-    transition:0.2s;
-}
-
-#confirmGuessButton:hover
-{
-    transform:scale(1.02);
-}
-
-#confirmGuessButton:disabled
-{
-    background:#111;
-
-    color:#666;
-
-    cursor:default;
-
-    transform:none;
-}
-
-#waitingGuessScreen
-{
-    display:none;
-
-    width:100%;
-
-    flex-direction:column;
-
-    align-items:center;
-
-    justify-content:center;
-
-    gap:20px;
-
-    text-align:center;
-}
-
-
-/* =========================
-   SECONDARY BUTTON
-========================= */
-
-.secondaryButton{
-    width:100%;
-
-    max-width:300px;
-
-    padding:12px;
-
-    border:2px solid #5c8dff;
-
-    border-radius:10px;
-
-    background:transparent;
-
-    color:#5c8dff;
-
-    font-size:14px;
-    font-weight:bold;
-
-    cursor:pointer;
-
-    transition:0.2s;
-}
-
-.secondaryButton:hover{
-    background:rgba(92,141,255,0.15);
+  background:var(--teal);
+  animation:glowPulse 1.6s ease-in-out infinite;
 }
 
 /* =========================
-   COLOR CONTEXT MODAL
+   02 · TUTORIAL
 ========================= */
 
-.contextModal{
-    display:none;
-
-    position:fixed;
-    inset:0;
-
-    background:rgba(0,0,0,0.8);
-
-    z-index:9998;
-
-    align-items:center;
-    justify-content:center;
-
-    text-align:center;
-}
-
-.contextModal.active{
-    display:flex;
-}
-
-.contextModalCard{
-    width:90%;
-    max-width:420px;
-
-    background:#1e1e1e;
-
-    border-radius:20px;
-
-    padding:30px;
-
-    display:flex;
-
-    flex-direction:column;
-
-    align-items:center;
-
-    gap:16px;
-}
-
-.contextModalHint{
-    opacity:0.75;
-
-    font-size:14px;
-}
-
-#contextGrid{
-    display:grid;
-
-    gap:6px;
-
-    width:100%;
-}
-
-.contextCell{
-    aspect-ratio:1;
-
-    border-radius:6px;
-}
-
-.contextCell.contextCellCenter{
-    border:3px solid white;
-
-    box-shadow:
-        0 0 12px rgba(255,255,255,0.6);
-}
-
-.contextCell.contextCellEmpty{
-    background:transparent;
-}
-
-/* =========================
-   PAUSE OVERLAY
-========================= */
-
-.pauseOverlay{
-    display:none;
-
-    position:fixed;
-    inset:0;
-
-    background:rgba(0,0,0,0.75);
-
-    z-index:9999;
-
-    align-items:center;
-    justify-content:center;
-
-    text-align:center;
-}
-
-.pauseOverlay.active{
-    display:flex;
-}
-
-.pauseOverlayCard{
-    background:#1e1e1e;
-
-    border-radius:20px;
-
-    padding:30px 40px;
-}
-
-
-/* =========================
-   FINAL RESULT SCREEN
-========================= */
-
-#finalResultScreen{
-  display:none;
-
-  width:100%;
-
-  flex-direction:column;
-
-  align-items:center;
-
-  gap:20px;
-}
-
-#finalScoreList{
-  width:100%;
-
-  display:flex;
-
-  flex-direction:column;
-
-  gap:12px;
-}
-
-
-/* =========================
-   HOME BUTTON
-========================= */
-
-.homeButton{
-  width:100%;
-
-  padding:14px;
-
-  border:none;
-
-  border-radius:14px;
-
-  background:#2c2c2c;
-
-  color:white;
-
-  font-size:15px;
-  font-weight:bold;
-
-  cursor:pointer;
-
-  transition:0.2s;
-}
-
-.homeButton:hover{
-  background:#3a3a3a;
-}
-
-/* =========================
-   ROUND RESULT SCREEN
-========================= */
-
-#roundResultScreen{
-  display:none;
-
-  width:100%;
-
-  flex-direction:column;
-
-  align-items:center;
-
+#tutorialScreen{
   justify-content:center;
-
-  gap:20px;
-
-  text-align:center;
-
-  font-size:24px;
-
-  opacity:0.75;
 }
 
-/* =========================
-   TUTORIAL SCREEN
-========================= */
+.tutorialIcon{
+  font:700 44px/1 Fredoka,sans-serif;
+  color:var(--amber);
+}
+
+#tutorialText{
+  font:600 clamp(24px, 6vw, 30px)/1.25 Fredoka,sans-serif;
+}
+
+.tutorialSub{
+  max-width:280px;
+  font:400 16px/1.5 Rubik,sans-serif;
+  color:var(--ink-55);
+}
 
 #tutorialControls{
   display:none;
-
   width:100%;
+  max-width:340px;
 
   flex-direction:column;
+  gap:12px;
 
+  margin-top:auto;
+}
+
+.tutorialNavRow{
+  display:flex;
   gap:12px;
 }
 
 #tutorialControls button{
-  width:100%;
-
-  padding:14px;
+  flex:1;
+  height:56px;
 
   border:none;
+  border-radius:var(--radius-btn);
 
-  border-radius:10px;
+  background:var(--teal);
+  color:var(--teal-text);
 
-  background:#5c8dff;
-
-  color:white;
-
-  font-size:15px;
-  font-weight:bold;
+  font:600 17px Fredoka,sans-serif;
 
   cursor:pointer;
+  transition:transform .15s ease;
+}
 
-  transition:0.2s;
+.tutorialNavRow button:first-child{
+  background:rgba(46,211,192,.10);
+  border:2px solid rgba(46,211,192,.5);
+  color:var(--teal);
+}
+
+#tutorialControls button:hover{
+  transform:translateY(-1px);
 }
 
 #skipTutorialBtn{
-  background:#444 !important;
+  height:46px;
 
-  color:#aaa !important;
+  background:var(--surface) !important;
+  border:none;
+  border-radius:14px;
 
-  font-size:13px !important;
+  color:var(--ink-55) !important;
+  font:500 14px Rubik,sans-serif !important;
+  letter-spacing:.06em;
 }
 
-#tutorialScreen{
-  display:none;
+/* =========================
+   03 · SUA COR / DICA
+========================= */
+
+#hintScreen{
+  padding-top:calc(56px + env(safe-area-inset-top));
+}
+
+.hintEyebrow{
+  font:500 14px Rubik,sans-serif;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--ink-55);
+}
+
+#myColorPreview{
+  position:relative;
+  width:190px;
+  height:190px;
+
+  border-radius:26px;
+  border:5px solid var(--ink);
+
+  overflow:hidden;
+  box-shadow:var(--shadow-card);
+}
+
+#myColorPreview::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  width:36%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  animation:shine 5s ease-in-out infinite;
+}
+
+.hintLabel{
+  margin-top:8px;
+  font:500 16px Rubik,sans-serif;
+  color:var(--ink-70);
+}
+
+#hintInput{
+  width:100%;
+  max-width:340px;
+  height:62px;
+
+  padding:0 18px;
+
+  border:2px solid var(--teal);
+  border-radius:16px;
+
+  background:var(--surface);
+  color:var(--ink);
+
+  font:500 19px Rubik,sans-serif;
+
+  box-shadow:0 0 0 4px rgba(46,211,192,.14);
+}
+
+#hintInput::placeholder{
+  color:var(--ink-40);
+}
+
+#hintInput:focus{
+  outline:none;
+}
+
+.hintMeta{
+  display:flex;
+  justify-content:space-between;
 
   width:100%;
+  max-width:340px;
 
-  flex-direction:column;
+  font:400 13px Rubik,sans-serif;
+  color:rgba(244,235,218,.68);
+}
+
+/* =========================
+   04 · CONTEXTO DA COR (MODAL)
+========================= */
+
+.contextModal{
+  display:none;
+
+  position:fixed;
+  inset:0;
+  z-index:9998;
 
   align-items:center;
-
   justify-content:center;
 
-  gap:20px;
+  padding:24px;
+
+  background:rgba(4,10,10,.82);
+  backdrop-filter:blur(4px);
 
   text-align:center;
 }
 
-#tutorialText{
-  font-size:28px;
+.contextModal.active{
+  display:flex;
+}
 
-  opacity:0.85;
+.contextModalCard{
+  width:100%;
+  max-width:360px;
+
+  background:linear-gradient(var(--paper-top), var(--paper-bottom));
+  color:var(--paper-text);
+
+  border-radius:var(--radius-card);
+  padding:26px 22px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:16px;
+
+  box-shadow:0 26px 50px rgba(0,0,0,.6);
+}
+
+.contextModalCard h2{
+  font:600 24px Fredoka,sans-serif;
+}
+
+.contextModalHint{
+  font:400 14px/1.45 Rubik,sans-serif;
+  color:var(--paper-text-soft);
+  text-align:left;
+}
+
+#contextGrid{
+  display:grid;
+  gap:8px;
+  width:100%;
+}
+
+.contextCell{
+  aspect-ratio:1;
+  border-radius:var(--radius-context-cell);
+}
+
+.contextCell.contextCellCenter{
+  outline:3px solid #fff;
+  outline-offset:2px;
+}
+
+.contextCell.contextCellEmpty{
+  background:transparent;
+}
+
+.contextModalCard .secondaryButton{
+  border-color:rgba(43,24,8,.35);
+  background:transparent;
+  color:var(--paper-text);
+}
+
+.contextModalCard .secondaryButton:hover{
+  background:rgba(43,24,8,.06);
 }
 
 /* =========================
-   ROUND SCORE SCREEN
+   05 · AGUARDANDO A DICA
 ========================= */
 
-#roundScoreScreen{
-  display:none;
+#waitingHintScreen{
+  justify-content:center;
+  gap:26px;
+}
+
+.spinnerRing{
+  position:relative;
+  width:88px;
+  height:88px;
+  border-radius:50%;
+  border:4px solid var(--surface-border);
+}
+
+.spinnerRing::before{
+  content:"";
+  position:absolute;
+  inset:-4px;
+  border-radius:50%;
+  border:4px solid transparent;
+  border-top-color:var(--pink);
+  animation:spinSlow 1.5s linear infinite;
+}
+
+#hintWaitingText{
+  font:600 clamp(22px, 6vw, 27px)/1.3 Fredoka,sans-serif;
+}
+
+#hintWaitingText span{
+  font-weight:700;
+}
+
+.waitingSub{
+  font:400 15px Rubik,sans-serif;
+  color:var(--ink-55);
+}
+
+/* =========================
+   06 · ADIVINHAR A COR
+========================= */
+
+#guessScreen{
+  gap:14px;
+}
+
+.guessLabel{
+  font:500 14px Rubik,sans-serif;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink-55);
+}
+
+#guessHintText{
+  width:100%;
+  max-width:340px;
+
+  padding:18px 20px;
+  margin-bottom:4px;
+
+  background:linear-gradient(var(--paper-top), var(--paper-bottom));
+  color:var(--paper-text);
+  border-radius:20px;
+  transform:rotate(-1deg);
+
+  font:600 22px/1.25 Fredoka,sans-serif;
+
+  box-shadow:0 16px 32px rgba(0,0,0,.45);
+}
+
+#guessGrid{
+  display:grid;
+  grid-template-columns:repeat(12, 1fr);
+  gap:3px;
 
   width:100%;
+}
 
-  flex-direction:column;
+.guessCell{
+  aspect-ratio:1;
+  border-radius:var(--radius-cell);
 
-  align-items:center;
+  cursor:pointer;
+  transition:transform .15s ease;
+}
 
+.guessCell:hover{
+  transform:scale(1.1);
+}
+
+.guessCell.selected{
+  outline:3px solid var(--ink);
+  outline-offset:1px;
+  transform:scale(1.08);
+}
+
+#confirmGuessButton{
+  margin-top:auto;
+}
+
+/* =========================
+   07 · ESCOLHA ENVIADA
+========================= */
+
+#waitingGuessScreen{
+  justify-content:center;
   gap:20px;
 }
 
+.waitingGuessIcon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  width:88px;
+  height:88px;
+
+  border-radius:50%;
+  background:rgba(123,198,24,.16);
+  border:3px solid var(--green);
+
+  font:700 40px Fredoka,sans-serif;
+  color:var(--green);
+}
+
+#waitingGuessScreen h2{
+  font:600 26px/1.3 Fredoka,sans-serif;
+}
+
+.waitingGuessDot{
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  background:rgba(244,235,218,.2);
+  animation:glowPulse 1.4s ease-in-out infinite;
+}
+
+/* =========================
+   08 · RESULTADO NA TELA GRANDE
+========================= */
+
+#roundResultScreen{
+  justify-content:center;
+  gap:18px;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+
+.roundResultIcon{
+  font:700 44px/1 Fredoka,sans-serif;
+  color:var(--amber);
+}
+
+#roundResultScreen h2{
+  font:600 27px/1.25 Fredoka,sans-serif;
+}
+
+/* =========================
+   09 · PLACAR DA RODADA
+========================= */
+
+#roundScoreScreen{
+  align-items:stretch;
+  padding-top:calc(48px + env(safe-area-inset-top));
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+
 #roundScoreTitle{
-  font-size:32px;
-
-  font-weight:bold;
-
-  letter-spacing:2px;
+  align-self:center;
+  font:600 30px Fredoka,sans-serif;
+  letter-spacing:.04em;
+  color:var(--amber);
 }
 
 #scoreList{
   width:100%;
-
   display:flex;
-
   flex-direction:column;
+  gap:10px;
 
-  gap:12px;
+  counter-reset:rank;
 }
 
-.scoreCard{
+#scoreList .scoreCard{
+  background:var(--surface);
+  border:2px solid var(--surface-border);
+}
+
+/* =========================
+   10 · PLACAR FINAL
+========================= */
+
+#finalResultScreen{
+  align-items:stretch;
+  background:
+    radial-gradient(120% 60% at 50% -10%, var(--bg-final-top) 0%, var(--bg-final-mid) 46%, var(--bg-final-bottom) 100%);
+  padding-bottom:calc(110px + env(safe-area-inset-bottom));
+}
+
+.finalEyebrow{
+  align-self:center;
+  font:500 12px Rubik,sans-serif;
+  letter-spacing:.26em;
+  text-transform:uppercase;
+  color:var(--ink-55);
+}
+
+#finalResultScreen h2{
+  align-self:center;
+  margin-bottom:6px;
+  font:600 34px Fredoka,sans-serif;
+  color:var(--amber);
+}
+
+#finalScoreList{
+  width:100%;
   display:flex;
+  flex-direction:column;
+  gap:9px;
 
-  align-items:center;
+  counter-reset:rank;
+}
 
-  gap:16px;
+#finalScoreList .scoreCard{
+  background:rgba(244,235,218,.06);
+  border:2px solid rgba(244,235,218,.09);
+}
 
-  background:#2a2a2a;
+/* 1º lugar em destaque */
+#finalScoreList .scoreCard:first-child{
+  position:relative;
+  overflow:hidden;
 
+  padding:16px;
+  gap:14px;
+
+  background:linear-gradient(var(--paper-top), var(--paper-bottom));
+  border:none;
+  box-shadow:0 16px 32px rgba(0,0,0,.5);
+}
+
+#finalScoreList .scoreCard:first-child::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  width:34%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.8), transparent);
+  animation:shine 4.5s ease-in-out infinite;
+}
+
+#finalScoreList .scoreCard:first-child img{
+  width:72px;
+  height:72px;
+  border-color:var(--amber);
+}
+
+#finalScoreList .scoreCard:first-child .scoreCardName{
+  font-size:28px;
+  color:var(--paper-text);
+}
+
+#finalScoreList .scoreCard:first-child::after{
+  content:"1º LUGAR";
+  position:absolute;
+  left:102px;
+  top:16px;
+  font:500 12px Rubik,sans-serif;
+  letter-spacing:.2em;
+  color:var(--paper-text-soft);
+}
+
+#finalScoreList .scoreCard:first-child .scoreCardName{
+  margin-top:14px;
+}
+
+#finalScoreList .scoreCard:first-child .scoreCardPoints{
+  font-size:30px;
+  color:#C2410C;
+}
+
+.homeButton{
+  width:100%;
+  height:52px;
+
+  margin-top:14px;
+
+  border:2px solid var(--surface-border);
   border-radius:14px;
 
-  padding:12px 18px;
+  background:var(--surface);
+  color:var(--ink-70);
+
+  font:500 15px Rubik,sans-serif;
+
+  cursor:pointer;
+  transition:background .2s ease;
+}
+
+.homeButton:hover{
+  background:rgba(244,235,218,.14);
+}
+
+/* =========================
+   SCORE CARD (compartilhado 09 / 10)
+========================= */
+
+.scoreCard{
+  position:relative;
+
+  display:flex;
+  align-items:center;
+  gap:13px;
+
+  border-radius:16px;
+  padding:10px 14px 10px 40px;
+
+  text-align:left;
+}
+
+.scoreCard::before{
+  counter-increment:rank;
+  content:counter(rank);
+
+  position:absolute;
+  left:14px;
+
+  font:600 16px Fredoka,sans-serif;
+  color:var(--ink-40);
 }
 
 .scoreCard img{
-  width:52px;
-  height:52px;
+  width:46px;
+  height:46px;
 
   border-radius:50%;
-
   object-fit:cover;
-
-  border:3px solid #444;
+  border:2px solid rgba(244,235,218,.2);
 }
 
 .scoreCardName{
   flex:1;
-
-  font-size:18px;
-
-  font-weight:bold;
+  font:600 19px Fredoka,sans-serif;
+  color:var(--ink);
 }
 
 .scoreCardPoints{
-  font-size:18px;
-
-  font-weight:bold;
-
-  color:#ffd93d;
-}
-
-input{
-  width:100%;
-
-  padding:15px;
-
-  border:none;
-
-  border-radius:10px;
-
-  background:#2c2c2c;
-
-  color:white;
-
-  font-size:16px;
-}
-
-input:focus{
-  outline:2px solid #5c8dff;
+  font:700 19px Rubik,sans-serif;
+  color:var(--amber);
 }
 
 /* =========================
-   HOST BUTTON
+   11 · JOGO PAUSADO (OVERLAY)
 ========================= */
 
-#hostButton{
-  width:100%;
+.pauseOverlay{
+  display:none;
 
-  padding:18px;
+  position:fixed;
+  inset:0;
+  z-index:9999;
 
-  border:none;
+  align-items:center;
+  justify-content:center;
 
-  border-radius:14px;
+  padding:24px;
 
-  background:#f59e0b;
+  background:rgba(4,10,10,.8);
+  backdrop-filter:blur(6px);
 
-  color:#111;
-
-  font-size:17px;
-  font-weight:bold;
-
-  cursor:pointer;
-
-  transition:0.2s;
-
-  letter-spacing:1px;
+  text-align:center;
 }
 
-#hostButton:hover{
-  background:#fbbf24;
+.pauseOverlay.active{
+  display:flex;
+}
 
-  transform:scale(1.02);
+.pauseOverlayCard{
+  width:100%;
+  max-width:320px;
+
+  background:rgba(20,19,18,.9);
+  border:2px solid var(--surface-border);
+  border-radius:26px;
+  padding:34px 26px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+}
+
+.pauseBars{
+  display:flex;
+  gap:7px;
+}
+
+.pauseBars::before,
+.pauseBars::after{
+  content:"";
+  width:13px;
+  height:38px;
+  border-radius:4px;
+  background:var(--amber);
+}
+
+.pauseOverlayCard h2{
+  font:600 27px Fredoka,sans-serif;
+}
+
+.pauseOverlayCard p{
+  font:400 15px Rubik,sans-serif;
+  color:var(--ink-55);
+}
+
+/* =========================
+   ANIMAÇÕES
+========================= */
+
+@keyframes bobS{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-7px); }
+}
+
+@keyframes glowPulse{
+  0%,100%{ opacity:.35; }
+  50%{ opacity:.8; }
+}
+
+@keyframes shine{
+  0%{ transform:translateX(-120%) skewX(-18deg); }
+  60%,100%{ transform:translateX(320%) skewX(-18deg); }
+}
+
+@keyframes spinSlow{
+  to{ transform:rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,
+  *::before,
+  *::after{
+    animation-duration:.001s !important;
+    animation-iteration-count:1 !important;
+  }
+}
+
+/* =========================
+   RESPONSIVO
+========================= */
+
+@media (max-width:360px){
+  #avatarGrid{ gap:10px; }
+  #myColorPreview{ width:150px; height:150px; }
+}
+
+@media (max-height:700px){
+  #LobbyScreen,
+  #tutorialScreen,
+  #hintScreen,
+  #waitingHintScreen,
+  #guessScreen,
+  #waitingGuessScreen,
+  #roundResultScreen{
+    gap:12px;
+  }
 }

@@ -110,13 +110,54 @@ const avatars =
 
 window.onload = async function()
 {
+  // Sem ?room=&id= na URL (ex: abrindo o arquivo direto pelo Live Server,
+  // fora do fluxo real de entrada na sala) todo listener fica ouvindo um
+  // caminho tipo "rooms/undefined/..." que nunca existe — a página carrega
+  // (fundo aparece) mas nenhuma tela liga, dando a impressão de página em
+  // branco. Aqui a gente entrega um aviso claro em vez de ficar mudo.
+  if (!currentRoomCode || !currentPlayerId)
+  {
+      document.body.innerHTML =
+        `<div style="padding:40px;text-align:center;color:#F4EBDA;font-family:Rubik,sans-serif;">
+            Link inválido — falta "room" e/ou "id" na URL.<br>
+            Entre pelo QR code/lobby do jogo em vez de abrir esta página direto.
+        </div>`;
+
+      return;
+  }
+
   RenderAvatars();
   ListenForTakenAvatars();
   await CheckIfHost();
   ListenForStage();
   ListenForPause();
   SetupContextModal();
+  SetupHintCounter();
 };
+
+
+// =========================
+// HINT CHARACTER COUNTER (visual only)
+// =========================
+
+function UpdateHintCounter()
+{
+    const input = document.getElementById("hintInput");
+    const counter = document.getElementById("hintCounter");
+
+    if (!input || !counter) return;
+
+    counter.textContent = `${input.value.length} / 60`;
+}
+
+function SetupHintCounter()
+{
+    const input = document.getElementById("hintInput");
+    if (!input) return;
+
+    input.addEventListener("input", UpdateHintCounter);
+    UpdateHintCounter();
+}
 
 
 // =========================
@@ -279,6 +320,13 @@ function RenderAvatars()
   const grid =
     document.getElementById("avatarGrid");
 
+  console.log(
+    "[ColorsIn] RenderAvatars: grid element =",
+    grid,
+    "| avatares a desenhar =",
+    avatars
+  );
+
   avatars.forEach((avatarName) =>
   {
     const div =
@@ -293,6 +341,14 @@ function RenderAvatars()
 
     img.src =
     `imgs/${avatarName}.png`;
+
+    img.onerror = () =>
+    {
+      console.error(
+        "[ColorsIn] falha ao carregar avatar:",
+        img.src
+      );
+    };
 
     div.appendChild(img);
 
@@ -456,6 +512,11 @@ async function ListenForStage()
         ),
         async(snapshot)=>
         {
+            console.log(
+                "[ColorsIn] rooms/" + currentRoomCode + "/currentState =",
+                snapshot.exists() ? snapshot.val() : "(não existe no Firebase)"
+            );
+
             if(!snapshot.exists())
                 return;
 
@@ -509,6 +570,8 @@ async function OpenGiveHint()
         .getElementById("hintInput")
         .value = "";
 
+    UpdateHintCounter();
+
     document
         .getElementById("sendHintButton")
         .disabled = false;
@@ -529,7 +592,7 @@ async function OpenGiveHint()
     const hinter =
         hinterSnapshot.val();
 
-    if(hinter.PlayerId === currentPlayerId)
+    if(hinter.playerId === currentPlayerId)
     {
         document
             .getElementById("hintScreen")
@@ -584,8 +647,8 @@ async function OpenGiveHint()
             .getElementById("hintWaitingText")
             .innerHTML =
             `Esperando ${GetColoredPlayerName(
-                hinter.PlayerName,
-                hinter.ColorName
+                hinter.playerName || "alguém",
+                hinter.colorName
             )} escrever a dica...`;
     }
 
@@ -629,15 +692,15 @@ function GetColorHex(colorName)
 {
     switch(colorName)
     {
-        case "Red": return "#ff4d4d";
-        case "Blue": return "#4dc3ff";
-        case "Orange": return "#ff9f43";
-        case "Yellow": return "#ffd93d";
-        case "Pink": return "#ff66cc";
-        case "Silver": return "#d0d0d0";
-        case "Black": return "#666666";
-        case "Metal": return "#8ea0a8";
-        case "Bege": return "#d8c3a5";
+        case "red": return "#ff4d4d";
+        case "blue": return "#4dc3ff";
+        case "orange": return "#ff9f43";
+        case "yellow": return "#ffd93d";
+        case "pink": return "#ff66cc";
+        case "silver": return "#d0d0d0";
+        case "black": return "#666666";
+        case "metal": return "#8ea0a8";
+        case "bege": return "#d8c3a5";
     }
     return "white";
 }
@@ -767,7 +830,7 @@ async function OpenGuessColor()
             );
 
     const hinter = hinterSnapshot.val();
-    if(hinter.PlayerId === currentPlayerId)
+    if(hinter.playerId === currentPlayerId)
     {
         HideAllScreens();
 
@@ -776,16 +839,6 @@ async function OpenGuessColor()
         return;
     }
 
-    
-    if(hinter.PlayerId === currentPlayerId)
-    {
-        document
-            .getElementById("waitingGuessScreen")
-            .style.display =
-            "flex";
-
-        return;
-    }  
     HideAllScreens();
     document
         .getElementById("guessScreen")
