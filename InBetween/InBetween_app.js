@@ -737,6 +737,16 @@ function OpenDiscussion()
   alreadyCalledForVote = false;
   DisarmAccuse();
 
+  // RE-HABILITA O BOTÃO — se a acusação da rodada anterior não deu maioria,
+  // o jogo volta pra uma nova Discussion (próxima pergunta) e o botão
+  // precisa poder ser usado de novo. DisarmAccuse() não mexe em `disabled`
+  // de propósito (pra não reabilitar no meio da própria votação em curso),
+  // então isso tem que ser feito aqui, na entrada do estado.
+  const skipBtn = document.getElementById("skipDiscussionButton");
+  skipBtn.disabled = false;
+  skipBtn.classList.remove("armed");
+  skipBtn.innerText = "ACUSAR AGORA";
+
   document.getElementById("discussionMeta").innerText = "";
   document.getElementById("skipDiscussionStatusText").innerText = "";
 
