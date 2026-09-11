@@ -7,10 +7,13 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
   />
 
   <title>In Between</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
   <link
     rel="stylesheet"
@@ -22,72 +25,87 @@
 <body>
 
   <!-- =========================
+       TEXTURE LAYER (fixo, atrás de tudo, uma vez só — ver InBetween_style.css)
+  ========================== -->
+
+  <div id="fx" aria-hidden="true">
+    <div id="fx-halftone1"></div>
+    <div id="fx-halftone2"></div>
+    <div id="fx-sweep"></div>
+    <div id="fx-rainA"></div>
+    <div id="fx-rainB"></div>
+    <div id="fx-vignette"></div>
+    <div id="fx-grain"></div>
+  </div>
+
+
+  <!-- =========================
        ROLE REMINDER BANNER
        (fora do card, pra quem esquece a palavra secreta ou esquece que é
        o impostor — fica visível durante toda a rodada, ver UpdateRoleBanner
-       no JS)
+       no JS. Por padrão mascarado — o mesmo gesto de "não mostre a
+       ninguém" das telas 2/3, tocar revela por 3s)
   ========================== -->
 
-  <div id="roleBanner" class="roleBanner">
+  <div id="roleBanner" class="roleBanner" role="status">
+    <span id="roleBannerText" class="roleBanner__text masked"></span>
+    <button id="roleBannerPeek" class="roleBanner__peek" type="button">ver</button>
   </div>
 
-  <div class="container">
+
+  <main id="app" style="flex:1; display:flex; flex-direction:column; min-height:0; position:relative;">
 
     <!-- =========================
-         LOBBY SCREEN
+         ESPERANDO — LOBBY
     ========================== -->
 
-    <div
-      id="lobbyScreen"
-      class="screen active"
-    >
+    <div id="lobbyScreen" class="screen active">
 
-      <h1>
-        IN BETWEEN
-      </h1>
+      <div class="topRow">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:9px; height:9px; background:var(--red); transform:rotate(45deg);"></div>
+          <h1 style="font-size:19px; letter-spacing:.18em;">IN BETWEEN</h1>
+        </div>
+        <span class="label" id="lobbyRoomCode"></span>
+      </div>
 
-      <p>
-        Esperando o anfitrião começar...
-      </p>
+      <div class="lobbyProgress">
+        <span class="label">NA MESA</span>
+        <span class="count" id="lobbyCount">0</span>
+      </div>
+
+      <div id="lobbyList" class="lobbyList">
+        <div class="lobbyEmpty">esperando jogadores entrarem_</div>
+      </div>
+
+      <p class="footNote">esperando o host começar<span class="cursor">_</span></p>
 
     </div>
 
 
     <!-- =========================
-         TUTORIAL SCREEN
+         TUTORIAL
     ========================== -->
 
-    <div
-      id="tutorialScreen"
-      class="screen"
-    >
+    <div id="tutorialScreen" class="screen">
 
-      <h2>
-        COMO JOGAR
-      </h2>
+      <div class="topRow">
+        <span class="label">COMO SE JOGA</span>
+      </div>
 
-      <p>
-        Acompanhem a explicação das regras na tela principal!
-      </p>
+      <div class="middle">
+        <h2 class="titleLG">COMO<br>JOGAR</h2>
+        <p class="body16">Acompanhem a explicação das regras na tela principal!</p>
+      </div>
 
       <div id="tutorialControls">
 
         <div class="tutorialNavRow">
-
-          <button onclick="SendTutorialAction('prev')">
-            ← Anterior
-          </button>
-
-          <button onclick="SendTutorialAction('next')">
-            Próxima →
-          </button>
-
+          <button class="btnGhost" onclick="SendTutorialAction('prev')" type="button">← Anterior</button>
+          <button class="btnGhost" onclick="SendTutorialAction('next')" type="button">Próxima →</button>
         </div>
 
-        <button
-          id="skipTutorialBtn"
-          onclick="SendTutorialAction('skip')"
-        >
+        <button id="skipTutorialBtn" onclick="SendTutorialAction('skip')" type="button">
           Pular Tutorial
         </button>
 
@@ -97,70 +115,105 @@
 
 
     <!-- =========================
-         ROLE REVEAL SCREEN
+         PALAVRA / IMPOSTOR — ROLE REVEAL
     ========================== -->
 
-    <div
-      id="roleRevealScreen"
-      class="screen"
-    >
+    <div id="roleRevealScreen" class="screen">
 
-      <h2 id="roleRevealText">
-      </h2>
+      <div class="topRow">
+        <span class="label" id="roleTopLabel">RODADA</span>
+      </div>
+
+      <div id="roleWordContainer" class="conditionalBlock middle middle--center" style="cursor:pointer;">
+
+        <span class="label label--red">A PALAVRA SECRETA É</span>
+
+        <div class="ruleBlock">
+          <div id="roleWordDisplay" class="wordDisplay hidden"></div>
+        </div>
+
+        <p class="tapHint" id="roleWordTapHint">toque para mostrar</p>
+
+        <p class="body16" style="margin-top:16px;">todos na mesa receberam esta palavra.<br>menos um.</p>
+
+      </div>
+
+      <div id="roleImpostorContainer" class="conditionalBlock middle middle--center">
+
+        <span class="label label--red">VOCÊ É O IMPOSTOR</span>
+
+        <div class="ruleBlock ruleBlock--red">
+          <div class="wordDisplay" style="color:var(--red); font-size:clamp(30px,9.5vw,46px);">
+            VOCÊ NÃO<br>SABE A<br>PALAVRA
+          </div>
+        </div>
+
+        <p class="body16" style="margin-top:16px;">todos os outros receberam a mesma palavra.<br>você tem que arrancar ela da conversa.</p>
+
+      </div>
+
+      <div class="noticeBox">
+        <div class="noticeBox__title" id="roleNoticeTitle">NÃO MOSTRE A NINGUÉM</div>
+        <div class="noticeBox__sub" id="roleNoticeSub">finja que sabe · descubra a palavra</div>
+      </div>
 
     </div>
 
 
     <!-- =========================
-         WRITE QUESTION SCREEN
+         PERGUNTA / AGUARDE — WRITE QUESTION
     ========================== -->
 
-    <div
-      id="writeQuestionScreen"
-      class="screen"
-    >
+    <div id="writeQuestionScreen" class="screen">
 
       <div id="writeQuestionInputContainer" class="conditionalBlock">
 
-        <h2>
-          Crie uma pergunta!
-        </h2>
+        <div class="topRow">
+          <span class="label label--red">SUA VEZ DE PERGUNTAR</span>
+          <span class="label" id="writeQuestionCountdown">30s</span>
+        </div>
 
-        <p id="writeQuestionWordText">
-        </p>
+        <div class="timerBar"><div class="timerBar__fill" id="writeQuestionTimerFill"></div></div>
 
-        <input
-          type="text"
-          id="writeQuestionInput"
-          placeholder="Digite sua pergunta..."
-          onkeydown="HandleEnterKey(event, sendCustomQuestion)"
-        />
+        <h2 class="titleLG" style="margin-top:20px;">ESCREVA A<br>PERGUNTA</h2>
 
-        <button
-          id="sendQuestionButton"
-          onclick="sendCustomQuestion()"
-        >
+        <p class="body16" id="writeQuestionWordText" style="margin-top:10px;"></p>
+
+        <div class="fieldBox">
+          <textarea
+            id="writeQuestionInput"
+            maxlength="120"
+            placeholder="o que você quer arrancar da mesa?"
+          ></textarea>
+          <span class="fieldCount" id="writeQuestionCount">0/120</span>
+        </div>
+
+        <p class="hintLine">pergunta boa é a que o impostor não sabe imitar</p>
+
+        <p id="writeQuestionStatusText" class="footNote" style="margin-top:8px;"></p>
+
+        <button id="sendQuestionButton" class="btnPrimary" onclick="sendCustomQuestion()" type="button">
           Enviar Pergunta
         </button>
-
-        <p id="writeQuestionStatusText">
-        </p>
-
-        <p class="countdownText">
-          Tempo restante: <span id="writeQuestionCountdown">20s</span>
-        </p>
 
       </div>
 
       <div id="writeQuestionWaitingContainer" class="conditionalBlock">
 
-        <h2>
-          Um jogador está criando a pergunta...
-        </h2>
+        <div class="topRow">
+          <span class="label">AGUARDE</span>
+          <span class="label" id="writeQuestionWaitingCountdown">30s</span>
+        </div>
 
-        <p class="countdownText">
-          Tempo restante: <span id="writeQuestionWaitingCountdown">20s</span>
-        </p>
+        <div class="timerBar timerBar--dim"><div class="timerBar__fill" id="writeQuestionWaitingTimerFill"></div></div>
+
+        <div class="middle middle--center">
+          <div class="waitBadge"><span class="waitBadge__mark">?</span></div>
+          <h2 class="titleLG" style="margin-top:24px;">ALGUÉM ESTÁ<br>ESCREVENDO</h2>
+          <p class="body16" style="margin-top:12px;">a pergunta é anônima<span class="cursor">_</span></p>
+        </div>
+
+        <p class="footNote" style="text-align:center;">olhe pra TV · pode ser você na próxima</p>
 
       </div>
 
@@ -168,34 +221,63 @@
 
 
     <!-- =========================
-         QUESTION SCREEN
+         RESPONDA / ENVIADA — QUESTION
     ========================== -->
 
-    <div
-      id="questionScreen"
-      class="screen"
-    >
+    <div id="questionScreen" class="screen">
 
-      <h2 id="questionText">
-        Pergunta aqui...
-      </h2>
+      <div id="questionAnswerContainer" class="conditionalBlock">
 
-      <input
-        type="text"
-        id="answerInput"
-        placeholder="Sua resposta..."
-        onkeydown="HandleEnterKey(event, sendAnswer)"
-      />
+        <div class="topRow">
+          <span class="label">RODADA</span>
+        </div>
 
-      <button
-        id="sendAnswerButton"
-        onclick="sendAnswer()"
-      >
-        Enviar Resposta
-      </button>
+        <div class="questionCard" style="margin-top:16px;">
+          <span class="label label--red">A PERGUNTA</span>
+          <div class="questionCard__text" id="questionText">Pergunta aqui...</div>
+        </div>
 
-      <p id="questionWaitingText">
-      </p>
+        <div class="fieldBox">
+          <textarea
+            id="answerInput"
+            maxlength="120"
+            placeholder="responda sem se entregar"
+          ></textarea>
+          <span class="fieldCount" id="answerCount">0/120</span>
+        </div>
+
+        <p class="hintLine">as respostas aparecem todas juntas, com o seu nome</p>
+
+        <button id="sendAnswerButton" class="btnPrimary" onclick="sendAnswer()" type="button">
+          Enviar Resposta
+        </button>
+
+      </div>
+
+      <div id="questionSentContainer" class="conditionalBlock">
+
+        <div class="topRow">
+          <span class="label">RODADA</span>
+        </div>
+
+        <div class="middle">
+          <span class="label label--red">SUA RESPOSTA</span>
+          <div class="hintLine" id="questionSentEcho" style="margin-top:10px; font-size:18px; color:var(--paper);"></div>
+
+          <h2 class="titleLG" style="margin-top:30px;">RESPOSTA<br>NA MESA</h2>
+          <div style="width:70px; height:5px; background:var(--red); margin-top:12px;"></div>
+
+          <div style="margin-top:20px; display:flex; align-items:center; gap:10px;">
+            <span class="titleMD" id="questionSentCount">—</span>
+            <span class="label" style="letter-spacing:.14em;">enviaram</span>
+          </div>
+
+          <p id="questionWaitingText" class="footNote" style="margin-top:6px;"></p>
+        </div>
+
+        <p class="footNote" style="text-align:center;">nada é revelado até o último enviar</p>
+
+      </div>
 
     </div>
 
@@ -204,136 +286,201 @@
          REVEAL ANSWERS SCREEN
     ========================== -->
 
-    <div
-      id="revealAnswersScreen"
-      class="screen"
-    >
+    <div id="revealAnswersScreen" class="screen">
 
-      <h2>
-        Respostas reveladas no telão!
-      </h2>
-
-      <p>
-        Acompanhe quem respondeu o quê.
-      </p>
-
-    </div>
-
-
-    <!-- =========================
-         DISCUSSION SCREEN
-    ========================== -->
-
-    <div
-      id="discussionScreen"
-      class="screen"
-    >
-
-      <h2>
-        Hora da discussão!
-      </h2>
-
-      <p>
-        Conversem sobre quem vocês acham que é o impostor.
-      </p>
-
-      <button
-        id="skipDiscussionButton"
-        onclick="callForVote()"
-      >
-        Chamar para Votação
-      </button>
-
-      <p id="skipDiscussionCountText" class="categoryBanner">
-      </p>
-
-      <p id="skipDiscussionStatusText">
-      </p>
-
-    </div>
-
-
-    <!-- =========================
-         VOTING SCREEN
-    ========================== -->
-
-    <div
-      id="votingScreen"
-      class="screen"
-    >
-
-      <h2>
-        Quem é o impostor?
-      </h2>
-
-      <div id="votingOptions">
+      <div class="topRow">
+        <span class="label">RODADA</span>
       </div>
 
-      <p id="votingWaitingText">
-      </p>
+      <div class="middle middle--center">
+        <h2 class="titleLG">RESPOSTAS<br>REVELADAS</h2>
+        <p class="body16" style="margin-top:12px;">olhe pra TV — acompanhe quem respondeu o quê.</p>
+      </div>
 
     </div>
 
 
     <!-- =========================
-         VOTE RESULT SCREEN
+         NA TV — DISCUSSION (acusar)
     ========================== -->
 
-    <div
-      id="voteResultScreen"
-      class="screen"
-    >
+    <div id="discussionScreen" class="screen">
 
-      <h2 id="voteResultTitle">
-        RESULTADO
-      </h2>
+      <div class="topRow">
+        <span class="label">RODADA</span>
+        <span class="label" id="discussionMeta"></span>
+      </div>
+
+      <div class="middle middle--center">
+        <div style="width:56px; height:32px; margin:0 auto; border:2px solid rgba(239,233,221,.5);"></div>
+        <h2 class="titleXL" style="margin-top:22px;">OLHE PRA<br>TV</h2>
+        <p class="body16" style="margin-top:14px;">as respostas estão na tela, com nome e tudo.<br>discuta em voz alta.</p>
+      </div>
+
+      <button id="skipDiscussionButton" class="btnGhost" onclick="callForVote()" type="button">
+        ACUSAR AGORA
+      </button>
+
+      <p id="skipDiscussionCountText" class="footNote" style="text-align:center;"></p>
+      <p id="skipDiscussionStatusText" class="footNote" style="text-align:center;"></p>
 
     </div>
 
 
     <!-- =========================
-         IMPOSTOR GUESS SCREEN
+         VOTE / VOTO OK — VOTING
     ========================== -->
 
-    <div
-      id="impostorGuessScreen"
-      class="screen"
-    >
+    <div id="votingScreen" class="screen">
 
-      <h2>
-        O impostor foi descoberto!
-      </h2>
+      <div id="votingActiveContainer" class="conditionalBlock">
+
+        <div class="topRow">
+          <span class="label label--red">VOTAÇÃO CONVOCADA</span>
+        </div>
+
+        <h2 class="titleLG" style="margin-top:16px;">QUEM ESTÁ POR FORA?</h2>
+
+        <div id="votingOptions" class="voteGrid"></div>
+
+        <div class="voteFooter">
+          <span id="votingTurnoutText">votos secretos</span>
+          <span style="color:var(--dim);">voto secreto</span>
+        </div>
+
+      </div>
+
+      <div id="votingVotedContainer" class="conditionalBlock">
+
+        <div class="topRow">
+          <span class="label">VOTO REGISTRADO</span>
+        </div>
+
+        <div class="middle">
+          <span class="label label--red">VOCÊ APONTOU</span>
+
+          <div class="ruleBlock ruleBlock--red" style="margin-top:14px;">
+            <div class="votedName" id="votedNameText"></div>
+          </div>
+
+          <p class="body16" style="margin-top:26px;">aguardando o veredito<span class="cursor">_</span></p>
+          <p class="footNote" style="margin-top:10px;">o voto não pode ser mudado</p>
+        </div>
+
+        <p id="votingWaitingText" class="footNote" style="text-align:center;"></p>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         CULPADO / INOCENTE — VOTE RESULT
+    ========================== -->
+
+    <div id="voteResultScreen" class="screen">
+
+      <div class="topRow">
+        <span class="label label--red" id="voteResultTopLabel">VEREDITO</span>
+        <span class="label">RODADA</span>
+      </div>
+
+      <div class="middle middle--center">
+
+        <div class="stampWrap">
+          <div class="stamp" id="voteResultStamp">
+            <span class="stamp__text" id="voteResultStampText"></span>
+          </div>
+        </div>
+
+        <h2 class="titleLG" id="voteResultTitle" style="margin-top:34px;">RESULTADO</h2>
+
+        <p class="body16" id="voteResultBody" style="margin-top:14px;"></p>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         CHUTE / ERROU / ACERTOU — IMPOSTOR GUESS
+    ========================== -->
+
+    <div id="impostorGuessScreen" class="screen">
 
       <div id="impostorGuessInputContainer" class="conditionalBlock">
 
-        <p>
-          Última chance: tente adivinhar a palavra secreta.
-        </p>
+        <div class="topRow">
+          <span class="label label--red">ÚLTIMA CHANCE</span>
+        </div>
 
-        <input
-          type="text"
-          id="impostorGuessInput"
-          placeholder="Qual era a palavra?"
-          onkeydown="HandleEnterKey(event, sendImpostorGuess)"
-        />
+        <h2 class="titleLG" style="margin-top:26px;">QUAL ERA A<br>PALAVRA?</h2>
 
-        <button
-          id="sendGuessButton"
-          onclick="sendImpostorGuess()"
-        >
-          Enviar Palpite
+        <p class="body16" style="margin-top:12px;">a mesa te pegou. acerte e você leva a partida sozinho.</p>
+
+        <div class="guessBox">
+          <span class="guessBox__display" id="impostorGuessDisplay"></span>
+          <span class="guessBox__cursor">_</span>
+          <input id="impostorGuessInput" type="text" maxlength="14" aria-label="Palpite da palavra secreta" />
+        </div>
+
+        <p class="footNote" style="margin-top:12px;">uma tentativa. sem correção depois de enviar.</p>
+
+        <p id="impostorGuessStatusText" class="footNote"></p>
+
+        <button id="sendGuessButton" class="btnPrimary" onclick="sendImpostorGuess()" type="button">
+          Chutar
         </button>
-
-        <p id="impostorGuessStatusText">
-        </p>
 
       </div>
 
       <div id="impostorGuessWaitingContainer" class="conditionalBlock">
 
-        <p>
-          O impostor está tentando adivinhar a palavra secreta...
-        </p>
+        <div class="topRow">
+          <span class="label">CHUTE FINAL</span>
+        </div>
+
+        <div class="middle middle--center">
+          <div class="waitBadge"><span class="waitBadge__mark">?</span></div>
+          <h2 class="titleLG" style="margin-top:22px;">O IMPOSTOR ESTÁ<br>PENSANDO</h2>
+          <p class="body16" style="margin-top:12px;">ele tem uma última tentativa de virar o jogo.</p>
+        </div>
+
+      </div>
+
+      <div id="impostorGuessResultContainer" class="conditionalBlock">
+
+        <div class="topRow">
+          <span class="label">CHUTE FINAL</span>
+          <span class="label" id="impostorGuessResultTag">ERRADO</span>
+        </div>
+
+        <div class="middle">
+
+          <span class="label" style="letter-spacing:.24em;">O CHUTE FOI</span>
+
+          <div class="strikeWrap" style="margin-top:10px;" id="impostorGuessResultStrikeWrap">
+            <span class="strikeWrap__word" id="impostorGuessResultWord"></span>
+            <span class="strikeWrap__bar" id="impostorGuessResultBar" style="display:none;"></span>
+          </div>
+
+          <div class="compareDivider" id="impostorGuessResultDivider" style="display:none;">
+            <span class="compareDivider__line"></span>
+            <span class="compareDivider__label">CONFERE</span>
+            <span class="compareDivider__line"></span>
+          </div>
+
+          <span class="label label--red" style="margin-top:18px; display:block;">A PALAVRA ERA</span>
+
+          <div class="ruleBlock" style="margin-top:8px;">
+            <div class="wordDisplay" id="impostorGuessResultAnswer" style="font-size:clamp(30px,9vw,44px);"></div>
+          </div>
+
+          <h2 class="titleLG" id="impostorGuessResultHeadline" style="margin-top:20px;"></h2>
+
+          <p class="body16" id="impostorGuessResultBody" style="margin-top:12px;"></p>
+
+        </div>
 
       </div>
 
@@ -341,64 +488,102 @@
 
 
     <!-- =========================
-         ROUND SCORE SCREEN
+         ROUND SCORE SCREEN (placar entre rodadas)
     ========================== -->
 
-    <div
-      id="roundScoreScreen"
-      class="screen"
-    >
+    <div id="roundScoreScreen" class="screen">
 
-      <h2>
-        PLACAR DA RODADA
-      </h2>
-
-      <div id="roundScoreList">
+      <div class="topRow">
+        <span class="label">PLACAR PARCIAL</span>
       </div>
 
-      <p>
-        Prepare-se para a próxima rodada!
-      </p>
+      <h2 class="titleLG" style="margin-top:16px;">PLACAR DA<br>RODADA</h2>
+
+      <div id="roundScoreList" class="scoreList" style="margin-top:16px;"></div>
+
+      <p class="footNote" style="text-align:center;">prepare-se para a próxima rodada</p>
 
     </div>
 
 
     <!-- =========================
-         FINAL SCORE SCREEN
+         ESCAPOU / PLACAR — FINAL SCORE
     ========================== -->
 
-    <div
-      id="finalScoreScreen"
-      class="screen"
-    >
+    <div id="finalScoreScreen" class="screen">
 
-      <h2>
-        PLACAR FINAL
-      </h2>
+      <div id="finalScoreEscapedContainer" class="conditionalBlock">
 
-      <div id="finalScoreList">
+        <div class="topRow">
+          <span class="label">FIM DAS 3 RODADAS</span>
+          <span class="label label--red">SEM ACUSAÇÃO</span>
+        </div>
+
+        <div class="middle">
+
+          <h2 class="titleXL" id="finalScoreEscapedTitle" style="color:var(--red);"></h2>
+          <div style="width:90px; height:5px; background:var(--red); margin-top:14px;"></div>
+
+          <p class="body16" id="finalScoreEscapedBody" style="margin-top:16px;"></p>
+
+          <div class="wordRevealCard">
+            <span class="label">A PALAVRA ERA</span>
+            <div class="wordRevealCard__word" id="finalScoreEscapedWord"></div>
+          </div>
+
+          <div class="identityCard">
+            <div class="identityCard__mark">?</div>
+            <div>
+              <div class="identityCard__title">IDENTIDADE SIGILOSA</div>
+              <div class="identityCard__sub">nem o host revela quem era</div>
+            </div>
+          </div>
+
+        </div>
+
       </div>
 
-      <p id="finalRevealText">
-      </p>
+      <div id="finalScoreBoardContainer" class="conditionalBlock">
 
-      <button
-        class="homeButton"
-        onclick="window.location.href='../index.html'"
-      >
-        Voltar ao Início
-      </button>
+        <div class="topRow">
+          <span class="label">PLACAR</span>
+          <span class="label">ENCERRADO</span>
+        </div>
+
+        <h2 class="titleLG" style="margin-top:16px;">PLACAR FINAL</h2>
+
+        <div id="finalScoreList" class="scoreList" style="margin-top:16px;"></div>
+
+        <p id="finalRevealText" class="footNote" style="text-align:center;"></p>
+
+        <button
+          class="homeButton"
+          onclick="window.location.href='../index.html'"
+          type="button"
+        >
+          Voltar ao Início
+        </button>
+
+      </div>
 
     </div>
 
     <button
       id="hostButton"
-      style="display:none"
+      type="button"
       onclick="SendHostCommand()">
       Começar Jogo
     </button>
 
-  </div>
+  </main>
+
+
+  <!-- =========================
+       DEV STRIP (?dev=1 — força telas pra revisão visual, sem Firebase)
+  ========================== -->
+
+  <div id="devStrip"></div>
+
 
   <div
     id="pauseOverlay"

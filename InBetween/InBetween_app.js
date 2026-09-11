@@ -17,6 +17,8 @@ from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // =========================
 // FIREBASE CONFIG
+// (idêntica à do resto do party pack — não mexer, o Unity escreve no
+// mesmo banco usando estes mesmos caminhos)
 // =========================
 
 const firebaseConfig = {
@@ -65,6 +67,9 @@ const currentPlayerName =
 const currentPlayerId =
   params.get("id");
 
+const isDevMode =
+  params.get("dev") === "1";
+
 
 // =========================
 // GAME STATE
@@ -73,6 +78,7 @@ const currentPlayerId =
 let currentGameState = "Lobby";
 let isHost = false;
 let isImpostor = false;
+let currentImpostorId = null;
 let alreadyAnswered = false;
 let alreadyVoted = false;
 let alreadyGuessed = false;
@@ -81,6 +87,14 @@ let alreadySubmittedQuestion = false;
 let countdownInterval = null;
 let currentSecretWord = "";
 let isGamePaused = false;
+let accuseArmed = false;
+let accuseArmTimeout = null;
+let myLastAnswerText = "";
+let myLastVotedName = "";
+let playersCache = {};
+
+const QUESTION_TIME_SECONDS = 30;
+const ACCUSE_ARM_TIMEOUT_MS = 4000;
 
 
 // =========================
@@ -101,19 +115,66 @@ function ShowScreen(screenId)
     .classList.add("active");
 }
 
+function ShowBlock(blockId, siblingIds)
+{
+  siblingIds.forEach(id =>
+  {
+    document.getElementById(id).classList.remove("active");
+  });
+
+  document.getElementById(blockId).classList.add("active");
+}
+
 
 // =========================
-// ENTER KEY SUBMIT
+// SMALL HELPERS
 // =========================
 
-window.HandleEnterKey = function(event, callback)
+function Monogram(name)
+{
+  const trimmed = (name || "").trim();
+
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+}
+
+function Buzz(ms)
+{
+  try
+  {
+    if(navigator.vibrate) navigator.vibrate(ms);
+  }
+  catch(error)
+  {
+    // aparelho sem suporte a vibração — silencioso.
+  }
+}
+
+function Ordinal(n)
+{
+  return `${n}º`;
+}
+
+function SortedPlayers()
+{
+  return Object
+    .entries(playersCache)
+    .map(([id, data]) => ({ id, ...data }))
+    .sort((a, b) => (b.score || 0) - (a.score || 0));
+}
+
+
+// =========================
+// ENTER KEY SUBMIT (input de palpite — single line)
+// =========================
+
+function HandleEnterKey(event, callback)
 {
   if(event.key !== "Enter") return;
 
   event.preventDefault();
 
   callback();
-};
+}
 
 
 // =========================
@@ -142,10 +203,19 @@ async function GetRoundKey()
 
 window.onload = function()
 {
+  WireStaticInputs();
+
+  if(isDevMode)
+  {
+    InitDevMode();
+    return;
+  }
+
   ListenForGameState();
   ListenForVisibilityRecovery();
   ListenForImpostor();
   ListenForWord();
+  ListenForPlayers();
   CheckIfHost();
   ListenForPause();
 };
@@ -172,6 +242,67 @@ function ListenForPause()
 
 
 // =========================
+// LISTEN FOR PLAYERS
+// (lista viva pra montar o lobby e, junto com currentImpostorId, revelar o
+// nome do impostor só depois de um CULPADO legítimo)
+// =========================
+
+function ListenForPlayers()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/players`),
+    (snapshot) =>
+    {
+      playersCache = snapshot.exists() ? snapshot.val() : {};
+
+      if(currentGameState === "Lobby")
+      {
+        RenderLobbyRoster();
+      }
+    }
+  );
+}
+
+function RenderLobbyRoster()
+{
+  const list = document.getElementById("lobbyList");
+  const count = document.getElementById("lobbyCount");
+  const roomCodeLabel = document.getElementById("lobbyRoomCode");
+
+  if(roomCodeLabel) roomCodeLabel.innerText = currentRoomCode || "";
+
+  const players = SortedPlayers();
+
+  if(count) count.innerText = String(players.length);
+
+  if(!list) return;
+
+  if(players.length === 0)
+  {
+    list.innerHTML = `<div class="lobbyEmpty">esperando jogadores entrarem_</div>`;
+    return;
+  }
+
+  list.innerHTML = "";
+
+  players.forEach(player =>
+  {
+    const isSelf = player.id === currentPlayerId;
+
+    const card = document.createElement("div");
+    card.className = "lobbyCard" + (isSelf ? " self" : "");
+
+    card.innerHTML =
+      `<div class="mono">${Monogram(player.name)}</div>` +
+      `<div class="lobbyName">${player.name || "???"}</div>` +
+      `<div class="lobbyTag">${isSelf ? "VOCÊ" : "PRONTO"}</div>`;
+
+    list.appendChild(card);
+  });
+}
+
+
+// =========================
 // HOST CONTROLS (começar jogo / pular etapa)
 // =========================
 
@@ -190,6 +321,10 @@ async function CheckIfHost()
 
 window.SendHostCommand = async function()
 {
+  if(isDevMode) return;
+
+  Buzz(10);
+
   await set(
     ref(db, `rooms/${currentRoomCode}/hostCommand`),
     Date.now()
@@ -198,6 +333,10 @@ window.SendHostCommand = async function()
 
 window.SendTutorialAction = async function(action)
 {
+  if(isDevMode) return;
+
+  Buzz(10);
+
   await set(
     ref(db, `rooms/${currentRoomCode}/tutorialAction`),
     { action: action, t: Date.now() }
@@ -222,7 +361,7 @@ function UpdateHostButton(state)
     return;
   }
 
-  btn.style.display = "block";
+  btn.style.display = "flex";
 
   const labels =
   {
@@ -279,11 +418,16 @@ function ApplyGameState(gameState)
   currentGameState = gameState;
 
   StopCountdown();
+  DisarmAccuse();
 
   UpdateHostButton(gameState);
   UpdateRoleBanner();
 
-  if(gameState == "Lobby") { ShowScreen("lobbyScreen"); }
+  if(gameState == "Lobby")
+  {
+    ShowScreen("lobbyScreen");
+    RenderLobbyRoster();
+  }
 
   if(gameState == "Tutorial")
   {
@@ -381,20 +525,28 @@ function ListenForVisibilityRecovery()
 
 
 // =========================
-// COUNTDOWN (contador visível no client)
+// COUNTDOWN (contador + barra visíveis no client)
 // =========================
 
-function StartCountdown(seconds, elementId)
+function StartCountdown(seconds, textElId, fillElId)
 {
   StopCountdown();
 
   let remaining = seconds;
 
-  const el = document.getElementById(elementId);
+  const textEl = document.getElementById(textElId);
+  const fillEl = fillElId ? document.getElementById(fillElId) : null;
+
+  if(fillEl)
+  {
+    fillEl.style.animation = "none";
+    void fillEl.offsetWidth; // força o reflow antes de reiniciar a animação
+    fillEl.style.animation = `shrink ${seconds}s linear both`;
+  }
 
   function tick()
   {
-    if(el) el.innerText = `${remaining}s`;
+    if(textEl) textEl.innerText = `${remaining}s`;
 
     if(isGamePaused) return;
 
@@ -423,6 +575,59 @@ function StopCountdown()
 
 
 // =========================
+// WIRE STATIC INPUTS (contadores de caractere, enter-pra-enviar, etc. —
+// registrado uma vez só no boot, funciona igual em qualquer estado)
+// =========================
+
+function WireStaticInputs()
+{
+  const questionInput = document.getElementById("writeQuestionInput");
+  const questionCount = document.getElementById("writeQuestionCount");
+
+  questionInput.addEventListener("input", () =>
+  {
+    questionCount.innerText = `${questionInput.value.length}/120`;
+  });
+
+  const answerInput = document.getElementById("answerInput");
+  const answerCount = document.getElementById("answerCount");
+
+  answerInput.addEventListener("input", () =>
+  {
+    answerCount.innerText = `${answerInput.value.length}/120`;
+  });
+
+  const guessInput = document.getElementById("impostorGuessInput");
+  const guessDisplay = document.getElementById("impostorGuessDisplay");
+
+  guessInput.addEventListener("input", () =>
+  {
+    guessInput.value = guessInput.value.toUpperCase();
+    guessDisplay.innerText = guessInput.value;
+  });
+
+  guessInput.addEventListener("keydown", (event) =>
+  {
+    HandleEnterKey(event, sendImpostorGuess);
+  });
+
+  // TOQUE PRA ESCONDER/MOSTRAR A PALAVRA (telas PALAVRA/IMPOSTOR)
+  document
+    .getElementById("roleWordContainer")
+    .addEventListener("click", ToggleWordVisible);
+
+  // PEEK NO BANNER DE LEMBRETE
+  document
+    .getElementById("roleBannerPeek")
+    .addEventListener("click", (event) =>
+    {
+      event.stopPropagation();
+      PeekRoleBanner();
+    });
+}
+
+
+// =========================
 // OPEN WRITE QUESTION
 // =========================
 
@@ -436,34 +641,42 @@ async function OpenWriteQuestion()
   const questionerId = questionerIdSnapshot.val();
   const isQuestioner = questionerId === currentPlayerId;
 
-  const writeContainer =
-    document.getElementById("writeQuestionInputContainer");
-
-  const waitingContainer =
-    document.getElementById("writeQuestionWaitingContainer");
+  ShowBlock(
+    isQuestioner ? "writeQuestionInputContainer" : "writeQuestionWaitingContainer",
+    ["writeQuestionInputContainer", "writeQuestionWaitingContainer"]
+  );
 
   if(isQuestioner)
   {
-    writeContainer.classList.add("active");
-    waitingContainer.classList.remove("active");
-
+    // GUARDA DE SEGURANÇA: o Realtime Database não consegue esconder
+    // currentState/secretWord por jogador — quem filtra é o client. Se o
+    // sorteio de quem pergunta algum dia incluir o impostor, ele NUNCA pode
+    // ver a palavra aqui.
     document.getElementById("writeQuestionWordText").innerText =
-      `Palavra: ${currentSecretWord}`;
+      isImpostor ? "" : `Palavra: ${currentSecretWord}`;
 
-    document.getElementById("writeQuestionInput").disabled = false;
-    document.getElementById("writeQuestionInput").value = "";
+    const input = document.getElementById("writeQuestionInput");
+    input.disabled = false;
+    input.value = "";
+
+    document.getElementById("writeQuestionCount").innerText = "0/120";
     document.getElementById("sendQuestionButton").disabled = false;
     document.getElementById("writeQuestionStatusText").innerText = "";
 
-    StartCountdown(30, "writeQuestionCountdown");
+    StartCountdown(
+      QUESTION_TIME_SECONDS,
+      "writeQuestionCountdown",
+      "writeQuestionTimerFill"
+    );
   }
   else
   {
     // NÃO REVELA QUEM É O QUESTIONER — só ele mesmo sabe que foi sorteado.
-    writeContainer.classList.remove("active");
-    waitingContainer.classList.add("active");
-
-    StartCountdown(30, "writeQuestionWaitingCountdown");
+    StartCountdown(
+      QUESTION_TIME_SECONDS,
+      "writeQuestionWaitingCountdown",
+      "writeQuestionWaitingTimerFill"
+    );
   }
 }
 
@@ -474,7 +687,7 @@ async function OpenWriteQuestion()
 
 window.sendCustomQuestion = async function()
 {
-  if(isGamePaused) return;
+  if(isDevMode || isGamePaused) return;
 
   if(alreadySubmittedQuestion)
   {
@@ -493,6 +706,8 @@ window.sendCustomQuestion = async function()
   }
 
   alreadySubmittedQuestion = true;
+
+  Buzz(10);
 
   await set(
     ref(db, `rooms/${currentRoomCode}/currentState/customQuestion/text`),
@@ -520,8 +735,9 @@ let skipDiscussionUnsubscribe = null;
 function OpenDiscussion()
 {
   alreadyCalledForVote = false;
+  DisarmAccuse();
 
-  document.getElementById("skipDiscussionButton").disabled = false;
+  document.getElementById("discussionMeta").innerText = "";
   document.getElementById("skipDiscussionStatusText").innerText = "";
 
   // REMOVE O LISTENER DA RODADA ANTERIOR ANTES DE REGISTRAR UM NOVO —
@@ -547,29 +763,67 @@ function OpenDiscussion()
 
 
 // =========================
-// CALL FOR VOTE (PULAR DISCUSSÃO)
+// ACUSAR AGORA (dois toques pra confirmar — o primeiro só arma o botão)
 // =========================
+
+function DisarmAccuse()
+{
+  accuseArmed = false;
+
+  if(accuseArmTimeout)
+  {
+    clearTimeout(accuseArmTimeout);
+    accuseArmTimeout = null;
+  }
+
+  const btn = document.getElementById("skipDiscussionButton");
+
+  if(btn && !btn.disabled)
+  {
+    btn.classList.remove("armed");
+    btn.innerText = "ACUSAR AGORA";
+  }
+}
 
 window.callForVote = async function()
 {
-  if(isGamePaused) return;
+  if(isDevMode || isGamePaused) return;
 
   if(alreadyCalledForVote)
   {
     return;
   }
 
+  const btn = document.getElementById("skipDiscussionButton");
+
+  if(!accuseArmed)
+  {
+    accuseArmed = true;
+    Buzz(10);
+
+    btn.classList.add("armed");
+    btn.innerText = "TOQUE PRA CONFIRMAR";
+
+    accuseArmTimeout = setTimeout(DisarmAccuse, ACCUSE_ARM_TIMEOUT_MS);
+
+    return;
+  }
+
+  DisarmAccuse();
+
   alreadyCalledForVote = true;
+  Buzz([10, 40, 10]);
 
   await set(
     ref(db, `rooms/${currentRoomCode}/currentState/skipDiscussionVotes/${currentPlayerId}`),
     true
   );
 
-  document.getElementById("skipDiscussionButton").disabled = true;
+  btn.disabled = true;
+  btn.innerText = "ACUSAR AGORA";
 
   document.getElementById("skipDiscussionStatusText").innerText =
-    "Você quer votar! Aguardando os outros jogadores...";
+    "isso convoca a votação de todo mundo. aguardando os outros...";
 
   console.log("Chamado para votação!");
 };
@@ -586,9 +840,9 @@ function ListenForImpostor()
 
   onValue(impostorRef, (snapshot) =>
   {
-    const impostorId = snapshot.val();
+    currentImpostorId = snapshot.val();
 
-    isImpostor = (impostorId === currentPlayerId);
+    isImpostor = (currentImpostorId === currentPlayerId);
 
     UpdateRoleRevealScreen();
     UpdateRoleBanner();
@@ -619,27 +873,55 @@ function ListenForWord()
 
 // =========================
 // ROLE REVEAL SCREEN
+// (a palavra some atrás de um blur por padrão — tocar em qualquer parte do
+// bloco alterna mostrar/esconder, pro jogador não precisar ficar com a tela
+// erguida no colo dos outros)
 // =========================
+
+let wordRevealed = false;
 
 function UpdateRoleRevealScreen()
 {
-  const roleText =
-    document.getElementById("roleRevealText");
+  const wordContainer = document.getElementById("roleWordContainer");
 
-  if(!roleText) return;
+  if(!wordContainer) return;
 
-  if(isImpostor)
-  {
-    roleText.innerHTML =
-      `Você é o <span class="impostorLabel">IMPOSTOR</span>!<br><br>` +
-      `Você não sabe a palavra secreta. Tente se misturar nas respostas!`;
-  }
-  else
-  {
-    roleText.innerHTML =
-      `Sua palavra secreta é:<br>` +
-      `<span class="secretWordLabel">${currentSecretWord}</span>`;
-  }
+  wordRevealed = false;
+
+  ShowBlock(
+    isImpostor ? "roleImpostorContainer" : "roleWordContainer",
+    ["roleWordContainer", "roleImpostorContainer"]
+  );
+
+  document.getElementById("roleWordDisplay").innerText = currentSecretWord;
+  document.getElementById("roleWordDisplay").classList.add("hidden");
+  document.getElementById("roleWordTapHint").innerText = "toque para mostrar";
+
+  document.getElementById("roleTopLabel").innerText = currentPlayerName
+    ? currentPlayerName.toUpperCase()
+    : "RODADA";
+
+  document.getElementById("roleNoticeTitle").innerText =
+    isImpostor ? "FINJA QUE SABE · DESCUBRA A PALAVRA" : "NÃO MOSTRE A NINGUÉM";
+
+  document.getElementById("roleNoticeSub").innerText =
+    isImpostor ? "se te acusarem, você tem uma última chance" : "toque na palavra pra esconder de novo";
+}
+
+function ToggleWordVisible()
+{
+  if(isImpostor) return;
+
+  wordRevealed = !wordRevealed;
+
+  Buzz(8);
+
+  const display = document.getElementById("roleWordDisplay");
+  const hint = document.getElementById("roleWordTapHint");
+
+  display.classList.toggle("hidden", !wordRevealed);
+
+  hint.innerText = wordRevealed ? "toque para esconder" : "toque para mostrar";
 }
 
 
@@ -647,7 +929,7 @@ function UpdateRoleRevealScreen()
 // ROLE REMINDER BANNER
 // (pedido dos playtests: jogadores esquecem a palavra/papel no meio da
 // rodada — esse aviso fica visível em toda tela de jogo, não só no
-// RoleReveal)
+// RoleReveal. Por padrão mascarado; um toque no "ver" revela por 3s.)
 // =========================
 
 const ROLE_BANNER_STATES =
@@ -663,10 +945,12 @@ const ROLE_BANNER_STATES =
   "RoundScore"
 ];
 
+let peekTimeout = null;
+
 function UpdateRoleBanner()
 {
-  const banner =
-    document.getElementById("roleBanner");
+  const banner = document.getElementById("roleBanner");
+  const text = document.getElementById("roleBannerText");
 
   if(!banner) return;
 
@@ -679,14 +963,32 @@ function UpdateRoleBanner()
 
   if(isImpostor)
   {
-    banner.innerText = "Você é o IMPOSTOR!";
+    text.innerText = "VOCÊ É O IMPOSTOR";
     banner.classList.add("impostor");
   }
   else
   {
-    banner.innerText = `Palavra secreta: ${currentSecretWord}`;
+    text.innerText = `PALAVRA: ${currentSecretWord}`;
     banner.classList.remove("impostor");
   }
+
+  text.classList.add("masked");
+}
+
+function PeekRoleBanner()
+{
+  const text = document.getElementById("roleBannerText");
+
+  Buzz(8);
+
+  text.classList.remove("masked");
+
+  if(peekTimeout) clearTimeout(peekTimeout);
+
+  peekTimeout = setTimeout(() =>
+  {
+    text.classList.add("masked");
+  }, 3000);
 }
 
 
@@ -697,9 +999,15 @@ function UpdateRoleBanner()
 async function OpenQuestion()
 {
   alreadyAnswered = false;
+  myLastAnswerText = "";
 
-  document.getElementById("answerInput").disabled = false;
-  document.getElementById("answerInput").value = "";
+  ShowBlock("questionAnswerContainer", ["questionAnswerContainer", "questionSentContainer"]);
+
+  const answerInput = document.getElementById("answerInput");
+  answerInput.disabled = false;
+  answerInput.value = "";
+
+  document.getElementById("answerCount").innerText = "0/120";
   document.getElementById("sendAnswerButton").disabled = false;
   document.getElementById("questionWaitingText").innerText = "";
 
@@ -719,9 +1027,11 @@ async function OpenQuestion()
 // SEND ANSWER
 // =========================
 
+let answerCountUnsubscribe = null;
+
 window.sendAnswer = async function()
 {
-  if(isGamePaused) return;
+  if(isDevMode || isGamePaused) return;
 
   if(alreadyAnswered)
   {
@@ -739,10 +1049,14 @@ window.sendAnswer = async function()
     return;
   }
 
+  myLastAnswerText = answerText;
+
+  const roundKey = await GetRoundKey();
+
   await set(
     ref(
       db,
-      `rooms/${currentRoomCode}/history/${await GetRoundKey()}/answers/${currentPlayerId}`
+      `rooms/${currentRoomCode}/history/${roundKey}/answers/${currentPlayerId}`
     ),
     {
       playerName: currentPlayerName,
@@ -753,19 +1067,34 @@ window.sendAnswer = async function()
   console.log("Resposta enviada!");
 
   alreadyAnswered = true;
+  Buzz(10);
 
-  document
-    .getElementById("answerInput")
-    .disabled = true;
+  ShowBlock("questionSentContainer", ["questionAnswerContainer", "questionSentContainer"]);
 
-  document
-    .getElementById("sendAnswerButton")
-    .disabled = true;
+  document.getElementById("questionSentEcho").innerText = myLastAnswerText;
+  document.getElementById("questionWaitingText").innerText =
+    "esperando outros jogadores...";
 
-  document
-    .getElementById("questionWaitingText")
-    .innerText =
-      "Esperando outros jogadores...";
+  // CONTADOR DE QUEM JÁ RESPONDEU — leitura adicional, não escreve nada
+  // novo; só acompanha o mesmo nó de histórico que o Firebase já guarda.
+  if(answerCountUnsubscribe)
+  {
+    answerCountUnsubscribe();
+    answerCountUnsubscribe = null;
+  }
+
+  const totalPlayers = Object.keys(playersCache).length || 0;
+
+  answerCountUnsubscribe = onValue(
+    ref(db, `rooms/${currentRoomCode}/history/${roundKey}/answers`),
+    (snapshot) =>
+    {
+      const sent = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+
+      document.getElementById("questionSentCount").innerText =
+        totalPlayers > 0 ? `${sent}/${totalPlayers}` : `${sent}`;
+    }
+  );
 };
 
 
@@ -778,6 +1107,9 @@ let votingOptionsUnsubscribe = null;
 function OpenVoting()
 {
   alreadyVoted = false;
+  myLastVotedName = "";
+
+  ShowBlock("votingActiveContainer", ["votingActiveContainer", "votingVotedContainer"]);
 
   document
     .getElementById("votingWaitingText")
@@ -813,26 +1145,24 @@ function OpenVoting()
     snapshot.forEach((child) =>
     {
       const data = child.val();
+      const isSelf = data.playerId === currentPlayerId;
 
-      const button =
-        document.createElement("button");
+      const card = document.createElement("div");
+      card.className = "voteCard" + (isSelf ? " self" : "");
 
-      button.className = "voteButton";
+      card.innerHTML =
+        `<div class="voteCard__row">` +
+          `<div class="mono">${Monogram(data.playerName)}</div>` +
+          `<div class="voteCard__name">${data.playerName}</div>` +
+        `</div>` +
+        `<div class="voteCard__tag">${isSelf ? "você" : "suspeito"}</div>`;
 
-      button.innerText = data.playerName;
-
-      if(data.playerId === currentPlayerId)
+      if(!isSelf)
       {
-        button.disabled = true;
-        button.classList.add("disabledSelf");
-      }
-      else
-      {
-        button.onclick =
-          (event) => Vote(data.playerId, event);
+        card.addEventListener("click", () => Vote(data.playerId, data.playerName, card));
       }
 
-      votingOptionsDiv.appendChild(button);
+      votingOptionsDiv.appendChild(card);
     });
   });
 }
@@ -842,9 +1172,9 @@ function OpenVoting()
 // VOTE
 // =========================
 
-async function Vote(votedPlayerId, event)
+async function Vote(votedPlayerId, votedPlayerName, cardEl)
 {
-  if(isGamePaused) return;
+  if(isDevMode || isGamePaused) return;
 
   if(alreadyVoted)
   {
@@ -852,20 +1182,22 @@ async function Vote(votedPlayerId, event)
   }
 
   alreadyVoted = true;
+  myLastVotedName = votedPlayerName || "???";
+
+  Buzz(10);
 
   document
-    .querySelectorAll(".voteButton")
-    .forEach(button =>
-    {
-      button.classList.remove("selected");
-    });
+    .querySelectorAll(".voteCard")
+    .forEach(card => card.classList.remove("selected"));
 
-  event.target.classList.add("selected");
+  if(cardEl) cardEl.classList.add("selected");
+
+  const roundKey = await GetRoundKey();
 
   await set(
     ref(
       db,
-      `rooms/${currentRoomCode}/history/${await GetRoundKey()}/votes/${currentPlayerId}`
+      `rooms/${currentRoomCode}/history/${roundKey}/votes/${currentPlayerId}`
     ),
     {
       votedPlayerId: votedPlayerId,
@@ -873,12 +1205,11 @@ async function Vote(votedPlayerId, event)
     }
   );
 
-  document
-    .getElementById("votingWaitingText")
-    .innerText =
-      "Esperando outros votos...";
-
   console.log("Voto enviado!");
+
+  document.getElementById("votedNameText").innerText = myLastVotedName;
+
+  ShowBlock("votingVotedContainer", ["votingActiveContainer", "votingVotedContainer"]);
 }
 
 
@@ -909,18 +1240,40 @@ function OpenVoteResult()
 
     const outcome = snapshot.val();
 
-    const titleEl =
-      document.getElementById("voteResultTitle");
+    const stamp = document.getElementById("voteResultStamp");
+    const stampText = document.getElementById("voteResultStampText");
+    const title = document.getElementById("voteResultTitle");
+    const body = document.getElementById("voteResultBody");
+    const topLabel = document.getElementById("voteResultTopLabel");
+
+    document.body.classList.remove("tone-red", "tone-blue");
 
     if(outcome.caught)
     {
-      titleEl.innerText = "O IMPOSTOR FOI DESCOBERTO!";
-      titleEl.className = "voteResultCaught";
+      const impostorName =
+        (playersCache[currentImpostorId] && playersCache[currentImpostorId].name) || "o impostor";
+
+      document.body.classList.add("tone-red");
+
+      stamp.className = "stamp";
+      stampText.innerText = "CULPADO";
+      title.innerHTML = "A MESA<br>ACERTOU";
+      body.innerHTML =
+        `${impostorName} era o impostor.<br>ele tem uma última chance de virar o jogo.`;
+      topLabel.className = "label label--red";
+      topLabel.innerText = "VEREDITO";
     }
     else
     {
-      titleEl.innerText = "O IMPOSTOR ESCAPOU!";
-      titleEl.className = "voteResultEscaped";
+      document.body.classList.add("tone-blue");
+
+      stamp.className = "stamp stamp--blue";
+      stampText.innerText = "INOCENTE";
+      title.innerHTML = "A MESA<br>ERROU";
+      body.innerHTML =
+        "a pessoa apontada sabia a palavra.<br>o impostor segue à solta.";
+      topLabel.className = "label label--blue";
+      topLabel.innerText = "VEREDITO";
     }
   });
 }
@@ -930,31 +1283,51 @@ function OpenVoteResult()
 // OPEN IMPOSTOR GUESS
 // =========================
 
+let impostorGuessUnsubscribe = null;
+
 function OpenImpostorGuess()
 {
   alreadyGuessed = false;
 
-  const guessContainer =
-    document.getElementById("impostorGuessInputContainer");
+  document.body.classList.remove("tone-red", "tone-blue");
 
-  const waitingContainer =
-    document.getElementById("impostorGuessWaitingContainer");
+  ShowBlock(
+    isImpostor ? "impostorGuessInputContainer" : "impostorGuessWaitingContainer",
+    ["impostorGuessInputContainer", "impostorGuessWaitingContainer", "impostorGuessResultContainer"]
+  );
 
   if(isImpostor)
   {
-    guessContainer.classList.add("active");
-    waitingContainer.classList.remove("active");
+    const input = document.getElementById("impostorGuessInput");
+    input.disabled = false;
+    input.value = "";
 
-    document.getElementById("impostorGuessInput").disabled = false;
-    document.getElementById("impostorGuessInput").value = "";
+    document.getElementById("impostorGuessDisplay").innerText = "";
     document.getElementById("sendGuessButton").disabled = false;
     document.getElementById("impostorGuessStatusText").innerText = "";
   }
-  else
+
+  // ACOMPANHA O RESULTADO DO PALPITE — leitura do mesmo nó que o Unity já
+  // usa pra registrar o palpite e a correção (ver OpenFinalScore).
+  if(impostorGuessUnsubscribe)
   {
-    guessContainer.classList.remove("active");
-    waitingContainer.classList.add("active");
+    impostorGuessUnsubscribe();
+    impostorGuessUnsubscribe = null;
   }
+
+  const guessRef =
+    ref(db, `rooms/${currentRoomCode}/currentState/impostorGuess`);
+
+  impostorGuessUnsubscribe = onValue(guessRef, (snapshot) =>
+  {
+    if(!snapshot.exists()) return;
+
+    const data = snapshot.val();
+
+    if(typeof data.correct !== "boolean") return;
+
+    RenderImpostorGuessResult(data.text || "", data.correct);
+  });
 }
 
 
@@ -964,7 +1337,7 @@ function OpenImpostorGuess()
 
 window.sendImpostorGuess = async function()
 {
-  if(isGamePaused) return;
+  if(isDevMode || isGamePaused) return;
 
   if(alreadyGuessed)
   {
@@ -988,124 +1361,400 @@ window.sendImpostorGuess = async function()
   );
 
   alreadyGuessed = true;
+  Buzz(10);
 
   document.getElementById("impostorGuessInput").disabled = true;
   document.getElementById("sendGuessButton").disabled = true;
 
   document.getElementById("impostorGuessStatusText").innerText =
-    "Palpite enviado! Aguardando resultado...";
+    "palpite enviado! aguardando resultado...";
 
   console.log("Palpite enviado!");
 };
 
 
 // =========================
+// RESULTADO DO PALPITE (ERROU / ACERTOU — telas 14/15 do mockup)
+// Ambos os lados (impostor e mesa) veem essa revelação; o texto muda de
+// acordo com quem está lendo.
+// =========================
+
+function RenderImpostorGuessResult(guessText, correct)
+{
+  document.body.classList.add(correct ? "tone-blue" : "tone-red");
+
+  ShowBlock(
+    "impostorGuessResultContainer",
+    ["impostorGuessInputContainer", "impostorGuessWaitingContainer", "impostorGuessResultContainer"]
+  );
+
+  document.getElementById("impostorGuessResultTag").innerText = correct ? "CERTO" : "ERRADO";
+  document.getElementById("impostorGuessResultTag").style.color = correct ? "var(--blue)" : "var(--red)";
+
+  document.getElementById("impostorGuessResultWord").innerText = guessText.toUpperCase();
+  document.getElementById("impostorGuessResultAnswer").innerText = currentSecretWord;
+
+  document.getElementById("impostorGuessResultBar").style.display = correct ? "none" : "block";
+  document.getElementById("impostorGuessResultDivider").style.display = correct ? "flex" : "none";
+
+  const headline = document.getElementById("impostorGuessResultHeadline");
+  const body = document.getElementById("impostorGuessResultBody");
+
+  if(correct)
+  {
+    headline.innerHTML = isImpostor ? "VOCÊ VIROU<br>O JOGO" : "O IMPOSTOR<br>VIROU O JOGO";
+    body.innerText = isImpostor
+      ? "a mesa te pegou e ainda assim você leva a partida sozinho."
+      : "ele acertou a palavra secreta e leva a partida sozinho.";
+  }
+  else
+  {
+    headline.innerHTML = isImpostor ? "VOCÊ FICOU<br>POR FORA" : "A MESA<br>VENCE";
+    body.innerText = isImpostor
+      ? "você não soube a palavra até o fim. a mesa vence."
+      : "o impostor não soube a palavra. vocês vencem.";
+  }
+}
+
+
+// =========================
 // OPEN ROUND SCORE (placar parcial entre macro-rodadas)
 // =========================
 
+function RenderScoreList(containerId)
+{
+  const listDiv = document.getElementById(containerId);
+
+  listDiv.innerHTML = "";
+
+  const players = SortedPlayers();
+
+  players.forEach((player, index) =>
+  {
+    const isSelf = player.id === currentPlayerId;
+
+    const row = document.createElement("div");
+    row.className = "scoreRow" + (isSelf ? " self" : "");
+
+    row.innerHTML =
+      `<div class="scoreRow__rank">${Ordinal(index + 1)}</div>` +
+      `<div class="mono">${Monogram(player.name)}</div>` +
+      `<div class="scoreRow__name">${player.name || "???"}</div>` +
+      `<div class="scoreRow__pts">${player.score || 0}</div>`;
+
+    listDiv.appendChild(row);
+  });
+
+  return players;
+}
+
 async function OpenRoundScore()
 {
-  const playersSnapshot =
-    await get(ref(db, `rooms/${currentRoomCode}/players`));
-
-  const scoreListDiv =
-    document.getElementById("roundScoreList");
-
-  scoreListDiv.innerHTML = "";
-
-  if(!playersSnapshot.exists())
-  {
-    return;
-  }
-
-  const players = [];
-
-  playersSnapshot.forEach((child) =>
-  {
-    players.push({ id: child.key, ...child.val() });
-  });
-
-  players.sort((a, b) => (b.score || 0) - (a.score || 0));
-
-  players.forEach((player) =>
-  {
-    const item =
-      document.createElement("div");
-
-    item.className = "scoreItem";
-
-    item.innerText =
-      `${player.name} - ${player.score || 0}`;
-
-    scoreListDiv.appendChild(item);
-  });
+  RenderScoreList("roundScoreList");
 }
 
 
 // =========================
 // OPEN FINAL SCORE
+// Sem um estado de Firebase dedicado a "impostor escapou", a gente deduz a
+// situação a partir do que já existe: se currentState/impostorGuess nunca
+// chegou a ter um "text", é porque a última chance nunca foi acionada —
+// ou seja, ninguém acusou certo nas 3 rodadas.
 // =========================
 
 async function OpenFinalScore()
 {
-  const playersSnapshot =
-    await get(ref(db, `rooms/${currentRoomCode}/players`));
-
-  const scoreListDiv =
-    document.getElementById("finalScoreList");
-
-  scoreListDiv.innerHTML = "";
-
-  let impostorName = "???";
-
-  if(playersSnapshot.exists())
-  {
-    const players = [];
-
-    playersSnapshot.forEach((child) =>
-    {
-      players.push({ id: child.key, ...child.val() });
-    });
-
-    players.sort((a, b) => (b.score || 0) - (a.score || 0));
-
-    players.forEach((player) =>
-    {
-      const item =
-        document.createElement("div");
-
-      item.className = "scoreItem";
-
-      item.innerText =
-        `${player.name} - ${player.score || 0}`;
-
-      scoreListDiv.appendChild(item);
-    });
-
-    const impostorIdSnapshot =
-      await get(ref(db, `rooms/${currentRoomCode}/currentState/impostorId`));
-
-    const impostorPlayer =
-      players.find(p => p.id === impostorIdSnapshot.val());
-
-    if(impostorPlayer) impostorName = impostorPlayer.name;
-  }
-
-  const wordSnapshot =
-    await get(ref(db, `rooms/${currentRoomCode}/currentState/secretWord`));
-
   const guessSnapshot =
     await get(ref(db, `rooms/${currentRoomCode}/currentState/impostorGuess`));
 
-  let revealMsg =
-    `O impostor era: ${impostorName}. A palavra secreta era: ${wordSnapshot.val() || "???"}.`;
+  const guessData = guessSnapshot.exists() ? guessSnapshot.val() : null;
+  const wasCaught = !!(guessData && guessData.text);
 
-  if(guessSnapshot.exists() && guessSnapshot.val().text)
+  if(wasCaught)
   {
-    revealMsg += guessSnapshot.val().correct
-      ? " O impostor adivinhou a palavra!"
-      : " O impostor não conseguiu adivinhar a palavra.";
+    ShowBlock("finalScoreBoardContainer", ["finalScoreEscapedContainer", "finalScoreBoardContainer"]);
+    RenderFinalBoard(guessData);
+  }
+  else
+  {
+    RenderEscapedScreen();
+    ShowBlock("finalScoreEscapedContainer", ["finalScoreEscapedContainer", "finalScoreBoardContainer"]);
+
+    document
+      .getElementById("finalScoreEscapedContainer")
+      .addEventListener("click", () =>
+      {
+        ShowBlock("finalScoreBoardContainer", ["finalScoreEscapedContainer", "finalScoreBoardContainer"]);
+        RenderFinalBoard(null);
+      }, { once:true });
+  }
+}
+
+function RenderEscapedScreen()
+{
+  document.getElementById("finalScoreEscapedTitle").innerHTML =
+    isImpostor ? "VOCÊ<br>ESCAPOU" : "ELE<br>ESCAPOU";
+
+  document.getElementById("finalScoreEscapedBody").innerText = isImpostor
+    ? "ninguém te apontou. a mesa nunca vai ter certeza."
+    : "as três rodadas acabaram sem acusação certa. vocês nunca vão saber quem era.";
+
+  document.getElementById("finalScoreEscapedWord").innerText = currentSecretWord || "???";
+}
+
+function RenderFinalBoard(guessData)
+{
+  const players = RenderScoreList("finalScoreList");
+
+  const impostorName =
+    (playersCache[currentImpostorId] && playersCache[currentImpostorId].name) || "???";
+
+  let revealMsg =
+    `o impostor era ${impostorName}. a palavra secreta era ${currentSecretWord || "???"}.`;
+
+  if(guessData && typeof guessData.correct === "boolean")
+  {
+    revealMsg += guessData.correct
+      ? " o impostor virou o jogo!"
+      : " o impostor não conseguiu adivinhar a palavra.";
+  }
+  else
+  {
+    revealMsg = `a palavra secreta era ${currentSecretWord || "???"}. a identidade do impostor não é revelada.`;
   }
 
   document.getElementById("finalRevealText").innerText = revealMsg;
+}
+
+
+// =========================
+// GLOBAL EXPORTS (usados por onclick= no HTML)
+// =========================
+
+window.HandleEnterKey = HandleEnterKey;
+
+
+// =========================
+// MODO DE REVISÃO VISUAL (?dev=1)
+// Só ativa telas com dados fictícios pra revisão de design — nunca lê nem
+// escreve no Firebase. Fica isolado do fluxo real do jogo (todo write acima
+// já tem um `if(isDevMode) return;` de guarda).
+// =========================
+
+const DEV_PLAYERS =
+{
+  p1: { name: "MADAME VERA", score: 9 },
+  p2: { name: "O DUQUE", score: 4 },
+  p3: { name: "GATO PRETO", score: 0 },
+  p4: { name: currentPlayerName || "ALMA", score: 7 },
+  p5: { name: "BIDU", score: 5 },
+  p6: { name: "DOUTOR LEAL", score: 2 },
+};
+
+const DEV_STATES =
+[
+  { key: "Lobby",             label: "01 ESPERANDO" },
+  { key: "RoleReveal:word",   label: "02 PALAVRA" },
+  { key: "RoleReveal:imp",    label: "03 IMPOSTOR" },
+  { key: "WriteQuestion:me",  label: "04 PERGUNTA" },
+  { key: "WriteQuestion:wait",label: "05 AGUARDE" },
+  { key: "Question:me",       label: "06 RESPONDA" },
+  { key: "Question:sent",     label: "07 ENVIADA" },
+  { key: "RevealAnswers",     label: "08 NA TV" },
+  { key: "Discussion",        label: "09 ACUSAR" },
+  { key: "Voting:active",     label: "10 VOTE" },
+  { key: "Voting:voted",      label: "11 VOTO OK" },
+  { key: "VoteResult:caught", label: "12 CULPADO" },
+  { key: "VoteResult:clear",  label: "13 INOCENTE" },
+  { key: "ImpostorGuess:me",  label: "14 CHUTE" },
+  { key: "GuessResult:wrong", label: "15 ERROU" },
+  { key: "GuessResult:right", label: "16 ACERTOU" },
+  { key: "FinalScore:escapeI",label: "17 ESCAPOU·EU" },
+  { key: "FinalScore:escapeM",label: "18 ESCAPOU·MESA" },
+  { key: "FinalScore:board",  label: "19 PLACAR" },
+];
+
+function InitDevMode()
+{
+  playersCache = DEV_PLAYERS;
+  currentImpostorId = "p3";
+  currentSecretWord = "ESCADA";
+
+  const strip = document.getElementById("devStrip");
+  strip.classList.add("active");
+
+  DEV_STATES.forEach(entry =>
+  {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.innerText = entry.label;
+
+    btn.addEventListener("click", () =>
+    {
+      strip.querySelectorAll("button").forEach(b => b.classList.remove("on"));
+      btn.classList.add("on");
+      DevShow(entry.key);
+    });
+
+    strip.appendChild(btn);
+  });
+
+  strip.querySelector("button").click();
+}
+
+function DevShow(key)
+{
+  const [state, variant] = key.split(":");
+
+  document.body.classList.remove("tone-red", "tone-blue");
+
+  if(state === "Lobby")
+  {
+    ShowScreen("lobbyScreen");
+    RenderLobbyRoster();
+  }
+
+  if(state === "RoleReveal")
+  {
+    isImpostor = variant === "imp";
+    ShowScreen("roleRevealScreen");
+    UpdateRoleRevealScreen();
+    if(!isImpostor) ToggleWordVisible();
+  }
+
+  if(state === "WriteQuestion")
+  {
+    ShowScreen("writeQuestionScreen");
+    ShowBlock(
+      variant === "me" ? "writeQuestionInputContainer" : "writeQuestionWaitingContainer",
+      ["writeQuestionInputContainer", "writeQuestionWaitingContainer"]
+    );
+    document.getElementById("writeQuestionWordText").innerText = `Palavra: ${currentSecretWord}`;
+    StartCountdown(30, variant === "me" ? "writeQuestionCountdown" : "writeQuestionWaitingCountdown",
+      variant === "me" ? "writeQuestionTimerFill" : "writeQuestionWaitingTimerFill");
+  }
+
+  if(state === "Question")
+  {
+    ShowScreen("questionScreen");
+    document.getElementById("questionText").innerText = "você confiaria nisso com o olho fechado?";
+
+    if(variant === "me")
+    {
+      ShowBlock("questionAnswerContainer", ["questionAnswerContainer", "questionSentContainer"]);
+    }
+    else
+    {
+      ShowBlock("questionSentContainer", ["questionAnswerContainer", "questionSentContainer"]);
+      document.getElementById("questionSentEcho").innerText = "de dia sim, de noite nunca";
+      document.getElementById("questionSentCount").innerText = "5/6";
+      document.getElementById("questionWaitingText").innerText = "falta 1 jogador";
+    }
+  }
+
+  if(state === "RevealAnswers")
+  {
+    ShowScreen("revealAnswersScreen");
+  }
+
+  if(state === "Discussion")
+  {
+    ShowScreen("discussionScreen");
+  }
+
+  if(state === "Voting")
+  {
+    isImpostor = false;
+    ShowScreen("votingScreen");
+
+    if(variant === "active")
+    {
+      ShowBlock("votingActiveContainer", ["votingActiveContainer", "votingVotedContainer"]);
+      const optionsDiv = document.getElementById("votingOptions");
+      optionsDiv.innerHTML = "";
+      Object.entries(DEV_PLAYERS).forEach(([id, data]) =>
+      {
+        const isSelf = id === "p4";
+        const card = document.createElement("div");
+        card.className = "voteCard" + (isSelf ? " self" : "");
+        card.innerHTML =
+          `<div class="voteCard__row"><div class="mono">${Monogram(data.name)}</div>` +
+          `<div class="voteCard__name">${data.name}</div></div>` +
+          `<div class="voteCard__tag">${isSelf ? "você" : "suspeito"}</div>`;
+        optionsDiv.appendChild(card);
+      });
+    }
+    else
+    {
+      ShowBlock("votingVotedContainer", ["votingActiveContainer", "votingVotedContainer"]);
+      document.getElementById("votedNameText").innerText = "GATO PRETO";
+    }
+  }
+
+  if(state === "VoteResult")
+  {
+    ShowScreen("voteResultScreen");
+    const outcome = { caught: variant === "caught" };
+    OpenVoteResultDevPreview(outcome);
+  }
+
+  if(state === "ImpostorGuess")
+  {
+    isImpostor = true;
+    ShowScreen("impostorGuessScreen");
+    ShowBlock("impostorGuessInputContainer",
+      ["impostorGuessInputContainer", "impostorGuessWaitingContainer", "impostorGuessResultContainer"]);
+  }
+
+  if(state === "GuessResult")
+  {
+    isImpostor = true;
+    ShowScreen("impostorGuessScreen");
+    RenderImpostorGuessResult("ELEVADOR", variant === "right");
+  }
+
+  if(state === "FinalScore")
+  {
+    ShowScreen("finalScoreScreen");
+
+    if(variant === "board")
+    {
+      ShowBlock("finalScoreBoardContainer", ["finalScoreEscapedContainer", "finalScoreBoardContainer"]);
+      RenderFinalBoard({ text:"ELEVADOR", correct:false });
+    }
+    else
+    {
+      isImpostor = variant === "escapeI";
+      RenderEscapedScreen();
+      ShowBlock("finalScoreEscapedContainer", ["finalScoreEscapedContainer", "finalScoreBoardContainer"]);
+    }
+  }
+}
+
+function OpenVoteResultDevPreview(outcome)
+{
+  const stamp = document.getElementById("voteResultStamp");
+  const stampText = document.getElementById("voteResultStampText");
+  const title = document.getElementById("voteResultTitle");
+  const body = document.getElementById("voteResultBody");
+  const topLabel = document.getElementById("voteResultTopLabel");
+
+  if(outcome.caught)
+  {
+    document.body.classList.add("tone-red");
+    stamp.className = "stamp";
+    stampText.innerText = "CULPADO";
+    title.innerHTML = "A MESA<br>ACERTOU";
+    body.innerHTML = "GATO PRETO era o impostor.<br>ele tem uma última chance de virar o jogo.";
+    topLabel.className = "label label--red";
+  }
+  else
+  {
+    document.body.classList.add("tone-blue");
+    stamp.className = "stamp stamp--blue";
+    stampText.innerText = "INOCENTE";
+    title.innerHTML = "A MESA<br>ERROU";
+    body.innerHTML = "a pessoa apontada sabia a palavra.<br>o impostor segue à solta.";
+    topLabel.className = "label label--blue";
+  }
 }
