@@ -74,6 +74,7 @@ let alreadyAnswered = false;
 let alreadyJudged = false;
 let currentGameState = "Lobby";
 let currentJudgingAuthorId = null;
+let judgingAnswerUnsubscribe = null; // desliga o listener da rodada anterior antes de abrir um novo
 let pendingGrade = null; // nota selecionada no Julgar, ainda não confirmada
 let isGamePaused = false;
 let isHost = false;
@@ -594,10 +595,19 @@ async function GetSortedPlayers()
 
 function OpenJudging()
 {
+  // Cada rodada chama OpenJudging de novo — sem isso, os listeners de
+  // rodadas anteriores continuam ativos e disparam junto com o novo,
+  // dessincronizando alreadyJudged/pendingGrade logo na 1ª resposta da rodada.
+  if(judgingAnswerUnsubscribe)
+  {
+    judgingAnswerUnsubscribe();
+    judgingAnswerUnsubscribe = null;
+  }
+
   const currentAnswerRef =
     ref(db, `rooms/${currentRoomCode}/currentState/currentAnswer`);
 
-  onValue(currentAnswerRef, (snapshot) =>
+  judgingAnswerUnsubscribe = onValue(currentAnswerRef, (snapshot) =>
   {
     if(!snapshot.exists()) return;
     if(currentGameState !== "Judging") return;
@@ -874,6 +884,10 @@ function StartDrag(card, authorId, event)
   card.style.width = rect.width + "px";
   card.style.zIndex = 1000;
 
+  // Sem isso, a própria carta arrastada (que fica bem em cima do cursor)
+  // é o elemento "atingido" pelo elementFromPoint usado pra achar a coluna.
+  card.style.pointerEvents = "none";
+
   MoveCardTo(card, event.clientX, event.clientY);
 
   card.addEventListener("pointermove", OnDragMove);
@@ -887,22 +901,37 @@ function MoveCardTo(card, clientX, clientY)
   card.style.top = (clientY - dragState.offsetY) + "px";
 }
 
+// Acha a coluna sob o CENTRO da carta (não sob o cursor) — o cursor pode
+// estar em qualquer ponto da carta (ex: segurando pelo "⠿" na ponta), então
+// usar a posição dele como referência deixa a hitbox torta perto da borda
+// entre colunas.
+function GetColumnUnderCard(card)
+{
+  const rect = card.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  const elementBelow = document.elementFromPoint(centerX, centerY);
+  return elementBelow ? elementBelow.closest(".rankColumn") : null;
+}
+
 function OnDragMove(event)
 {
   if(!dragState || event.pointerId !== dragState.pointerId) return;
 
-  MoveCardTo(event.currentTarget, event.clientX, event.clientY);
-  HighlightDropTarget(event.clientX, event.clientY);
+  const card = event.currentTarget;
+
+  MoveCardTo(card, event.clientX, event.clientY);
+  HighlightDropTarget(card);
 }
 
-function HighlightDropTarget(x, y)
+function HighlightDropTarget(card)
 {
   document
     .querySelectorAll(".rankColumn.dragOver")
     .forEach(col => col.classList.remove("dragOver"));
 
-  const elementBelow = document.elementFromPoint(x, y);
-  const column = elementBelow ? elementBelow.closest(".rankColumn") : null;
+  const column = GetColumnUnderCard(card);
 
   if(column) column.classList.add("dragOver");
 }
@@ -917,19 +946,21 @@ async function OnDragEnd(event)
   card.removeEventListener("pointerup", OnDragEnd);
   card.removeEventListener("pointercancel", OnDragEnd);
 
+  // Precisa calcular ANTES de desfazer os estilos de arraste, senão a carta
+  // já volta pro layout normal e o rect deixa de refletir onde ela foi solta.
+  const column = GetColumnUnderCard(card);
+
   card.classList.remove("dragging");
   card.style.position = "";
   card.style.left = "";
   card.style.top = "";
   card.style.width = "";
   card.style.zIndex = "";
+  card.style.pointerEvents = "";
 
   document
     .querySelectorAll(".rankColumn.dragOver")
     .forEach(col => col.classList.remove("dragOver"));
-
-  const elementBelow = document.elementFromPoint(event.clientX, event.clientY);
-  const column = elementBelow ? elementBelow.closest(".rankColumn") : null;
 
   const authorId = dragState.authorId;
   dragState = null;
