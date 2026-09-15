@@ -611,19 +611,6 @@ function WireStaticInputs()
     HandleEnterKey(event, sendImpostorGuess);
   });
 
-  // TOQUE PRA ESCONDER/MOSTRAR A PALAVRA (telas PALAVRA/IMPOSTOR)
-  document
-    .getElementById("roleWordContainer")
-    .addEventListener("click", ToggleWordVisible);
-
-  // PEEK NO BANNER DE LEMBRETE
-  document
-    .getElementById("roleBannerPeek")
-    .addEventListener("click", (event) =>
-    {
-      event.stopPropagation();
-      PeekRoleBanner();
-    });
 }
 
 
@@ -883,12 +870,8 @@ function ListenForWord()
 
 // =========================
 // ROLE REVEAL SCREEN
-// (a palavra some atrás de um blur por padrão — tocar em qualquer parte do
-// bloco alterna mostrar/esconder, pro jogador não precisar ficar com a tela
-// erguida no colo dos outros)
+// (a palavra fica sempre exposta — sem blur, sem toque pra esconder)
 // =========================
-
-let wordRevealed = false;
 
 function UpdateRoleRevealScreen()
 {
@@ -896,16 +879,12 @@ function UpdateRoleRevealScreen()
 
   if(!wordContainer) return;
 
-  wordRevealed = false;
-
   ShowBlock(
     isImpostor ? "roleImpostorContainer" : "roleWordContainer",
     ["roleWordContainer", "roleImpostorContainer"]
   );
 
   document.getElementById("roleWordDisplay").innerText = currentSecretWord;
-  document.getElementById("roleWordDisplay").classList.add("hidden");
-  document.getElementById("roleWordTapHint").innerText = "toque para mostrar";
 
   document.getElementById("roleTopLabel").innerText = currentPlayerName
     ? currentPlayerName.toUpperCase()
@@ -915,23 +894,7 @@ function UpdateRoleRevealScreen()
     isImpostor ? "FINJA QUE SABE · DESCUBRA A PALAVRA" : "NÃO MOSTRE A NINGUÉM";
 
   document.getElementById("roleNoticeSub").innerText =
-    isImpostor ? "se te acusarem, você tem uma última chance" : "toque na palavra pra esconder de novo";
-}
-
-function ToggleWordVisible()
-{
-  if(isImpostor) return;
-
-  wordRevealed = !wordRevealed;
-
-  Buzz(8);
-
-  const display = document.getElementById("roleWordDisplay");
-  const hint = document.getElementById("roleWordTapHint");
-
-  display.classList.toggle("hidden", !wordRevealed);
-
-  hint.innerText = wordRevealed ? "toque para esconder" : "toque para mostrar";
+    isImpostor ? "se te acusarem, você tem uma última chance" : "cuidado pra ninguém mais ver a tela";
 }
 
 
@@ -939,7 +902,7 @@ function ToggleWordVisible()
 // ROLE REMINDER BANNER
 // (pedido dos playtests: jogadores esquecem a palavra/papel no meio da
 // rodada — esse aviso fica visível em toda tela de jogo, não só no
-// RoleReveal. Por padrão mascarado; um toque no "ver" revela por 3s.)
+// RoleReveal. Sempre exposto, sem mascarar.)
 // =========================
 
 const ROLE_BANNER_STATES =
@@ -954,8 +917,6 @@ const ROLE_BANNER_STATES =
   "ImpostorGuess",
   "RoundScore"
 ];
-
-let peekTimeout = null;
 
 function UpdateRoleBanner()
 {
@@ -981,24 +942,6 @@ function UpdateRoleBanner()
     text.innerText = `PALAVRA: ${currentSecretWord}`;
     banner.classList.remove("impostor");
   }
-
-  text.classList.add("masked");
-}
-
-function PeekRoleBanner()
-{
-  const text = document.getElementById("roleBannerText");
-
-  Buzz(8);
-
-  text.classList.remove("masked");
-
-  if(peekTimeout) clearTimeout(peekTimeout);
-
-  peekTimeout = setTimeout(() =>
-  {
-    text.classList.add("masked");
-  }, 3000);
 }
 
 
@@ -1629,7 +1572,6 @@ function DevShow(key)
     isImpostor = variant === "imp";
     ShowScreen("roleRevealScreen");
     UpdateRoleRevealScreen();
-    if(!isImpostor) ToggleWordVisible();
   }
 
   if(state === "WriteQuestion")

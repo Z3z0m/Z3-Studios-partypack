@@ -43,13 +43,11 @@
        ROLE REMINDER BANNER
        (fora do card, pra quem esquece a palavra secreta ou esquece que é
        o impostor — fica visível durante toda a rodada, ver UpdateRoleBanner
-       no JS. Por padrão mascarado — o mesmo gesto de "não mostre a
-       ninguém" das telas 2/3, tocar revela por 3s)
+       no JS. Sempre exposto, sem mascarar.)
   ========================== -->
 
   <div id="roleBanner" class="roleBanner" role="status">
-    <span id="roleBannerText" class="roleBanner__text masked"></span>
-    <button id="roleBannerPeek" class="roleBanner__peek" type="button">ver</button>
+    <span id="roleBannerText" class="roleBanner__text"></span>
   </div>
 
 
@@ -124,15 +122,13 @@
         <span class="label" id="roleTopLabel">RODADA</span>
       </div>
 
-      <div id="roleWordContainer" class="conditionalBlock middle middle--center" style="cursor:pointer;">
+      <div id="roleWordContainer" class="conditionalBlock middle middle--center">
 
         <span class="label label--red">A PALAVRA SECRETA É</span>
 
         <div class="ruleBlock">
-          <div id="roleWordDisplay" class="wordDisplay hidden"></div>
+          <div id="roleWordDisplay" class="wordDisplay"></div>
         </div>
-
-        <p class="tapHint" id="roleWordTapHint">toque para mostrar</p>
 
         <p class="body16" style="margin-top:16px;">todos na mesa receberam esta palavra.<br>menos um.</p>
 

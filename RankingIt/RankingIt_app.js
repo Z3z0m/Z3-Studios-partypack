@@ -1028,21 +1028,17 @@ async function OpenReveal()
 
   document.getElementById("revealRealGrade").innerText = realGrade;
 
-  // MODO EXPERIMENTAL: pontos vão pro escritor (ver pointsGoToWriters no
-  // GameManager) — mostra quanto o AUTOR ganhou em vez do chute individual.
-  if(result.pointsGoToWriters)
+  // Escritor e julgadores pontuam sempre: quem é o autor da resposta atual
+  // vê os pontos que ganhou pela soma dos acertos de todo mundo; quem julgou
+  // vê os pontos que ganhou pelo próprio chute.
+  const isMeTheAuthor = answer.authorId === currentPlayerId;
+
+  if(isMeTheAuthor)
   {
     document.getElementById("revealMyGuess").innerText = "—";
-
-    const isMeTheAuthor = answer.authorId === currentPlayerId;
-
-    document.getElementById("revealResultLabel").innerText =
-      isMeTheAuthor ? "Sua resposta" : (answer.authorName ?? "O escritor");
-
+    document.getElementById("revealResultLabel").innerText = "Sua resposta";
     document.getElementById("revealPoints").innerText =
-      isMeTheAuthor
-        ? `+${result.authorPoints ?? 0} pontos pra você`
-        : `+${result.authorPoints ?? 0} pontos pro autor`;
+      `+${result.authorPoints ?? 0} pontos pra você`;
 
     return;
   }
@@ -1057,12 +1053,6 @@ async function OpenReveal()
     document.getElementById("revealMyGuess").innerText = myEntry.guessedGrade;
     document.getElementById("revealResultLabel").innerText = ResultLabelForDiff(diff);
     document.getElementById("revealPoints").innerText = `${points} pontos`;
-  }
-  else if(answer.authorId === currentPlayerId)
-  {
-    document.getElementById("revealMyGuess").innerText = "—";
-    document.getElementById("revealResultLabel").innerText = "Era a sua resposta!";
-    document.getElementById("revealPoints").innerText = "";
   }
   else
   {
