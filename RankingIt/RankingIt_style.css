@@ -39,7 +39,7 @@ body{
   width:100%;
   min-height:100vh;
 
-  background:var(--bg);
+  background:var(--surface);
 
   color:var(--text);
 
@@ -386,15 +386,28 @@ input:focus, textarea:focus{
 
 /* mesma lógica do lobby: sem #tutorialHostView (só o host vê), essa é a
    única coisa na tela — centraliza em vez de ficar grudada no topo. */
-#tutorialWaitingText{
-  font-size:21px;
-  font-weight:500;
-  line-height:1.35;
-
-  color:rgba(239,234,249,0.82);
+#tutorialWaitingBox{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
 
   margin-top:auto;
   margin-bottom:auto;
+
+  text-align:center;
+}
+
+#tutorialWaitingBox .metaLabel{
+  color:var(--purple-light);
+}
+
+#tutorialWaitingText{
+  font-size:29px;
+  font-weight:700;
+  line-height:1.3;
+
+  color:rgba(239,234,249,0.92);
 }
 
 #tutorialControls{

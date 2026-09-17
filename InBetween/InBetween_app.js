@@ -349,20 +349,9 @@ function UpdateHostButton(state)
 
   const btn = document.getElementById("hostButton");
 
-  // ESCONDE nos estados sem timer pra "pular" (RevealAnswers é uma
-  // animação automática).
-  const hidden =
-    state === "RevealAnswers" ||
-    state === "Tutorial";
-
-  if(hidden)
-  {
-    btn.style.display = "none";
-    return;
-  }
-
-  btn.style.display = "flex";
-
+  // Só existe controle manual do host nos pontos de virada de fase
+  // (começar, próxima rodada, jogar de novo). Não existe mais "pular
+  // etapa" genérico — as demais etapas avançam sozinhas.
   const labels =
   {
     "Lobby":      "Começar Jogo",
@@ -370,8 +359,16 @@ function UpdateHostButton(state)
     "FinalScore": "Jogar de Novo",
   };
 
-  btn.innerText =
-    labels[state] ?? "Pular Etapa";
+  const label = labels[state];
+
+  if(!label)
+  {
+    btn.style.display = "none";
+    return;
+  }
+
+  btn.style.display = "flex";
+  btn.innerText = label;
 }
 
 
@@ -505,7 +502,15 @@ function ApplyGameState(gameState)
 // fazer a leitura pontual "furar a fila" de eventos pendentes do onValue e
 // entregar um valor mais novo ANTES dele, fazendo o onValue, ao finalmente
 // processar sua fila atrasada, sobrescrever a tela com um valor antigo.
-// Re-registrar o próprio onValue evita esse cenário.)
+// Re-registrar o próprio onValue evita esse cenário.
+//
+// O mesmo vale pra impostorId e secretWord: se só o gameState for
+// re-registrado, ele chega fresco (ex.: já em RoleReveal da rodada nova)
+// enquanto isImpostor/currentSecretWord ficam presos na fila atrasada da
+// rodada anterior — o que pode fazer o app mostrar a palavra secreta pra
+// quem virou impostor. Por isso os três são re-registrados juntos, com
+// impostor/palavra primeiro para já estarem atualizados quando o gameState
+// disparar o render da tela.)
 // =========================
 
 function ListenForVisibilityRecovery()
@@ -517,8 +522,10 @@ function ListenForVisibilityRecovery()
       return;
     }
 
-    console.log("[In Between] Aba voltou ao foco — ressincronizando listener de estado.");
+    console.log("[In Between] Aba voltou ao foco — ressincronizando listeners de estado.");
 
+    ListenForImpostor();
+    ListenForWord();
     ListenForGameState();
   });
 }
@@ -828,14 +835,26 @@ window.callForVote = async function()
 
 // =========================
 // LISTEN IMPOSTOR
+// (re-registrado do zero em ListenForVisibilityRecovery — mesmo motivo do
+// gameState: um onValue parado em segundo plano pode entregar isImpostor
+// atrasado depois que o gameState já virou RoleReveal, mostrando a palavra
+// pra quem virou impostor na rodada nova.)
 // =========================
+
+let impostorUnsubscribe = null;
 
 function ListenForImpostor()
 {
+  if(impostorUnsubscribe)
+  {
+    impostorUnsubscribe();
+    impostorUnsubscribe = null;
+  }
+
   const impostorRef =
     ref(db, `rooms/${currentRoomCode}/currentState/impostorId`);
 
-  onValue(impostorRef, (snapshot) =>
+  impostorUnsubscribe = onValue(impostorRef, (snapshot) =>
   {
     currentImpostorId = snapshot.val();
 
@@ -851,11 +870,21 @@ function ListenForImpostor()
 // LISTEN WORD
 // (a categoria não é lida aqui — é usada só internamente pelo Unity para
 // escolher a pergunta certa do banco; nunca é mostrada para os jogadores)
+// re-registrado do zero em ListenForVisibilityRecovery — ver comentário
+// em ListenForImpostor.
 // =========================
+
+let wordUnsubscribe = null;
 
 function ListenForWord()
 {
-  onValue(
+  if(wordUnsubscribe)
+  {
+    wordUnsubscribe();
+    wordUnsubscribe = null;
+  }
+
+  wordUnsubscribe = onValue(
     ref(db, `rooms/${currentRoomCode}/currentState/secretWord`),
     (snapshot) =>
     {

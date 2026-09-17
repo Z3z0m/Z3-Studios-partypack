@@ -8,7 +8,18 @@
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
-  />
+    />
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      
+      <head>
+      
+        <meta charset="UTF-8" />
+      
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+        />
 
   <title>RankingIt</title>
 
@@ -28,14 +39,6 @@
 
 <body>
 
-  <!-- LANGUAGE / IDIOMA -->
-
-  <div id="google_translate_element"></div>
-
-  <!-- =========================
-       QUADRO DE CLASSIFICAÇÃO (persistente, fora do .container — só usado no
-       Refining, ver RankingIt_app.js). Arraste as cartas pra nota que elas merecem.
-  ========================== -->
 
   <div id="rankBoardWrapper" class="rankBoardWrapper">
 
@@ -168,9 +171,15 @@
 
       </div>
 
-      <p id="tutorialWaitingText">
-        Acompanhe a explicação das regras — o host está passando as telas.
-      </p>
+      <div id="tutorialWaitingBox">
+
+        <p class="metaLabel">tutorial</p>
+
+        <p id="tutorialWaitingText">
+          Acompanhe a explicação das regras — o host está passando as telas.
+        </p>
+
+      </div>
 
     </div>
 
