@@ -82,12 +82,10 @@ let playersCache = {};
 
 let tutorialPage = 0;
 
-const TUTORIAL_PAGES = [
-  "A cada rodada, você recebe uma pergunta e escreve uma resposta que pareça ter sido dada por uma Inteligência Artificial.",
-  "Só que tem um problema: uma das respostas exibidas na votação é DE VERDADE gerada por uma IA. As suas respostas precisam se misturar com ela!",
-  "Depois que todos responderem, todo mundo vota em qual resposta acha que é da IA de verdade.",
-  "Acertar a resposta da IA vale pontos. Enganar os outros jogadores com a sua resposta também vale pontos!"
-];
+// O texto do tutorial só existe na TV (é o Unity quem renderiza o conteúdo).
+// Aqui no controle do host a gente só precisa saber quantas páginas existem
+// pra desenhar os dots e não deixar passar do fim.
+const TUTORIAL_PAGE_COUNT = 4;
 
 // Estados de servidor onde faz sentido mostrar o timer/round — os valores
 // abaixo NÃO vêm sincronizados do Unity (FindAIGameManager não publica
@@ -328,7 +326,7 @@ window.SendTutorialAction = async function(action)
     if(action === "next")
     {
         tutorialPage =
-            Math.min(TUTORIAL_PAGES.length - 1, tutorialPage + 1);
+            Math.min(TUTORIAL_PAGE_COUNT - 1, tutorialPage + 1);
     }
     else if(action === "prev")
     {
@@ -730,16 +728,13 @@ function updateRoundLabel()
 function renderTutorial()
 {
   document.getElementById("tutorialPageNum").textContent =
-    `PÁGINA ${tutorialPage + 1}/${TUTORIAL_PAGES.length}`;
+    `PÁGINA ${tutorialPage + 1}/${TUTORIAL_PAGE_COUNT}`;
 
-  document.getElementById("tutorialPageText").textContent =
-    TUTORIAL_PAGES[tutorialPage];
-
-  renderDots("tutorialDotsHost", TUTORIAL_PAGES.length, tutorialPage);
+  renderDots("tutorialDotsHost", TUTORIAL_PAGE_COUNT, tutorialPage);
 
   // O jogador (não-host) não tem como saber em que página o host está —
   // o Unity não publica isso —, então aqui é só decorativo.
-  renderDots("tutorialDotsPlayer", TUTORIAL_PAGES.length, 0);
+  renderDots("tutorialDotsPlayer", TUTORIAL_PAGE_COUNT, 0);
 }
 
 

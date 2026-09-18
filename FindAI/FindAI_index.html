@@ -90,13 +90,10 @@
         <div>
           <div class="kicker accent">Controle do host</div>
           <h2>TUTORIAL NA TV</h2>
+          <p class="dim" style="margin-top:8px;">Acompanhe o tutorial na tela principal e use os botões abaixo para navegar.</p>
         </div>
 
-        <div class="card blueprint">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div id="tutorialPageNum" class="cardKicker accent mono">PÁGINA 1/4</div>
-          <p id="tutorialPageText" class="tutorialText"></p>
-        </div>
+        <div id="tutorialPageNum" class="cardKicker accent mono" style="margin-top:auto;">PÁGINA 1/4</div>
 
         <div class="row gap">
           <button class="btn btnSecondary" style="flex:1;" onclick="SendTutorialAction('prev')">‹ ANTERIOR</button>
@@ -105,7 +102,7 @@
 
         <button class="btn btnGhost btnBlock" onclick="SendTutorialAction('skip')">PULAR TUTORIAL</button>
 
-        <div id="tutorialDotsHost" class="dotsRow" style="margin-top:auto;"></div>
+        <div id="tutorialDotsHost" class="dotsRow"></div>
 
       </div>
 
