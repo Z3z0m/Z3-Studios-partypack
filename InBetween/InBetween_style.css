@@ -1131,6 +1131,158 @@ h1, h2, h3{
 
 
 /* =========================
+   VER RESPOSTAS ANTERIORES
+   (botão fixo no rodapé — quando visível, o body ganha .hasHistoryButton e
+   as telas reservam o espaço dele no padding de baixo, pra não cobrir o
+   botão primário de cada tela)
+========================= */
+
+#historyButton{
+  display:none;
+  position:fixed;
+  left:calc(var(--safe-l) + 16px);
+  right:calc(var(--safe-r) + 16px);
+  bottom:calc(var(--safe-b) + 12px);
+  z-index:40;
+  height:44px;
+  min-height:44px;
+  align-items:center;
+  justify-content:center;
+  background:var(--void);
+  border:1px solid rgba(239,233,221,.24);
+  color:var(--paper-dim);
+  font-family:"Big Shoulders Display", sans-serif;
+  font-weight:800;
+  font-size:16px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+
+body.hasHistoryButton #historyButton{ display:flex; }
+
+body.hasHistoryButton .screen{
+  padding-bottom:calc(var(--safe-b) + 20px + 56px);
+}
+
+.historyPanel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:45;
+  flex-direction:column;
+  background:rgba(5,5,6,.97);
+
+  padding:
+    calc(var(--safe-t) + 26px)
+    calc(var(--safe-r) + 22px)
+    calc(var(--safe-b) + 20px)
+    calc(var(--safe-l) + 22px);
+}
+
+.historyPanel.active{
+  display:flex;
+  animation:rise .3s cubic-bezier(.16,.9,.24,1) both;
+}
+
+.historyList{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin:18px 0 14px;
+}
+
+.historyPlayer{
+  flex:none;
+  border:1px solid rgba(239,233,221,.14);
+}
+
+.historyPlayer.open{
+  border-color:rgba(200,16,46,.5);
+}
+
+.historyPlayer__head{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  height:52px;
+  padding:0 12px;
+  background:transparent;
+  border:none;
+  color:var(--paper);
+  text-align:left;
+}
+
+.historyPlayer__head .mono{
+  width:28px;
+  height:28px;
+  font-size:16px;
+}
+
+.historyPlayer__name{
+  flex:1;
+  min-width:0;
+  font-family:"Big Shoulders Display", sans-serif;
+  font-weight:800;
+  font-size:20px;
+  letter-spacing:.06em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.historyPlayer.open .historyPlayer__name{ color:var(--red); }
+
+.historyPlayer__count{
+  flex:none;
+  font-size:12px;
+  letter-spacing:.14em;
+  color:var(--dim);
+  text-transform:uppercase;
+}
+
+.historyPlayer__body{
+  display:none;
+  flex-direction:column;
+  gap:12px;
+  padding:4px 12px 14px 52px;
+}
+
+.historyPlayer.open .historyPlayer__body{ display:flex; }
+
+.historyAnswer__label{
+  display:block;
+  font-size:11px;
+  letter-spacing:.2em;
+  color:var(--gray);
+  text-transform:uppercase;
+}
+
+.historyAnswer__question{
+  margin-top:2px;
+  font-size:13px;
+  line-height:1.3;
+  color:var(--dim);
+}
+
+.historyAnswer__text{
+  margin-top:4px;
+  font-size:17px;
+  line-height:1.3;
+  color:var(--paper);
+  overflow-wrap:anywhere;
+}
+
+.historyAnswer__text--none{
+  color:var(--dim);
+  font-style:italic;
+}
+
+
+/* =========================
    PAUSE OVERLAY
 ========================= */
 

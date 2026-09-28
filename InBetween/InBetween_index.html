@@ -569,6 +569,13 @@
       Começar Jogo
     </button>
 
+    <button
+      id="historyButton"
+      type="button"
+      onclick="OpenHistoryPanel()">
+      Ver Respostas Anteriores
+    </button>
+
   </main>
 
 
@@ -577,6 +584,29 @@
   ========================== -->
 
   <div id="devStrip"></div>
+
+
+  <!-- =========================
+       RESPOSTAS ANTERIORES (painel por cima da tela — lista de jogadores;
+       tocar num nome abre/fecha as respostas dele. Ver OpenHistoryPanel.)
+  ========================== -->
+
+  <div id="historyPanel" class="historyPanel" role="dialog" aria-modal="true" aria-labelledby="historyPanelTitle">
+
+    <div class="topRow">
+      <span class="label label--red">DA MESA</span>
+      <span class="label" id="historyPanelMeta"></span>
+    </div>
+
+    <h2 class="titleLG" id="historyPanelTitle" style="margin-top:16px;">RESPOSTAS<br>ANTERIORES</h2>
+
+    <div id="historyList" class="historyList"></div>
+
+    <button class="btnGhost" onclick="CloseHistoryPanel()" type="button">
+      FECHAR
+    </button>
+
+  </div>
 
 
   <div

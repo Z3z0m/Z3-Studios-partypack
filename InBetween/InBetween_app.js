@@ -419,6 +419,7 @@ function ApplyGameState(gameState)
 
   UpdateHostButton(gameState);
   UpdateRoleBanner();
+  UpdateHistoryButton(gameState);
 
   if(gameState == "Lobby")
   {
@@ -1400,6 +1401,231 @@ function RenderImpostorGuessResult(guessText, correct)
 
 
 // =========================
+// RESPOSTAS ANTERIORES
+// (botão no rodapé durante a rodada; o painel lista os jogadores e tocar num
+// nome abre/fecha as respostas dele — só um aberto por vez. Só lê o
+// histórico da macro-rodada atual (mesma palavra, mesmo impostor) e nunca
+// mostra as respostas da pergunta em curso antes delas irem pra TV.)
+// =========================
+
+const HISTORY_BUTTON_STATES =
+  ["WriteQuestion", "Question", "RevealAnswers", "Discussion", "Voting", "ImpostorGuess"];
+
+// Estados em que as respostas da pergunta atual já foram reveladas na TV.
+const CURRENT_ANSWERS_REVEALED_STATES =
+  ["RevealAnswers", "Discussion", "Voting", "VoteResult", "ImpostorGuess"];
+
+let openHistoryPlayerId = null;
+let historyLoadToken = 0;
+
+function UpdateHistoryButton(state)
+{
+  const show = HISTORY_BUTTON_STATES.includes(state);
+
+  document.body.classList.toggle("hasHistoryButton", show);
+
+  const panel = document.getElementById("historyPanel");
+
+  if(!show)
+  {
+    CloseHistoryPanel();
+  }
+  else if(panel.classList.contains("active"))
+  {
+    // pergunta nova foi revelada com o painel aberto — recarrega
+    LoadHistoryPanel();
+  }
+}
+
+async function FetchPreviousAnswers()
+{
+  if(isDevMode) return DEV_HISTORY_ROUNDS;
+
+  const [impostorRoundSnapshot, questionRoundSnapshot, historySnapshot] =
+    await Promise.all([
+      get(ref(db, `rooms/${currentRoomCode}/currentState/impostorRound`)),
+      get(ref(db, `rooms/${currentRoomCode}/currentState/questionRound`)),
+      get(ref(db, `rooms/${currentRoomCode}/history`)),
+    ]);
+
+  const prefix = `round_${impostorRoundSnapshot.val()}_`;
+  const currentQuestionRound = Number(questionRoundSnapshot.val());
+  const includeCurrent = CURRENT_ANSWERS_REVEALED_STATES.includes(currentGameState);
+
+  const rounds = [];
+
+  historySnapshot.forEach((child) =>
+  {
+    if(!child.key.startsWith(prefix)) return;
+
+    const questionRound = Number(child.key.slice(prefix.length));
+
+    if(!Number.isFinite(questionRound)) return;
+    if(questionRound > currentQuestionRound) return;
+    if(questionRound === currentQuestionRound && !includeCurrent) return;
+
+    const data = child.val() || {};
+
+    rounds.push({
+      questionRound,
+      question: typeof data.question === "string" ? data.question : "",
+      answers: data.answers || {},
+    });
+  });
+
+  rounds.sort((a, b) => a.questionRound - b.questionRound);
+
+  return rounds;
+}
+
+async function LoadHistoryPanel()
+{
+  const token = ++historyLoadToken;
+
+  const rounds = await FetchPreviousAnswers();
+
+  // painel fechado ou outra carga começou no meio do caminho
+  if(token !== historyLoadToken) return;
+
+  RenderHistoryPanel(rounds);
+}
+
+function RenderHistoryPanel(rounds)
+{
+  const list = document.getElementById("historyList");
+
+  list.innerHTML = "";
+
+  document.getElementById("historyPanelMeta").innerText =
+    rounds.length > 0 ? `${rounds.length} PERGUNTA(S)` : "";
+
+  if(rounds.length <= 0)
+  {
+    const empty = document.createElement("p");
+    empty.className = "footNote";
+    empty.innerText = "nenhuma resposta revelada ainda nesta rodada.";
+    list.appendChild(empty);
+    return;
+  }
+
+  // jogadores da sala + quem respondeu e já saiu da sala
+  const players = Object
+    .entries(playersCache)
+    .map(([id, data]) => ({ id, name: data.name }));
+
+  rounds.forEach(round =>
+  {
+    Object.entries(round.answers).forEach(([id, answer]) =>
+    {
+      if(!players.some(p => p.id === id))
+      {
+        players.push({ id, name: answer.playerName });
+      }
+    });
+  });
+
+  players.forEach(player =>
+  {
+    const isSelf = player.id === currentPlayerId;
+    const answeredCount = rounds.filter(r => r.answers[player.id]).length;
+
+    const item = document.createElement("div");
+    item.className = "historyPlayer" + (player.id === openHistoryPlayerId ? " open" : "");
+    item.dataset.playerId = player.id;
+
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "historyPlayer__head";
+
+    const mono = document.createElement("div");
+    mono.className = "mono";
+    mono.innerText = Monogram(player.name);
+
+    const name = document.createElement("div");
+    name.className = "historyPlayer__name";
+    name.innerText = (player.name || "???") + (isSelf ? " (você)" : "");
+
+    const count = document.createElement("div");
+    count.className = "historyPlayer__count";
+    count.innerText = `${answeredCount} resp.`;
+
+    head.append(mono, name, count);
+    head.addEventListener("click", () => ToggleHistoryPlayer(player.id));
+
+    const body = document.createElement("div");
+    body.className = "historyPlayer__body";
+
+    rounds.forEach((round, index) =>
+    {
+      const answer = round.answers[player.id];
+
+      const entry = document.createElement("div");
+
+      const label = document.createElement("span");
+      label.className = "historyAnswer__label";
+      label.innerText = `PERGUNTA ${index + 1}`;
+      entry.appendChild(label);
+
+      if(round.question)
+      {
+        const question = document.createElement("div");
+        question.className = "historyAnswer__question";
+        question.innerText = round.question;
+        entry.appendChild(question);
+      }
+
+      const text = document.createElement("div");
+      text.className = "historyAnswer__text" + (answer ? "" : " historyAnswer__text--none");
+      text.innerText = answer ? answer.text : "não respondeu";
+      entry.appendChild(text);
+
+      body.appendChild(entry);
+    });
+
+    item.append(head, body);
+    list.appendChild(item);
+  });
+}
+
+function ToggleHistoryPlayer(playerId)
+{
+  openHistoryPlayerId = openHistoryPlayerId === playerId ? null : playerId;
+
+  Buzz(8);
+
+  document
+    .querySelectorAll("#historyList .historyPlayer")
+    .forEach(item =>
+    {
+      item.classList.toggle("open", item.dataset.playerId === openHistoryPlayerId);
+    });
+}
+
+window.OpenHistoryPanel = function()
+{
+  openHistoryPlayerId = null;
+
+  document.getElementById("historyList").innerHTML =
+    `<p class="footNote">carregando...</p>`;
+  document.getElementById("historyPanelMeta").innerText = "";
+
+  document.getElementById("historyPanel").classList.add("active");
+
+  LoadHistoryPanel();
+};
+
+function CloseHistoryPanel()
+{
+  historyLoadToken++;
+  openHistoryPlayerId = null;
+
+  document.getElementById("historyPanel").classList.remove("active");
+}
+
+window.CloseHistoryPanel = CloseHistoryPanel;
+
+
+// =========================
 // OPEN ROUND SCORE (placar parcial entre macro-rodadas)
 // =========================
 
@@ -1533,6 +1759,35 @@ const DEV_PLAYERS =
   p6: { name: "DOUTOR LEAL", score: 2 },
 };
 
+const DEV_HISTORY_ROUNDS =
+[
+  {
+    questionRound: 1,
+    question: "onde você mais usa isso?",
+    answers:
+    {
+      p1: { playerName: "MADAME VERA", text: "no prédio, todo santo dia" },
+      p2: { playerName: "O DUQUE", text: "quando o elevador quebra" },
+      p3: { playerName: "GATO PRETO", text: "em casa, acho" },
+      p4: { playerName: currentPlayerName || "ALMA", text: "pra subir, claro" },
+      p5: { playerName: "BIDU", text: "no shopping" },
+    },
+  },
+  {
+    questionRound: 2,
+    question: "você confiaria nisso com o olho fechado?",
+    answers:
+    {
+      p1: { playerName: "MADAME VERA", text: "só se tiver corrimão" },
+      p2: { playerName: "O DUQUE", text: "nunca, já caí" },
+      p3: { playerName: "GATO PRETO", text: "depende do dia" },
+      p4: { playerName: currentPlayerName || "ALMA", text: "de dia sim, de noite nunca" },
+      p5: { playerName: "BIDU", text: "com certeza" },
+      p6: { playerName: "DOUTOR LEAL", text: "contando os degraus, sim" },
+    },
+  },
+];
+
 const DEV_STATES =
 [
   { key: "Lobby",             label: "01 ESPERANDO" },
@@ -1589,6 +1844,8 @@ function DevShow(key)
   const [state, variant] = key.split(":");
 
   document.body.classList.remove("tone-red", "tone-blue");
+
+  UpdateHistoryButton(state);
 
   if(state === "Lobby")
   {
