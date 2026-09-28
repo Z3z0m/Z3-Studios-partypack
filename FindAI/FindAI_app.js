@@ -87,12 +87,12 @@ let tutorialPage = 0;
 // pra desenhar os dots e não deixar passar do fim.
 const TUTORIAL_PAGE_COUNT = 4;
 
-// Estados de servidor onde faz sentido mostrar o timer/round — os valores
-// abaixo NÃO vêm sincronizados do Unity (FindAIGameManager não publica
-// duração nem timestamp de fim no Firebase), então a barra é só cosmética:
-// ela reinicia visualmente a cada entrada na fase, mas não representa o
-// relógio real do host.
+// Duração da fase vem do Unity em currentState/timerDuration (segundos).
+// Estes valores são só fallback caso o campo ainda não exista.
 const TIMER_DURATIONS = { Prompt: 40, Voting: 20 };
+const TIMED_STATES = ["Prompt", "Voting"];
+
+let currentTimerDuration = 0;
 
 let answersUnsub = null;
 let votingUnsub = null;
@@ -227,8 +227,12 @@ function buildRain()
 
 
 // =========================
-// TIMER BAR (decorativo — ver nota em TIMER_DURATIONS)
+// TIMER BAR (duração vinda do Unity — ver TIMER_DURATIONS)
 // =========================
+
+// Web Animation em vez de transição CSS pra poder congelar/retomar
+// quando o host pausa o jogo.
+let timerAnimation = null;
 
 function runTimer(seconds)
 {
@@ -237,21 +241,24 @@ function runTimer(seconds)
 
   bar.style.visibility = "visible";
 
-  fill.style.transition = "none";
-  fill.style.width = "100%";
+  if(timerAnimation) timerAnimation.cancel();
 
-  void fill.offsetHeight; // força reflow antes de trocar a transição
+  timerAnimation = fill.animate(
+    [{ width: "100%" }, { width: "0%" }],
+    { duration: seconds * 1000, easing: "linear", fill: "forwards" }
+  );
 
-  fill.style.transition = `width ${seconds}s linear`;
-
-  requestAnimationFrame(() =>
-  {
-    fill.style.width = "0%";
-  });
+  if(isGamePaused) timerAnimation.pause();
 }
 
 function hideTimer()
 {
+  if(timerAnimation)
+  {
+    timerAnimation.cancel();
+    timerAnimation = null;
+  }
+
   document
     .getElementById("timerBar")
     .style.visibility = "hidden";
@@ -276,6 +283,7 @@ window.onload = async function()
   ListenForPrompt();
   ListenForCategory();
   ListenForPause();
+  ListenForTimerDuration();
 };
 
 document
@@ -343,6 +351,33 @@ window.SendTutorialAction = async function(action)
 
 
 // =========================
+// LISTEN FOR TIMER DURATION
+// =========================
+
+// Cobre o caso do Unity gravar timerDuration depois do gameState: se a
+// duração muda com uma fase cronometrada ativa, reinicia a barra com ela.
+function ListenForTimerDuration()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/currentState/timerDuration`),
+    (snapshot) =>
+    {
+      const duration = Number(snapshot.val()) || 0;
+
+      if(duration === currentTimerDuration) return;
+
+      currentTimerDuration = duration;
+
+      if(duration > 0 && TIMED_STATES.includes(currentGameState))
+      {
+        runTimer(duration);
+      }
+    }
+  );
+}
+
+
+// =========================
 // LISTEN FOR PAUSE
 // =========================
 
@@ -357,6 +392,12 @@ function ListenForPause()
       document
         .getElementById("pauseOverlay")
         .classList.toggle("active", isGamePaused);
+
+      if(timerAnimation && timerAnimation.playState !== "finished")
+      {
+        if(isGamePaused) timerAnimation.pause();
+        else timerAnimation.play();
+      }
     }
   );
 }
@@ -645,15 +686,14 @@ function ListenForGameState()
 
     currentGameState = gameState;
 
-    const roundSnapshot =
-      await get(
-        ref(
-          db,
-          `rooms/${currentRoomCode}/currentState/round`
-        )
-      );
+    const [roundSnapshot, durationSnapshot] =
+      await Promise.all([
+        get(ref(db, `rooms/${currentRoomCode}/currentState/round`)),
+        get(ref(db, `rooms/${currentRoomCode}/currentState/timerDuration`))
+      ]);
 
     currentRound = roundSnapshot.val() || 0;
+    currentTimerDuration = Number(durationSnapshot.val()) || 0;
 
     updateRoundLabel();
 
@@ -674,14 +714,14 @@ function ListenForGameState()
     if(gameState == "Prompt")
     {
       renderPromptOrSent();
-      runTimer(TIMER_DURATIONS.Prompt);
+      runTimer(currentTimerDuration || TIMER_DURATIONS.Prompt);
     }
 
     if(gameState == "Voting")
     {
       ShowScreen("votingScreen");
       OpenVoting();
-      runTimer(TIMER_DURATIONS.Voting);
+      runTimer(currentTimerDuration || TIMER_DURATIONS.Voting);
     }
 
     if(gameState == "ShowAnswers")
