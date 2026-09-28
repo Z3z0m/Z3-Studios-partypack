@@ -163,20 +163,6 @@ function renderDots(containerId, count, activeIndex)
 
 
 // =========================
-// ENTER KEY SUBMIT
-// =========================
-
-window.HandleEnterKey = function(event, callback)
-{
-  if(event.key !== "Enter") return;
-
-  event.preventDefault();
-
-  callback();
-};
-
-
-// =========================
 // MATRIX RAIN BACKGROUND (decorativo)
 // =========================
 
