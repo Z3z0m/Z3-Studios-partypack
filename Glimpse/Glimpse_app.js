@@ -330,30 +330,28 @@ function RefreshTutorialPageTag()
 
 function UpdateHostButton(state)
 {
-  if(!isHost) return;
+  if (!isHost) return;
 
   const btn = document.getElementById("hostButton");
 
-  if(state === "Tutorial")
+  // Host só controla o início (Lobby) e o "jogar de novo" (final).
+  // O resto do jogo avança sozinho; o tutorial tem botões próprios.
+  const labels =
+  {
+    "Lobby":      "começar jogo",
+    "FinalScore": "jogar de novo",
+  };
+
+  const label = labels[state];
+
+  if (!label)
   {
     btn.style.display = "none";
     return;
   }
 
   btn.style.display = "flex";
-
-  const labels =
-  {
-    "Lobby":      "começar jogo",
-    "Narrating":  "pular etapa",
-    "Submitting": "pular etapa",
-    "Voting":     "pular etapa",
-    "Result":     "pular etapa",
-    "FinalScore": "jogar de novo",
-  };
-
-  btn.innerText =
-    labels[state] ?? "pular etapa";
+  btn.innerText = label;
 }
 
 

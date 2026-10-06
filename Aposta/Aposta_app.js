@@ -176,32 +176,28 @@ window.SendTutorialAction = async function(action)
 
 function UpdateHostButton(state)
 {
-  if(!isHost) return;
+  if (!isHost) return;
 
   const btn = document.getElementById("hostButton");
 
-  // ESCONDE no Tutorial — lá a navegação é feita pelos botões próprios da
-  // tela (SendTutorialAction), não pelo botão genérico de host.
-  if(state === "Tutorial")
+  // Host só controla o início (Lobby) e o "jogar de novo" (final).
+  // O resto do jogo avança sozinho; o tutorial tem botões próprios.
+  const labels =
+  {
+    "Lobby":      "Começar Jogo",
+    "FinalScore": "Jogar de Novo",
+  };
+
+  const label = labels[state];
+
+  if (!label)
   {
     btn.style.display = "none";
     return;
   }
 
   btn.style.display = "block";
-
-  const labels =
-  {
-    "Lobby":      "Começar Jogo",
-    "Bidding":    "Pular Vez (emergência)",
-    "Speech":     "Pular Digitação",
-    "Reveal":     "Pular Votação",
-    "Result":     "Pular Resultado",
-    "FinalScore": "Jogar de Novo",
-  };
-
-  btn.innerText =
-    labels[state] ?? "Pular Etapa";
+  btn.innerText = label;
 }
 
 

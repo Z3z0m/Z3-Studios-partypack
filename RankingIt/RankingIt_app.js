@@ -212,32 +212,24 @@ function UpdateHostButton(state)
 
     const btn = document.getElementById("hostButton");
 
-    // ESCONDE nas fases onde os próprios jogadores é que fazem a ação
-    // (escrever, julgar ou reclassificar) — não faz sentido o host "pular"
-    // enquanto todo mundo ainda está mexendo na tela. Tutorial tem seus
-    // próprios botões (SendTutorialAction), então o genérico também some lá.
-    const hidden =
-        state === "Tutorial" ||
-        state === "Writing" ||
-        state === "Judging" ||
-        state === "Refining";
+    // Host só controla o início (Lobby) e o "jogar de novo" (final).
+    // O resto do jogo avança sozinho; o tutorial tem botões próprios.
+    const labels =
+    {
+        "Lobby":      "Começar",
+        "FinalScore": "Jogar de Novo",
+    };
 
-    if (hidden)
+    const label = labels[state];
+
+    if (!label)
     {
         btn.style.display = "none";
         return;
     }
 
     btn.style.display = "block";
-
-    const labels =
-    {
-        "Lobby":       "Começar",
-        "FinalScore":  "Jogar de Novo",
-    };
-
-    btn.innerText =
-        labels[state] ?? "Próxima Etapa";
+    btn.innerText = label;
 }
 
 

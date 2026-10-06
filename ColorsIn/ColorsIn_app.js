@@ -475,32 +475,26 @@ function UpdateHostButton(state)
 {
     if (!isHost) return;
 
-    const btn =
-        document.getElementById("hostButton");
+    const btn = document.getElementById("hostButton");
 
-    const hidden =
-        state === "GiveHint" ||
-        state === "GuessColor" ||
-        state === "Tutorial";
+    // Host só controla o início (Lobby) e o "jogar de novo" (final).
+    // O resto do jogo avança sozinho; o tutorial tem botões próprios.
+    const labels =
+    {
+        "Lobby":       "Começar Jogo",
+        "FinalResult": "Jogar de Novo",
+    };
 
-    if (hidden)
+    const label = labels[state];
+
+    if (!label)
     {
         btn.style.display = "none";
         return;
     }
 
     btn.style.display = "block";
-
-    const labels =
-    {
-        "Lobby":       "Começar Jogo",
-        "RoundResult": "Ver Placar",
-        "RoundScore":  "Próxima Rodada",
-        "FinalResult": "Jogar de Novo",
-    };
-
-    btn.innerText =
-        labels[state] ?? "Próxima Etapa";
+    btn.innerText = label;
 }
 
 async function ListenForStage()
