@@ -590,9 +590,30 @@ h1, h2, h3{
   letter-spacing:.16em;
 }
 
+.btnGhost:disabled{
+  border-color:rgba(239,233,221,.15);
+  color:var(--dim);
+}
+
 .btnGhost.armed{
   background:var(--red);
   border-color:var(--red);
+  color:var(--ink);
+}
+
+/* PULAR DISCUSSÃO — secundário, menor que o ACUSAR */
+.btnGhost--small{
+  height:48px;
+  min-height:48px;
+  margin-top:10px;
+  font-size:16px;
+  border-color:rgba(239,233,221,.25);
+  color:var(--paper-dim);
+}
+
+.btnGhost--small.on{
+  background:var(--paper);
+  border-color:var(--paper);
   color:var(--ink);
 }
 

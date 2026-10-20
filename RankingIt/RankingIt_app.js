@@ -142,6 +142,7 @@ window.onload = async function()
   ListenForGameState();
   ListenForTheme();
   ListenForMySecretGrade();
+  ListenForWritingTimeUp();
   ListenForAllAnswers();
   ListenForLobbyPlayers();
   ListenForPause();
@@ -391,12 +392,34 @@ function UpdateSecretSentence()
 
 
 // =========================
+// LISTEN FOR WRITING TIME UP
+// O timer do Writing só existe no Unity: quando acaba, ele marca
+// currentState/writingTimeUp e espera um pouco antes de ler as respostas —
+// é a janela pra enviar o rascunho do jeito que estiver.
+// =========================
+
+function ListenForWritingTimeUp()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/currentState/writingTimeUp`),
+    (snapshot) =>
+    {
+      if(snapshot.val() !== true) return;
+      if(currentGameState !== "Writing") return;
+
+      sendAnswer(true);
+    }
+  );
+}
+
+
+// =========================
 // SEND ANSWER
 // =========================
 
-window.sendAnswer = async function()
+window.sendAnswer = async function(isTimeUp = false)
 {
-  if(isGamePaused) return;
+  if(isGamePaused && !isTimeUp) return;
 
   if(alreadyAnswered)
   {

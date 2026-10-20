@@ -127,6 +127,7 @@ body::before{
 #roundResultScreen,
 #roundScoreScreen,
 #finalResultScreen,
+#continueVoteScreen,
 #hintScreen,
 #waitingHintScreen,
 #guessScreen,
@@ -220,6 +221,13 @@ body::before{
   opacity:.5;
 }
 
+.splat-continue{
+  right:-70px; bottom:60px;
+  width:210px;
+  opacity:.45;
+  animation:bobS 10s ease-in-out infinite;
+}
+
 #LobbyScreen{
   padding-bottom:calc(96px + env(safe-area-inset-bottom));
 }
@@ -237,6 +245,7 @@ body::before{
 
 #sendHintButton,
 #confirmGuessButton,
+#continueYesButton,
 #hostButton{
   width:100%;
   max-width:340px;
@@ -262,6 +271,7 @@ body::before{
 
 #sendHintButton:hover,
 #confirmGuessButton:hover,
+#continueYesButton:hover,
 #hostButton:hover{
   transform:translateY(-1px) scale(1.01);
 }
@@ -731,6 +741,168 @@ body::before{
 }
 
 /* =========================
+   05b · SABOTAGEM DO UNDERDOG
+========================= */
+
+.sabotagePanel{
+  width:100%;
+  max-width:340px;
+
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+
+  padding:18px 16px;
+
+  border:2px solid rgba(229,33,138,.55);
+  border-radius:var(--radius-card);
+  background:rgba(229,33,138,.10);
+  box-shadow:var(--shadow-card);
+}
+
+.sabotageEyebrow{
+  font:600 12px Rubik,sans-serif;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--pink);
+}
+
+.sabotageTitle{
+  font:600 22px/1.2 Fredoka,sans-serif;
+}
+
+.sabotagePanel.used .sabotageTitle{
+  display:none;
+}
+
+.sabotageTypes{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+}
+
+.sabotageTypeButton{
+  padding:8px 14px;
+
+  border:2px solid var(--surface-border);
+  border-radius:999px;
+  background:var(--surface);
+  color:var(--ink);
+
+  font:600 14px Rubik,sans-serif;
+  cursor:pointer;
+}
+
+.sabotageTypeButton.selected{
+  border-color:var(--pink);
+  background:rgba(229,33,138,.22);
+}
+
+.sabotageDescription{
+  font:400 14px/1.35 Rubik,sans-serif;
+  color:var(--ink-70);
+}
+
+.sabotageDescription:empty{
+  display:none;
+}
+
+.sabotageTargets{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:10px;
+  width:100%;
+}
+
+.sabotageTargets:empty{
+  display:none;
+}
+
+.sabotageTarget{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+
+  min-width:0;
+  padding:8px 4px;
+
+  border:2px solid transparent;
+  border-radius:14px;
+  background:var(--surface);
+  color:var(--ink);
+
+  font:500 13px Rubik,sans-serif;
+  cursor:pointer;
+  transition:transform .15s ease, border-color .15s ease;
+}
+
+.sabotageTarget img{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
+.sabotageTarget span{
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.sabotageTarget.selected{
+  border-color:var(--pink);
+  transform:scale(1.05);
+}
+
+#sabotageConfirmButton{
+  width:100%;
+  height:52px;
+
+  border:none;
+  border-radius:var(--radius-btn);
+  background:var(--pink);
+  color:var(--ink);
+
+  font:700 17px/1 Fredoka,sans-serif;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  cursor:pointer;
+}
+
+#sabotageConfirmButton:disabled{
+  background:var(--surface);
+  color:var(--ink-40);
+  cursor:default;
+}
+
+.sabotageStatus{
+  font:500 14px Rubik,sans-serif;
+  color:var(--ink-70);
+}
+
+.sabotageStatus:empty{
+  display:none;
+}
+
+/* aviso no celular do alvo, acima da grade embaralhada */
+.sabotagedBanner{
+  width:100%;
+  max-width:340px;
+
+  padding:10px 14px;
+
+  border:2px solid var(--pink);
+  border-radius:14px;
+  background:rgba(229,33,138,.16);
+  color:var(--ink);
+
+  font:600 15px/1.3 Rubik,sans-serif;
+}
+
+/* =========================
    06 · ADIVINHAR A COR
 ========================= */
 
@@ -763,6 +935,11 @@ body::before{
 }
 
 #guessGrid{
+  /* fica acima da sombra do #guessHintText (o rotate dele cria camada própria
+     e a sombra pintava por cima da 1ª linha, escurecendo os pastéis) */
+  position:relative;
+  z-index:1;
+
   display:grid;
   grid-template-columns:repeat(12, 1fr);
   gap:3px;
@@ -846,6 +1023,51 @@ body::before{
 
 #roundResultScreen h2{
   font:600 27px/1.25 Fredoka,sans-serif;
+}
+
+/* =========================
+   08b · VOTAÇÃO "DESEJA CONTINUAR?"
+========================= */
+
+#continueVoteScreen{
+  justify-content:center;
+  gap:16px;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+
+#continueVoteScreen h2{
+  font:600 clamp(26px, 7vw, 32px)/1.2 Fredoka,sans-serif;
+}
+
+.continueEyebrow{
+  font:600 13px Rubik,sans-serif;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--amber);
+}
+
+.continueVoteButtons{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  margin-top:8px;
+}
+
+/* o botão "sim" herda o CTA laranja; aqui só tira o margin-top:auto dele */
+#continueYesButton{
+  margin-top:0;
+}
+
+/* opção escolhida fica destacada, a outra esmaece (dá pra trocar o voto) */
+.continueVoteButtons button.selected{
+  outline:3px solid var(--ink);
+  outline-offset:3px;
+}
+
+.continueVoteButtons:has(.selected) button:not(.selected){
+  opacity:.5;
 }
 
 /* =========================

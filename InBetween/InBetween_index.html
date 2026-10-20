@@ -190,6 +190,10 @@
           Enviar Pergunta
         </button>
 
+        <button id="presetQuestionButton" class="btnGhost" onclick="sendPresetQuestion()" type="button" style="margin-top:10px;">
+          Pergunta Pré-escrita
+        </button>
+
       </div>
 
       <div id="writeQuestionWaitingContainer" class="conditionalBlock">
@@ -317,6 +321,12 @@
 
       <p id="skipDiscussionCountText" class="footNote" style="text-align:center;"></p>
       <p id="skipDiscussionStatusText" class="footNote" style="text-align:center;"></p>
+
+      <button id="passDiscussionButton" class="btnGhost btnGhost--small" onclick="togglePassDiscussion()" type="button">
+        PULAR DISCUSSÃO
+      </button>
+
+      <p id="passDiscussionCountText" class="footNote" style="text-align:center;"></p>
 
     </div>
 

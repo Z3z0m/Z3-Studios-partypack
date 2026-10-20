@@ -15,6 +15,7 @@
   --accent:#5980a6;
   --accent-300:#b5d9fd;
   --accent-400:#94bce3;
+  --truco:#f2b84b;
   --divider:rgba(242,242,243,0.14);
   --divider-soft:rgba(242,242,243,0.08);
 
@@ -702,6 +703,23 @@ body.isHost .hostOnly.btn{ display:inline-flex; }
 
 .votingFooter{
   padding:14px 22px 22px;
+}
+
+/* TRUCO: aposta opcional que vai junto com o voto */
+
+.trucoButton{
+  margin-bottom:10px;
+}
+
+.trucoButton.active{
+  background:var(--truco);
+  border-color:var(--truco);
+  color:var(--bg-deep);
+  box-shadow:0 0 22px color-mix(in srgb, var(--truco) 45%, transparent);
+}
+
+.trucoButton.active:hover:not(:disabled){
+  background:color-mix(in srgb, var(--truco) 88%, white);
 }
 
 

@@ -83,6 +83,7 @@ let alreadyAnswered = false;
 let alreadyVoted = false;
 let alreadyGuessed = false;
 let alreadyCalledForVote = false;
+let wantsToPassDiscussion = false;
 let alreadySubmittedQuestion = false;
 let countdownInterval = null;
 let currentSecretWord = "";
@@ -95,6 +96,31 @@ let playersCache = {};
 
 const QUESTION_TIME_SECONDS = 30;
 const ACCUSE_ARM_TIMEOUT_MS = 4000;
+
+// Perguntas genéricas (servem pra qualquer palavra) — usadas pelo botão
+// "pergunta pré-escrita" e quando o tempo de escrever acaba sem envio.
+const PRESET_QUESTIONS = [
+  "você confiaria nisso com o olho fechado?",
+  "onde você mais encontra isso?",
+  "isso é melhor de dia ou de noite?",
+  "quanto isso custaria, mais ou menos?",
+  "que cheiro isso tem?",
+  "com que frequência você pensa nisso?",
+  "isso cabe dentro de uma mochila?",
+  "você daria isso de presente pra alguém?",
+  "sua avó aprovaria isso?",
+  "em que época do ano isso aparece mais?",
+  "isso faz barulho?",
+  "você levaria isso pra uma ilha deserta?",
+  "isso é mais de criança ou de adulto?",
+  "qual a primeira palavra que vem à cabeça com isso?",
+  "você já brigou por causa disso?",
+  "isso é melhor sozinho ou acompanhado?",
+  "que cor você associa a isso?",
+  "isso está na moda ou saiu de moda?",
+  "você teria isso na sua casa?",
+  "isso te deixa feliz ou nervoso?"
+];
 
 
 // =========================
@@ -218,6 +244,7 @@ window.onload = function()
   ListenForPlayers();
   CheckIfHost();
   ListenForPause();
+  ListenForQuestionTimeUp();
 };
 
 
@@ -514,6 +541,27 @@ function ApplyGameState(gameState)
 // disparar o render da tela.)
 // =========================
 
+// =========================
+// LISTEN FOR QUESTION TIME UP
+// O timer da Question só existe no Unity: quando acaba, ele marca
+// currentState/questionTimeUp e espera um pouco antes de ler as respostas —
+// é a janela pra enviar o rascunho do jeito que estiver.
+// =========================
+
+function ListenForQuestionTimeUp()
+{
+  onValue(
+    ref(db, `rooms/${currentRoomCode}/currentState/questionTimeUp`),
+    (snapshot) =>
+    {
+      if(snapshot.val() !== true) return;
+      if(currentGameState !== "Question") return;
+
+      sendAnswer(true);
+    }
+  );
+}
+
 function ListenForVisibilityRecovery()
 {
   document.addEventListener("visibilitychange", () =>
@@ -536,11 +584,14 @@ function ListenForVisibilityRecovery()
 // COUNTDOWN (contador + barra visíveis no client)
 // =========================
 
-function StartCountdown(seconds, textElId, fillElId)
+// onTimeUp dispara com 1s restante (não no zero) pra dar tempo do envio
+// chegar antes do Unity trocar de fase.
+function StartCountdown(seconds, textElId, fillElId, onTimeUp)
 {
   StopCountdown();
 
   let remaining = seconds;
+  let timeUpFired = false;
 
   const textEl = document.getElementById(textElId);
   const fillEl = fillElId ? document.getElementById(fillElId) : null;
@@ -557,6 +608,12 @@ function StartCountdown(seconds, textElId, fillElId)
     if(textEl) textEl.innerText = `${remaining}s`;
 
     if(isGamePaused) return;
+
+    if(onTimeUp && !timeUpFired && remaining <= 1)
+    {
+      timeUpFired = true;
+      onTimeUp();
+    }
 
     if(remaining <= 0)
     {
@@ -658,10 +715,15 @@ async function OpenWriteQuestion()
     document.getElementById("sendQuestionButton").disabled = false;
     document.getElementById("writeQuestionStatusText").innerText = "";
 
+    document.getElementById("presetQuestionButton").disabled = false;
+
+    // ACABOU O TEMPO SEM ENVIAR: manda uma pergunta pré-escrita (o que
+    // estiver digitado é descartado de propósito).
     StartCountdown(
       QUESTION_TIME_SECONDS,
       "writeQuestionCountdown",
-      "writeQuestionTimerFill"
+      "writeQuestionTimerFill",
+      () => { if(currentGameState === "WriteQuestion") sendPresetQuestion(); }
     );
   }
   else
@@ -682,13 +744,6 @@ async function OpenWriteQuestion()
 
 window.sendCustomQuestion = async function()
 {
-  if(isDevMode || isGamePaused) return;
-
-  if(alreadySubmittedQuestion)
-  {
-    return;
-  }
-
   const questionText =
     document
     .getElementById("writeQuestionInput")
@@ -696,6 +751,27 @@ window.sendCustomQuestion = async function()
     .trim();
 
   if(questionText.length <= 0)
+  {
+    return;
+  }
+
+  await SubmitQuestion(questionText, "Pergunta enviada!");
+};
+
+// Usada pelo botão "pergunta pré-escrita" e quando o tempo acaba sem envio.
+window.sendPresetQuestion = async function()
+{
+  const questionText =
+    PRESET_QUESTIONS[Math.floor(Math.random() * PRESET_QUESTIONS.length)];
+
+  await SubmitQuestion(questionText, `Pergunta enviada: "${questionText}"`);
+};
+
+async function SubmitQuestion(questionText, statusText)
+{
+  if(isDevMode || isGamePaused) return;
+
+  if(alreadySubmittedQuestion)
   {
     return;
   }
@@ -711,14 +787,14 @@ window.sendCustomQuestion = async function()
 
   document.getElementById("writeQuestionInput").disabled = true;
   document.getElementById("sendQuestionButton").disabled = true;
+  document.getElementById("presetQuestionButton").disabled = true;
 
-  document.getElementById("writeQuestionStatusText").innerText =
-    "Pergunta enviada!";
+  document.getElementById("writeQuestionStatusText").innerText = statusText;
 
   StopCountdown();
 
   console.log("Pergunta customizada enviada!");
-};
+}
 
 
 // =========================
@@ -726,6 +802,7 @@ window.sendCustomQuestion = async function()
 // =========================
 
 let skipDiscussionUnsubscribe = null;
+let passDiscussionUnsubscribe = null;
 
 function OpenDiscussion()
 {
@@ -745,6 +822,10 @@ function OpenDiscussion()
   document.getElementById("discussionMeta").innerText = "";
   document.getElementById("skipDiscussionStatusText").innerText = "";
 
+  wantsToPassDiscussion = false;
+  RefreshPassDiscussionButton();
+  document.getElementById("passDiscussionCountText").innerText = "";
+
   // REMOVE O LISTENER DA RODADA ANTERIOR ANTES DE REGISTRAR UM NOVO —
   // sem isso, cada entrada em "Discussion" acumulava mais um onValue ativo.
   if(skipDiscussionUnsubscribe)
@@ -752,6 +833,29 @@ function OpenDiscussion()
     skipDiscussionUnsubscribe();
     skipDiscussionUnsubscribe = null;
   }
+
+  if(passDiscussionUnsubscribe)
+  {
+    passDiscussionUnsubscribe();
+    passDiscussionUnsubscribe = null;
+  }
+
+  const passRef =
+    ref(db, `rooms/${currentRoomCode}/currentState/passDiscussionVotes`);
+
+  passDiscussionUnsubscribe = onValue(passRef, (snapshot) =>
+  {
+    const count =
+      snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+
+    // PRECISA SER UNÂNIME — mostra "X/Y" pra deixar claro que falta gente
+    const totalPlayers = Object.keys(playersCache).length || 0;
+
+    document.getElementById("passDiscussionCountText").innerText =
+      count > 0
+        ? (totalPlayers > 0 ? `${count}/${totalPlayers} querem pular (precisa de todos)` : `${count} querem pular`)
+        : "";
+  });
 
   const skipRef =
     ref(db, `rooms/${currentRoomCode}/currentState/skipDiscussionVotes`);
@@ -831,6 +935,38 @@ window.callForVote = async function()
     "isso convoca a votação de todo mundo. aguardando os outros...";
 
   console.log("Chamado para votação!");
+};
+
+
+// =========================
+// PULAR DISCUSSÃO (sem votação — precisa ser unânime pra seguir pra próxima pergunta)
+// Toque alterna: votar pra pular / desistir de pular.
+// =========================
+
+function RefreshPassDiscussionButton()
+{
+  const btn = document.getElementById("passDiscussionButton");
+
+  if(!btn) return;
+
+  btn.classList.toggle("on", wantsToPassDiscussion);
+  btn.innerText = wantsToPassDiscussion ? "QUERO PULAR ✓" : "PULAR DISCUSSÃO";
+}
+
+window.togglePassDiscussion = async function()
+{
+  if(isDevMode || isGamePaused) return;
+
+  wantsToPassDiscussion = !wantsToPassDiscussion;
+  Buzz(10);
+  RefreshPassDiscussionButton();
+
+  await set(
+    ref(db, `rooms/${currentRoomCode}/currentState/passDiscussionVotes/${currentPlayerId}`),
+    wantsToPassDiscussion ? true : null
+  );
+
+  console.log(wantsToPassDiscussion ? "Quer pular a discussão." : "Desistiu de pular a discussão.");
 };
 
 
@@ -1012,9 +1148,9 @@ async function OpenQuestion()
 
 let answerCountUnsubscribe = null;
 
-window.sendAnswer = async function()
+window.sendAnswer = async function(isTimeUp = false)
 {
-  if(isDevMode || isGamePaused) return;
+  if(isDevMode || (isGamePaused && !isTimeUp)) return;
 
   if(alreadyAnswered)
   {

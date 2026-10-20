@@ -85,6 +85,27 @@
       <div id="scoreList"></div>
     </div>
 
+    <div id="continueVoteScreen">
+      <img src="imgs/splat-c.png" alt="" aria-hidden="true" class="splat splat-continue">
+
+      <p class="continueEyebrow">Fim das rodadas</p>
+      <h2>Deseja continuar?</h2>
+      <p class="waitingSub">
+        Se a maioria topar, cada jogador dá mais uma dica.
+      </p>
+
+      <div class="continueVoteButtons">
+        <button id="continueYesButton" onclick="SubmitContinueVote(true)">
+          Sim, mais uma!
+        </button>
+        <button id="continueNoButton" class="secondaryButton" onclick="SubmitContinueVote(false)">
+          Não, ver o placar final
+        </button>
+      </div>
+
+      <p id="continueVoteStatus" class="waitingSub"></p>
+    </div>
+
     <div id="finalResultScreen">
       <img src="imgs/splat-a.png" alt="" aria-hidden="true" class="splat splat-final">
 
@@ -137,11 +158,29 @@
 
         </h2>
         <p class="waitingSub">Fique de olho na tela grande.</p>
+
+        <!-- só aparece pro lanterninha, a partir do 3º round (ver SABOTAGES no app.js) -->
+        <div id="sabotagePanel" class="sabotagePanel" style="display:none">
+          <p class="sabotageEyebrow">Você é o Underdog</p>
+          <h3 class="sabotageTitle">Sabotar alguém?</h3>
+
+          <div id="sabotageTypes" class="sabotageTypes"></div>
+          <p id="sabotageDescription" class="sabotageDescription"></p>
+          <div id="sabotageTargets" class="sabotageTargets"></div>
+
+          <button id="sabotageConfirmButton" onclick="SubmitSabotage()">
+            Sabotar
+          </button>
+
+          <p id="sabotageStatus" class="sabotageStatus"></p>
+        </div>
     </div>
 
       <div id="guessScreen">
         <p class="guessLabel">Toque na cor que você acha</p>
         <h2 id="guessHintText"> DICA </h2>
+
+        <p id="sabotagedBanner" class="sabotagedBanner" style="display:none"></p>
 
         <div id="guessGrid"></div>
 

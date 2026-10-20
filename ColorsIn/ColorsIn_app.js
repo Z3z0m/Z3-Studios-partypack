@@ -65,6 +65,13 @@ let isHost = false;
 let isGamePaused = false;
 let currentSecretColor = null;
 
+// rooms/{code}/sabotage inteiro ({ offer, request, active }) e rooms/{code}/players
+let sabotageNode = null;
+let latestPlayers = {};
+let sabotagePanelRound = -1;
+let selectedSabotageType = null;
+let selectedSabotageTarget = null;
+
 
 // =========================
 // GUESS GRID LAYOUT
@@ -131,6 +138,7 @@ window.onload = async function()
   await CheckIfHost();
   ListenForStage();
   ListenForPause();
+  ListenForSabotage();
   SetupContextModal();
   SetupHintCounter();
 };
@@ -375,6 +383,9 @@ function ListenForTakenAvatars()
       const players = snapshot.val() || {};
       const taken = new Set();
 
+      latestPlayers = players;
+      RenderSabotagePanel();
+
       Object.entries(players).forEach(([playerId, data]) =>
       {
         if (playerId !== currentPlayerId && data.avatar)
@@ -553,6 +564,11 @@ async function ListenForStage()
             {
                 OpenFinalResult();
             }
+
+            if(state === "ContinueVote")
+            {
+                OpenContinueVote();
+            }
         });
 }
 
@@ -644,6 +660,8 @@ async function OpenGiveHint()
                 hinter.playerName || "alguém",
                 hinter.colorName
             )} escrever a dica...`;
+
+        RenderSabotagePanel();
     }
 
     document
@@ -710,7 +728,8 @@ function GetColoredPlayerName(PlayerName,ColorName)
     </span>`;
 }
 
-function GenerateGuessGrid()
+// activeSabotage: sabotage/active quando o alvo sou eu, senão null
+function GenerateGuessGrid(activeSabotage)
 {
     const grid =
         document.getElementById(
@@ -718,6 +737,8 @@ function GenerateGuessGrid()
         );
 
     grid.innerHTML = "";
+
+    const cells = [];
 
     for(let y=0;y<GUESS_GRID_HEIGHT;y++)
     {
@@ -760,9 +781,16 @@ function GenerateGuessGrid()
                   selectedGuessY = y;
               };
 
+            cells.push(cell);
             grid.appendChild(cell);
         }
     }
+
+    const sabotage =
+        activeSabotage ? SABOTAGES[activeSabotage.type] : null;
+
+    if(sabotage && sabotage.applyToGuessGrid)
+        sabotage.applyToGuessGrid(grid, cells, activeSabotage.seed);
 }
 
 function HSVtoRGBValues(h,s,v)
@@ -858,7 +886,30 @@ async function OpenGuessColor()
     selectedGuessX = -1;
     selectedGuessY = -1;
 
-    GenerateGuessGrid();
+    // a Unity grava sabotage/active ainda no GiveHint, antes de mudar o gameState
+    const sabotageSnapshot =
+        await get(
+            ref(
+                db,
+                `rooms/${currentRoomCode}/sabotage/active`
+            )
+        );
+
+    const activeSabotage =
+        sabotageSnapshot.exists() &&
+        sabotageSnapshot.val().target === currentPlayerId &&
+        SABOTAGES[sabotageSnapshot.val().type]
+            ? sabotageSnapshot.val()
+            : null;
+
+    const banner =
+        document.getElementById("sabotagedBanner");
+
+    banner.style.display = activeSabotage ? "block" : "none";
+    banner.innerText =
+        activeSabotage ? SABOTAGES[activeSabotage.type].victimMessage : "";
+
+    GenerateGuessGrid(activeSabotage);
 
     document
         .getElementById("confirmGuessButton")
@@ -989,6 +1040,304 @@ async function OpenRoundScore()
         "flex";
 }
 
+// =========================
+// SABOTAGEM DO UNDERDOG
+// Unity grava rooms/{code}/sabotage/offer no GiveHint (quem é o lanterninha
+// e os alvos válidos de cada sabotagem). O lanterninha grava
+// sabotage/request; a Unity valida e grava sabotage/active, que o celular
+// do alvo aplica no GuessColor. A tela grande não muda nada.
+// Nova sabotagem: mesma chave do Id em ColorsInSabotage.cs (Unity).
+// =========================
+
+const SABOTAGES =
+{
+    shuffle:
+    {
+        label: "🌀 Embaralhar",
+        description: "As cores da grade do alvo ficam todas fora de lugar nesta rodada.",
+        victimMessage: "🌀 Você foi sabotado! Suas cores foram embaralhadas.",
+
+        // sorteia a posição de cada célula na grade inteira. As células são as
+        // mesmas da grade normal (já guardam o x/y real no onclick), então só
+        // muda o lugar na tela — o voto continua valendo a cor tocada.
+        applyToGuessGrid(grid, cells, seed)
+        {
+            const random = SeededRandom(seed);
+
+            // appendChild de um nó que já está na grade só move ele pro fim
+            ShuffledIndexes(cells.length, random)
+                .forEach(index => grid.appendChild(cells[index]));
+        }
+    }
+};
+
+// mesma semente = mesma grade, mesmo se o celular recarregar no meio
+function SeededRandom(seed)
+{
+    let a = seed >>> 0;
+
+    return function()
+    {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+// [0..count-1] embaralhado; nunca devolve a ordem original, senão a
+// sabotagem passaria em branco
+function ShuffledIndexes(count, random)
+{
+    const order = [...Array(count).keys()];
+
+    for(let i = count - 1; i > 0; i--)
+    {
+        const j = Math.floor(random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+    }
+
+    if(count > 1 && order.every((value, index) => value === index))
+        order.push(order.shift());
+
+    return order;
+}
+
+// Firebase devolve lista como array ou como objeto {"0":..,"1":..}
+function AsArray(value)
+{
+    if(!value) return [];
+    return Array.isArray(value) ? value : Object.values(value);
+}
+
+function ListenForSabotage()
+{
+    onValue(
+        ref(db, `rooms/${currentRoomCode}/sabotage`),
+        (snapshot) =>
+        {
+            sabotageNode = snapshot.val();
+            RenderSabotagePanel();
+        }
+    );
+}
+
+function RenderSabotagePanel()
+{
+    const panel = document.getElementById("sabotagePanel");
+    const offer = sabotageNode ? sabotageNode.offer : null;
+
+    const waitingForHint =
+        document.getElementById("waitingHintScreen").style.display === "flex";
+
+    if(!offer || offer.underdogId !== currentPlayerId || !waitingForHint)
+    {
+        panel.style.display = "none";
+        return;
+    }
+
+    panel.style.display = "flex";
+
+    // round novo: zera a escolha anterior
+    if(offer.round !== sabotagePanelRound)
+    {
+        sabotagePanelRound = offer.round;
+        selectedSabotageType = null;
+        selectedSabotageTarget = null;
+    }
+
+    const options =
+        AsArray(offer.options).filter(o => SABOTAGES[o.type]);
+
+    const typesRow = document.getElementById("sabotageTypes");
+    const targetsRow = document.getElementById("sabotageTargets");
+    const description = document.getElementById("sabotageDescription");
+    const confirmButton = document.getElementById("sabotageConfirmButton");
+    const status = document.getElementById("sabotageStatus");
+
+    typesRow.innerHTML = "";
+    targetsRow.innerHTML = "";
+
+    const active = sabotageNode.active;
+
+    if(active && active.round === offer.round)
+    {
+        const victim = latestPlayers[active.target];
+
+        panel.classList.add("used");
+        description.innerText = "";
+        confirmButton.style.display = "none";
+        status.innerText =
+            `Sabotagem feita em ${victim ? victim.name : "alguém"}! 😈`;
+
+        return;
+    }
+
+    panel.classList.remove("used");
+    confirmButton.style.display = "block";
+
+    if(options.length === 0)
+    {
+        panel.style.display = "none";
+        return;
+    }
+
+    if(!options.some(o => o.type === selectedSabotageType))
+    {
+        selectedSabotageType = options[0].type;
+        selectedSabotageTarget = null;
+    }
+
+    options.forEach((option) =>
+    {
+        const button = document.createElement("button");
+
+        button.className = "sabotageTypeButton";
+        button.classList.toggle("selected", option.type === selectedSabotageType);
+        button.innerText = SABOTAGES[option.type].label;
+
+        button.onclick = () =>
+        {
+            selectedSabotageType = option.type;
+            selectedSabotageTarget = null;
+            RenderSabotagePanel();
+        };
+
+        typesRow.appendChild(button);
+    });
+
+    description.innerText =
+        SABOTAGES[selectedSabotageType].description;
+
+    const selectedOption =
+        options.find(o => o.type === selectedSabotageType);
+
+    const targets = AsArray(selectedOption.targets);
+
+    if(!targets.includes(selectedSabotageTarget))
+        selectedSabotageTarget = null;
+
+    targets.forEach((targetId) =>
+    {
+        const player = latestPlayers[targetId];
+        if(!player) return;
+
+        const button = document.createElement("button");
+
+        button.className = "sabotageTarget";
+        button.classList.toggle("selected", targetId === selectedSabotageTarget);
+
+        const img = document.createElement("img");
+        img.src = `imgs/${player.avatar}.png`;
+
+        const name = document.createElement("span");
+        name.textContent = player.name;
+
+        button.appendChild(img);
+        button.appendChild(name);
+
+        button.onclick = () =>
+        {
+            selectedSabotageTarget = targetId;
+            RenderSabotagePanel();
+        };
+
+        targetsRow.appendChild(button);
+    });
+
+    const request = sabotageNode.request;
+    const waitingConfirm =
+        request && request.round === offer.round && request.by === currentPlayerId;
+
+    confirmButton.disabled = !selectedSabotageTarget || waitingConfirm;
+    confirmButton.innerText = waitingConfirm ? "Enviando..." : "Sabotar";
+
+    status.innerText =
+        selectedSabotageTarget ? "" : "Escolha quem vai sofrer.";
+}
+
+window.SubmitSabotage = async function()
+{
+    if(isGamePaused) return;
+
+    const offer = sabotageNode ? sabotageNode.offer : null;
+
+    if(!offer || !selectedSabotageType || !selectedSabotageTarget)
+        return;
+
+    await set(
+        ref(db, `rooms/${currentRoomCode}/sabotage/request`),
+        {
+            by: currentPlayerId,
+            type: selectedSabotageType,
+            target: selectedSabotageTarget,
+            round: offer.round,
+            t: Date.now()
+        }
+    );
+};
+
+// =========================
+// VOTAÇÃO "DESEJA CONTINUAR?"
+// Unity lê rooms/{code}/continueVotes/{playerId} = true/false;
+// maioria estrita de "sim" = mais um ciclo de dicas.
+// =========================
+
+async function OpenContinueVote()
+{
+    HideAllScreens();
+
+    document
+        .getElementById("continueVoteScreen")
+        .style.display =
+        "flex";
+
+    // se o celular recarregou no meio da votação, mostra o voto que já foi dado
+    const voteSnapshot =
+        await get(
+            ref(
+                db,
+                `rooms/${currentRoomCode}/continueVotes/${currentPlayerId}`
+            )
+        );
+
+    UpdateContinueVoteUI(
+        voteSnapshot.exists() ? voteSnapshot.val() : null
+    );
+}
+
+window.SubmitContinueVote = async function(wantsToContinue)
+{
+    if(isGamePaused) return;
+
+    await set(
+        ref(
+            db,
+            `rooms/${currentRoomCode}/continueVotes/${currentPlayerId}`
+        ),
+        wantsToContinue
+    );
+
+    UpdateContinueVoteUI(wantsToContinue);
+};
+
+function UpdateContinueVoteUI(vote)
+{
+    const yesBtn = document.getElementById("continueYesButton");
+    const noBtn = document.getElementById("continueNoButton");
+    const status = document.getElementById("continueVoteStatus");
+
+    yesBtn.classList.toggle("selected", vote === true);
+    noBtn.classList.toggle("selected", vote === false);
+
+    if(vote === null)
+        status.innerText = "";
+    else
+        status.innerText =
+            (vote ? "Você votou SIM." : "Você votou NÃO.") +
+            " Toque na outra opção para mudar.";
+}
+
 function HideAllScreens()
 {
     document
@@ -1005,6 +1354,7 @@ function HideAllScreens()
     document.getElementById("guessScreen").style.display = "none";
     document.getElementById("waitingGuessScreen").style.display = "none";
     document.getElementById("finalResultScreen").style.display = "none";
+    document.getElementById("continueVoteScreen").style.display = "none";
 }
 
 async function OpenFinalResult()

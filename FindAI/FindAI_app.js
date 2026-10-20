@@ -99,6 +99,7 @@ let votingUnsub = null;
 
 let lastVotingItems = [];
 let pendingVoteKey = null;
+let pendingTruco = false;
 
 
 // =========================
@@ -235,10 +236,61 @@ function runTimer(seconds)
   );
 
   if(isGamePaused) timerAnimation.pause();
+
+  scheduleAutoSubmit(seconds);
+}
+
+// Quando o tempo acaba, envia o que estiver pronto: no Prompt o rascunho do
+// jeito que estiver, no Voting a resposta pré-selecionada.
+// Dispara um pouco antes do fim pra chegar antes do Unity trocar de fase.
+// Lê o currentTime da animação, então respeita a pausa do host.
+const AUTO_SUBMIT_MARGIN_MS = 1000;
+const AUTO_SUBMIT_ACTIONS = {
+  Prompt: () => sendAnswer(),
+  Voting: () => confirmVote()
+};
+let autoSubmitInterval = null;
+
+function scheduleAutoSubmit(seconds)
+{
+  clearAutoSubmit();
+
+  const state = currentGameState;
+  const action = AUTO_SUBMIT_ACTIONS[state];
+
+  if(!action) return;
+
+  const triggerAt = Math.max(0, seconds * 1000 - AUTO_SUBMIT_MARGIN_MS);
+  const animation = timerAnimation;
+
+  autoSubmitInterval = setInterval(() =>
+  {
+    if(currentGameState !== state || timerAnimation !== animation)
+    {
+      clearAutoSubmit();
+      return;
+    }
+
+    if((animation.currentTime ?? 0) < triggerAt) return;
+
+    clearAutoSubmit();
+    action();
+  }, 200);
+}
+
+function clearAutoSubmit()
+{
+  if(autoSubmitInterval)
+  {
+    clearInterval(autoSubmitInterval);
+    autoSubmitInterval = null;
+  }
 }
 
 function hideTimer()
 {
+  clearAutoSubmit();
+
   if(timerAnimation)
   {
     timerAnimation.cancel();
@@ -779,6 +831,9 @@ function OpenVoting()
   confirmButton.style.display = "";
   confirmButton.disabled = true;
 
+  setTruco(false);
+  document.getElementById("trucoButton").style.display = "";
+
   document.getElementById("votingWaitingText").style.display = "none";
 
   if(votingUnsub)
@@ -881,6 +936,27 @@ function selectVote(key)
   renderVotingAnswers(lastVotingItems);
 }
 
+// TRUCO: aposta que o voto é na IA. A pontuação (+50 pra quem acerta, +25 pro autor
+// que enganou) é calculada
+// no Unity a partir do campo "truco" do voto.
+function setTruco(active)
+{
+  pendingTruco = active;
+
+  const button = document.getElementById("trucoButton");
+
+  button.classList.toggle("active", active);
+  button.setAttribute("aria-pressed", active ? "true" : "false");
+  button.textContent = active ? "TRUCO! (toque pra cancelar)" : "PEDIR TRUCO (+50)";
+}
+
+window.toggleTruco = function()
+{
+  if(alreadyVoted) return;
+
+  setTruco(!pendingTruco);
+};
+
 window.confirmVote = async function()
 {
   if(isGamePaused) return;
@@ -907,19 +983,21 @@ window.confirmVote = async function()
     ),
     {
       votedAnswer: pendingVoteKey,
-      playerName: currentPlayerName
+      playerName: currentPlayerName,
+      truco: pendingTruco
     }
   );
 
   console.log("Voto enviado!");
 
   document.getElementById("confirmVoteButton").style.display = "none";
+  document.getElementById("trucoButton").style.display = "none";
 
   const waitingText =
     document.getElementById("votingWaitingText");
 
   waitingText.style.display = "";
-  waitingText.textContent = "Esperando outros votos…";
+  waitingText.textContent = pendingTruco ? "TRUCO pedido! Esperando outros votos…" : "Esperando outros votos…";
 
   renderVotingAnswers(lastVotingItems);
 };
