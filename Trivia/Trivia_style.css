@@ -319,6 +319,247 @@ body::after{ bottom:0; }
 
 
 /* =========================
+   QUEM SOU EU
+========================= */
+
+#whoAmIBadge,
+#fillBlankBadge,
+#numberBadge{
+  background:var(--creme);
+  border-radius:999px;
+  padding:8px 22px;
+}
+
+#whoAmICounter,
+#fillBlankCounter,
+#numberCounter{
+  font-family:var(--font-display);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--terracota-dark);
+}
+
+#whoAmITitle,
+#fillBlankTitle,
+#numberTitle{
+  font-family:var(--font-display);
+  font-size:26px;
+  font-weight:800;
+  text-align:center;
+  color:var(--creme);
+}
+
+#whoAmIClues{
+  width:100%;
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:0;
+  margin:0;
+}
+
+#whoAmIClues li{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:var(--creme);
+  color:var(--tinta);
+  font-family:var(--font-body);
+  font-size:16px;
+  font-weight:500;
+  line-height:1.35;
+  opacity:0.6;
+}
+
+#whoAmIClues li.current{
+  opacity:1;
+}
+
+#whoAmIClues .clueNumber{
+  width:28px;
+  height:28px;
+  flex-shrink:0;
+  border-radius:50%;
+  background:var(--pedra);
+  color:var(--terracota-dark);
+  font-family:var(--font-display);
+  font-size:14px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#whoAmIForm,
+#fillBlankForm,
+#numberForm{
+  width:100%;
+  display:flex;
+  gap:8px;
+}
+
+#whoAmIInput,
+#fillBlankInput,
+#numberInput{
+  flex:1;
+  min-width:0;
+  padding:14px 16px;
+  border:3px solid var(--creme-borda);
+  border-radius:16px;
+  background:var(--creme);
+  color:var(--tinta);
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:600;
+}
+
+#whoAmIInput:focus,
+#fillBlankInput:focus,
+#numberInput:focus{
+  outline:none;
+  border-color:var(--marrom);
+}
+
+#whoAmISubmit,
+#fillBlankSubmit,
+#numberSubmit{
+  padding:0 18px;
+  border:none;
+  border-radius:16px;
+  background:var(--marrom);
+  color:var(--creme);
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+#whoAmIInput:disabled,
+#whoAmISubmit:disabled,
+#fillBlankInput:disabled,
+#fillBlankSubmit:disabled,
+#numberInput:disabled,
+#numberSubmit:disabled{
+  opacity:0.45;
+  cursor:default;
+}
+
+#whoAmIStatus,
+#fillBlankStatus,
+#numberStatus{
+  font-family:var(--font-display);
+  font-size:13px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  text-align:center;
+  color:var(--creme);
+  min-height:20px;
+}
+
+#whoAmIStatus.correct,
+#fillBlankStatus.correct,
+#numberStatus.correct{
+  padding:8px 18px;
+  border-radius:999px;
+  background:var(--creme);
+  color:var(--marrom);
+  font-weight:800;
+}
+
+#whoAmIStatus.reveal,
+#fillBlankStatus.reveal,
+#numberStatus.reveal{
+  font-size:18px;
+  letter-spacing:0.06em;
+  text-transform:none;
+  font-weight:800;
+}
+
+
+#fillBlankPhrase{
+  width:100%;
+  padding:18px 16px;
+  border-radius:16px;
+  background:var(--creme);
+  color:var(--tinta);
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:700;
+  line-height:1.4;
+  text-align:center;
+  text-wrap:pretty;
+}
+
+#fillBlankPhrase .blank{
+  color:var(--terracota-dark);
+  text-decoration:underline;
+  text-underline-offset:4px;
+}
+
+
+#numberQuestion{
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:700;
+  line-height:1.35;
+  text-align:center;
+  color:var(--creme);
+  text-wrap:pretty;
+}
+
+#numberRange{
+  width:100%;
+  display:flex;
+  align-items:baseline;
+  justify-content:center;
+  gap:10px;
+  padding:16px;
+  border-radius:16px;
+  background:var(--creme);
+  color:var(--tinta);
+}
+
+#numberMin,
+#numberMax{
+  font-family:var(--font-display);
+  font-size:32px;
+  font-weight:800;
+  color:var(--marrom);
+}
+
+.numberRangeLabel{
+  font-family:var(--font-display);
+  font-size:13px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--terracota-dark);
+}
+
+#numberFeedback{
+  font-family:var(--font-display);
+  font-size:18px;
+  font-weight:800;
+  text-align:center;
+  color:var(--creme);
+  min-height:24px;
+}
+
+/* sem as setinhas do input number (o teclado numérico já resolve) */
+#numberInput::-webkit-outer-spin-button,
+#numberInput::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+
+#numberInput{ -moz-appearance:textfield; }
+
+
+/* =========================
    PLACAR / RESULTADO FINAL
 ========================= */
 

@@ -155,6 +155,146 @@
 
 
     <!-- =========================
+         QUEM SOU EU SCREEN
+    ========================== -->
+
+    <div
+      id="whoAmIScreen"
+      class="screen"
+    >
+
+      <div id="whoAmIBadge">
+        <span id="whoAmICounter">Afirmativa 1/3</span>
+      </div>
+
+      <h2 id="whoAmITitle">Quem sou eu?</h2>
+
+      <ol id="whoAmIClues"></ol>
+
+      <form
+        id="whoAmIForm"
+        onsubmit="SubmitWhoAmIGuess(event)"
+        autocomplete="off"
+      >
+        <input
+          id="whoAmIInput"
+          type="text"
+          maxlength="40"
+          placeholder="Digite seu chute..."
+          autocapitalize="words"
+          spellcheck="false"
+        />
+
+        <button
+          id="whoAmISubmit"
+          type="submit"
+        >
+          Chutar
+        </button>
+      </form>
+
+      <p id="whoAmIStatus"></p>
+
+    </div>
+
+
+    <!-- =========================
+         COMPLETE A FRASE SCREEN
+    ========================== -->
+
+    <div
+      id="fillBlankScreen"
+      class="screen"
+    >
+
+      <div id="fillBlankBadge">
+        <span id="fillBlankCounter">Quanto mais rápido, mais pontos</span>
+      </div>
+
+      <h2 id="fillBlankTitle">Complete a frase</h2>
+
+      <p id="fillBlankPhrase"></p>
+
+      <form
+        id="fillBlankForm"
+        onsubmit="SubmitFillBlankGuess(event)"
+        autocomplete="off"
+      >
+        <input
+          id="fillBlankInput"
+          type="text"
+          maxlength="40"
+          placeholder="Complete a lacuna..."
+          spellcheck="false"
+        />
+
+        <button
+          id="fillBlankSubmit"
+          type="submit"
+        >
+          Enviar
+        </button>
+      </form>
+
+      <p id="fillBlankStatus"></p>
+
+    </div>
+
+
+    <!-- =========================
+         QUAL É O NÚMERO SCREEN
+    ========================== -->
+
+    <div
+      id="numberScreen"
+      class="screen"
+    >
+
+      <div id="numberBadge">
+        <span id="numberCounter">Chute 1 · vale 250</span>
+      </div>
+
+      <h2 id="numberTitle">Qual é o número?</h2>
+
+      <p id="numberQuestion"></p>
+
+      <div id="numberRange">
+        <span class="numberRangeLabel">entre</span>
+        <span id="numberMin">0</span>
+        <span class="numberRangeLabel">e</span>
+        <span id="numberMax">0</span>
+      </div>
+
+      <p id="numberFeedback"></p>
+
+      <form
+        id="numberForm"
+        onsubmit="SubmitNumberGuess(event)"
+        autocomplete="off"
+      >
+        <input
+          id="numberInput"
+          type="number"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          step="1"
+          placeholder="Seu chute..."
+        />
+
+        <button
+          id="numberSubmit"
+          type="submit"
+        >
+          Chutar
+        </button>
+      </form>
+
+      <p id="numberStatus"></p>
+
+    </div>
+
+
+    <!-- =========================
          SCOREBOARD SCREEN
     ========================== -->
 
