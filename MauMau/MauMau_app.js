@@ -108,6 +108,24 @@ function CardVisualHTML(card, sizeKey)
 
   if(card.type === "DrawTwo") return `<span style="font-size:${plusSize}px;">+2</span>`;
 
+  // EMBARALHAR: duas setas que se cruzam (ícone clássico de "aleatório").
+  if(card.type === "Shuffle")
+  {
+    return `<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">`
+      + `<path d="M3 7H7L17 17H21"></path><path d="M18 14L21 17L18 20"></path>`
+      + `<path d="M3 17H7L17 7H21"></path><path d="M18 4L21 7L18 10"></path>`
+      + `</svg>`;
+  }
+
+  // TROCA-AQUI: setas verticais opostas — diferente das horizontais do Reverter.
+  if(card.type === "Swap")
+  {
+    return `<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">`
+      + `<path d="M8 20V5"></path><path d="M4 9L8 5L12 9"></path>`
+      + `<path d="M16 4V19"></path><path d="M12 15L16 19L20 15"></path>`
+      + `</svg>`;
+  }
+
   // Wild
   return `<div style="width:${wildDot}px;height:${wildDot}px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 0 0 ${wildHalo}px rgba(255,255,255,.28);"></div>`;
 }
@@ -131,7 +149,8 @@ const RejectedReasonLabels = {
   "must-play-drawn-card-or-pass": "Jogue a carta que você comprou, ou passe.",
   "already-drew": "Você já comprou nessa vez.",
   "nothing-to-pass": "Nada pra passar agora.",
-  "must-stack-or-draw": "Só dá pra jogar outro +2 agora, ou comprar o monte!"
+  "must-stack-or-draw": "Só dá pra jogar outro +2 agora, ou comprar o monte!",
+  "invalid-swap-target": "Escolha outro jogador que ainda tenha cartas."
 };
 
 
@@ -149,6 +168,7 @@ let playerNames = {};      // playerId -> nome, cacheado ao entrar em Playing/Re
 let currentHand = [];      // cartas da MINHA mão (só eu leio esse nó, ver GDD)
 let currentTable = null;   // último snapshot de currentState/table
 let pendingWildIndex = null;
+let pendingSwapIndex = null; // carta Troca-Aqui esperando a escolha do alvo
 let rejectedTimeout = null;
 let lastAttemptedCardIndex = null; // pro shake quando o HOST rejeita (raro — ver TriggerShake)
 
@@ -435,6 +455,8 @@ async function OpenPlaying()
 {
   pendingWildIndex = null;
   HideColorPicker();
+  pendingSwapIndex = null;
+  HideSwapPicker();
 
   previousHandLength = 0;
   dealingHand = false;
@@ -551,6 +573,14 @@ function ApplyTableUpdate(table)
 
   const isMyTurn = table.currentTurnPlayerId === currentPlayerId;
   const bannerEl = document.getElementById("turnBannerText");
+
+  // VEZ ACABOU (timeout) COM O SELETOR DA TROCA-AQUI ABERTO: fecha, senão a
+  // escolha seria mandada fora da vez e rejeitada.
+  if(!isMyTurn && pendingSwapIndex !== null)
+  {
+    pendingSwapIndex = null;
+    HideSwapPicker();
+  }
 
   if(isMyTurn)
   {
@@ -677,12 +707,21 @@ async function OnCardTapped(card, index)
     return;
   }
 
+  // TROCA-AQUI COMO ÚLTIMA CARTA: o host só zera a mão, sem trocar (ver
+  // MauMauGameManager.HandlePlayAction) — então nem pergunta o alvo.
+  if(card.type === "Swap" && currentHand.length > 1)
+  {
+    pendingSwapIndex = index;
+    ShowSwapPicker();
+    return;
+  }
+
   PlayCardWithAnimation(index, null);
 }
 
 // ANIMA A CARTA SAINDO E SÓ DEPOIS manda a ação de verdade pro host — dá
 // tempo da animação (380ms) rodar antes do turno mudar de verdade.
-function PlayCardWithAnimation(index, chosenColor)
+function PlayCardWithAnimation(index, chosenColor, targetPlayerId)
 {
   playingIndex = index;
   BuildHand();
@@ -691,9 +730,62 @@ function PlayCardWithAnimation(index, chosenColor)
   playingTimeout = setTimeout(async () =>
   {
     playingIndex = null;
-    await SendTurnAction({ type: "play", cardIndex: index, chosenColor });
+    await SendTurnAction({ type: "play", cardIndex: index, chosenColor, targetPlayerId });
   }, 380);
 }
+
+// LISTA SÓ QUEM AINDA ESTÁ NA ROTAÇÃO (table.turnPlayerOrder — quem já
+// zerou sai dela), sem eu mesmo. Mesma regra validada de verdade no host.
+async function ShowSwapPicker()
+{
+  const listEl = document.getElementById("swapPickerList");
+  listEl.innerHTML = "";
+
+  const targets = ((currentTable && currentTable.turnPlayerOrder) || [])
+    .filter(id => id !== currentPlayerId);
+
+  document.getElementById("swapPickerOverlay").classList.add("active");
+
+  // QTD DE CARTAS de cada alvo (espelho público "cardCount", ver
+  // MauMauGameManager.PublishHand) — ajuda a decidir com quem vale trocar.
+  const counts = await Promise.all(targets.map(id =>
+    get(ref(db, `rooms/${currentRoomCode}/players/${id}/cardCount`)).then(s => s.val() || 0)
+  ));
+
+  if(pendingSwapIndex === null) return; // cancelou enquanto carregava
+
+  targets.forEach((id, i) =>
+  {
+    const btn = document.createElement("button");
+    btn.className = "swapPickBtn";
+    btn.innerHTML = `<span></span><span class="swapPickCount">${counts[i]} ${counts[i] === 1 ? "carta" : "cartas"}</span>`;
+    btn.firstChild.innerText = playerNames[id] || "???"; // innerText: nome vem do jogador, não injeta HTML
+    btn.onclick = () => PickSwapTarget(id);
+    listEl.appendChild(btn);
+  });
+}
+
+function HideSwapPicker()
+{
+  document.getElementById("swapPickerOverlay").classList.remove("active");
+}
+
+function PickSwapTarget(targetPlayerId)
+{
+  const index = pendingSwapIndex;
+  pendingSwapIndex = null;
+  HideSwapPicker();
+
+  if(index === null || index === undefined) return;
+
+  PlayCardWithAnimation(index, null, targetPlayerId);
+}
+
+window.CancelSwapPick = function()
+{
+  pendingSwapIndex = null;
+  HideSwapPicker();
+};
 
 window.PickWildColor = function(color)
 {
@@ -745,6 +837,7 @@ async function SendTurnAction(action)
       type: action.type,
       cardIndex: action.cardIndex ?? null,
       chosenColor: action.chosenColor ?? null,
+      targetPlayerId: action.targetPlayerId ?? null,
       t: Date.now()
     }
   );

@@ -473,6 +473,45 @@ button:disabled{
   color:#241a02;
 }
 
+/* SELETOR DE JOGADOR DA TROCA-AQUI — mesmo card do seletor de cor, só
+   que com uma lista vertical (nome + qtd de cartas) em vez da grade 2x2. */
+.swapPickerList{
+  display:flex;
+  flex-direction:column;
+
+  gap:10px;
+
+  max-height:50vh;
+  overflow-y:auto;
+}
+
+.swapPickBtn{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  background:rgba(255,255,255,.08);
+  color:#f3f2ea;
+
+  border-radius:12px;
+
+  padding:14px 16px;
+}
+
+.swapPickCount{
+  color:#ffd76b;
+  font-weight:600;
+}
+
+.swapCancelBtn{
+  margin-top:14px;
+
+  background:transparent;
+  color:#8fa39e;
+
+  padding:8px 16px;
+}
+
 
 /* =========================
    RESULTADO
