@@ -87,6 +87,7 @@ let wantsToPassDiscussion = false;
 let alreadySubmittedQuestion = false;
 let countdownInterval = null;
 let currentSecretWord = "";
+let currentWordCategory = "";
 let isGamePaused = false;
 let accuseArmed = false;
 let accuseArmTimeout = null;
@@ -1005,13 +1006,13 @@ function ListenForImpostor()
 
 // =========================
 // LISTEN WORD
-// (a categoria não é lida aqui — é usada só internamente pelo Unity para
-// escolher a pergunta certa do banco; nunca é mostrada para os jogadores)
+// (palavra + categoria — a categoria é a única dica que o impostor recebe)
 // re-registrado do zero em ListenForVisibilityRecovery — ver comentário
 // em ListenForImpostor.
 // =========================
 
 let wordUnsubscribe = null;
+let wordCategoryUnsubscribe = null;
 
 function ListenForWord()
 {
@@ -1019,6 +1020,12 @@ function ListenForWord()
   {
     wordUnsubscribe();
     wordUnsubscribe = null;
+  }
+
+  if(wordCategoryUnsubscribe)
+  {
+    wordCategoryUnsubscribe();
+    wordCategoryUnsubscribe = null;
   }
 
   wordUnsubscribe = onValue(
@@ -1031,6 +1038,35 @@ function ListenForWord()
       UpdateRoleBanner();
     }
   );
+
+  wordCategoryUnsubscribe = onValue(
+    ref(db, `rooms/${currentRoomCode}/currentState/wordCategory`),
+    (snapshot) =>
+    {
+      currentWordCategory = snapshot.val() || "";
+
+      UpdateRoleRevealScreen();
+      UpdateRoleBanner();
+      UpdateImpostorCategoryHints();
+    }
+  );
+}
+
+// Preenche todos os pontos onde o impostor vê a categoria (RoleReveal e
+// chute final). Some se a categoria ainda não chegou.
+function UpdateImpostorCategoryHints()
+{
+  const category = (currentWordCategory || "").toUpperCase();
+
+  document.querySelectorAll(".impostorCategoryValue").forEach(el =>
+  {
+    el.innerText = category;
+  });
+
+  document.querySelectorAll(".impostorCategoryHint").forEach(el =>
+  {
+    el.style.display = category ? "" : "none";
+  });
 }
 
 
@@ -1051,6 +1087,8 @@ function UpdateRoleRevealScreen()
   );
 
   document.getElementById("roleWordDisplay").innerText = currentSecretWord;
+
+  UpdateImpostorCategoryHints();
 
   document.getElementById("roleTopLabel").innerText = currentPlayerName
     ? currentPlayerName.toUpperCase()
@@ -1100,7 +1138,9 @@ function UpdateRoleBanner()
 
   if(isImpostor)
   {
-    text.innerText = "VOCÊ É O IMPOSTOR";
+    text.innerText = currentWordCategory
+      ? `VOCÊ É O IMPOSTOR · ${currentWordCategory.toUpperCase()}`
+      : "VOCÊ É O IMPOSTOR";
     banner.classList.add("impostor");
   }
   else
@@ -1424,6 +1464,8 @@ function OpenImpostorGuess()
     document.getElementById("impostorGuessDisplay").innerText = "";
     document.getElementById("sendGuessButton").disabled = false;
     document.getElementById("impostorGuessStatusText").innerText = "";
+
+    UpdateImpostorCategoryHints();
   }
 
   // ACOMPANHA O RESULTADO DO PALPITE — leitura do mesmo nó que o Unity já
@@ -1952,6 +1994,8 @@ function InitDevMode()
   playersCache = DEV_PLAYERS;
   currentImpostorId = "p3";
   currentSecretWord = "ESCADA";
+  currentWordCategory = "Lugares";
+  UpdateImpostorCategoryHints();
 
   const strip = document.getElementById("devStrip");
   strip.classList.add("active");
