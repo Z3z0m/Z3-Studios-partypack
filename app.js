@@ -316,6 +316,12 @@ window.joinRoom = async function()
         `Aposta/Aposta_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "Landlords")
+    {
+      window.location.href =
+        `Landlords/Landlords_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =
