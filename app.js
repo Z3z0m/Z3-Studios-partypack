@@ -322,6 +322,12 @@ window.joinRoom = async function()
         `Landlords/Landlords_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "FinalChapter")
+    {
+      window.location.href =
+        `FinalChapter/FinalChapter_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =
