@@ -109,7 +109,12 @@ let panelKey = null;
 let tradeBuilderKey = null;
 let pickedDice = [];
 let auctionPick = null; // { pos, isOwn }
+let auctionSeg = null;  // "gov" | "own" — botão ativo na escolha do leilão
 let rejectedTimeout = null;
+
+let activeTab = "agora";  // agora | locais | negociar | placar
+let tradeView = "list";   // list (propostas) | build (montar)
+let openHeld = new Set(); // cartas guardadas abertas (texto completo)
 
 let countdownInterval = null;
 let countdownKey = null;
@@ -143,9 +148,39 @@ function IsOwnable(space) { return space && (space.type === "property" || space.
 function GroupColor(space)
 {
   if(!space || !board) return "#666";
-  if(space.type === "transport") return "#4A5568";
+  if(space.type === "transport") return "#FFFFFF";
   const g = (board.groups || []).find(x => x.id === space.group);
   return g ? g.color : "#666";
+}
+
+// Nome do estado: grupo → group.region → regions[].name; transporte traz region direto.
+function RegionName(space)
+{
+  if(!space || !board) return "";
+  let regionId = space.region;
+  if(!regionId && space.group)
+  {
+    const g = (board.groups || []).find(x => x.id === space.group);
+    regionId = g && g.region;
+  }
+  const r = (board.regions || []).find(x => x.id === regionId);
+  return r ? r.name : "";
+}
+
+// Texto legível sobre uma cor de fundo qualquer (cores do JSON variam muito).
+function TextOn(hex)
+{
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if(!m) return "#FFFFFF";
+  const n = parseInt(m[1], 16);
+  const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.6 ? "#121316" : "#FFFFFF";
+}
+
+function JoinNames(names)
+{
+  if(names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
 }
 
 function GroupSpaces(groupId) { return (board.spaces || []).filter(s => s.type === "property" && s.group === groupId); }
@@ -210,6 +245,28 @@ function IsTradable(playerId, pos)
 function IsMyAction() { return table && table.actorId === currentPlayerId; }
 function HoldsCard(hold) { return heldCards.some(c => c.hold === hold); }
 
+// Fases em que o ator precisa tocar em algo (Moving/ShowCard/Idle não contam).
+const DecisionPhases = ["Roll", "JailChoice", "PickDice", "BuyDecision", "AuctionChoice", "Debt", "Manage"];
+
+// "Precisam de mim agora?" — usado no aviso da aba Agora e no contorno da placa.
+function NeedsMe()
+{
+  const me = Me();
+  if(!table || !me || me.bankrupt) return false;
+
+  if(IsMyAction() && DecisionPhases.includes(table.phase)) return true;
+
+  const a = table.auction;
+  if(table.phase === "Auction" && a && (a.eligible || []).includes(currentPlayerId) && !(a.calledOut || []).includes(currentPlayerId)) return true;
+
+  const v = table.vote;
+  if(table.phase === "Vote" && v && !v.closed && (v.voters || []).includes(currentPlayerId) && !(v.voted || []).includes(currentPlayerId)) return true;
+
+  if(table.phase === "RerollWindow" && HoldsCard("reroll")) return true;
+
+  return false;
+}
+
 
 // =========================
 // SCREEN SYSTEM
@@ -223,9 +280,28 @@ function ShowScreen(screenId)
 
 window.ShowTab = function(tab)
 {
-  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  activeTab = tab;
+  document.getElementById("playingScreen").dataset.tab = tab;
+  document.querySelectorAll(".navBtn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".tabBody").forEach(b => b.classList.toggle("active", b.id === `tab-${tab}`));
+  document.querySelectorAll(".dockSet").forEach(b => b.classList.toggle("active", b.id === `dock-${tab}`));
+  document.getElementById("mainScroll").scrollTop = 0;
+  RenderNavAlerts();
 };
+
+function RenderNavAlerts()
+{
+  if(!table || !board) return;
+
+  const agora = document.getElementById("agoraBadge");
+  const needsMe = activeTab !== "agora" && NeedsMe();
+  agora.innerText = needsMe ? "!" : "";
+  agora.classList.toggle("alert", needsMe);
+
+  // Dívida: aponta pra Locais (onde se vende/hipoteca) enquanto está em Agora.
+  const locais = document.getElementById("locaisBadge");
+  locais.innerText = activeTab === "agora" && table.phase === "Debt" && IsMyAction() ? "!" : "";
+}
 
 
 // =========================
@@ -234,6 +310,7 @@ window.ShowTab = function(tab)
 
 window.onload = function()
 {
+  document.getElementById("lobbyName").innerText = currentPlayerName || "";
   ListenForGameState();
   ListenForVisibilityRecovery();
   CheckIfHost();
@@ -259,6 +336,10 @@ async function CheckIfHost()
   const snapshot = await get(ref(db, `rooms/${currentRoomCode}/players/${currentPlayerId}/isHost`));
   isHost = snapshot.val() === true;
   UpdateHostButton(currentGameState);
+
+  // "Pular decisão atual" mora na faixa de botões da aba Agora.
+  panelKey = null;
+  RenderAll();
 }
 
 window.SendHostCommand = async function()
@@ -271,19 +352,17 @@ window.SendTutorialAction = async function(action)
   await set(ref(db, `rooms/${currentRoomCode}/tutorialAction`), { action: action, t: Date.now() });
 };
 
+// Os botões do host ficam em cada tela (.hostOnly): "Começar Jogo" no lobby,
+// controles no tutorial, "Jogar de Novo" no fim. Em Playing, "Pular decisão
+// atual" (mesmo efeito do timeout) é montado na faixa de botões — ver HostSkipHTML.
 function UpdateHostButton(state)
 {
-  if(!isHost) return;
+  document.body.classList.toggle("isHost", isHost);
+}
 
-  const btn = document.getElementById("hostButton");
-
-  // Playing: o host pode "pular" a decisão de quem está AFK (mesmo efeito do timeout).
-  const labels = { "Lobby": "Começar Jogo", "Playing": "Pular decisão atual", "FinalScore": "Jogar de Novo" };
-  const label = labels[state];
-
-  btn.style.display = label ? "block" : "none";
-  btn.classList.toggle("btnGhost", state === "Playing");
-  if(label) btn.innerText = label;
+function HostSkipHTML()
+{
+  return isHost ? Btn("Pular decisão atual", "SendHostCommand()", { kind: "ghost" }) : "";
 }
 
 
@@ -323,11 +402,7 @@ function ApplyGameState(gameState)
 
   if(gameState === "Lobby") { StopPlayingListeners(); ShowScreen("lobbyScreen"); }
 
-  if(gameState === "Tutorial")
-  {
-    ShowScreen("tutorialScreen");
-    document.getElementById("tutorialControls").style.display = isHost ? "flex" : "none";
-  }
+  if(gameState === "Tutorial") ShowScreen("tutorialScreen"); // controles: .hostOnly
 
   if(gameState === "Playing") { ShowScreen("playingScreen"); OpenPlaying(); }
 
@@ -373,6 +448,7 @@ async function OpenPlaying()
 
   panelKey = null;
   tradeBuilderKey = null;
+  SetTradeView(tradeView);
 
   const boardSnapshot = await get(ref(db, `rooms/${currentRoomCode}/currentState/boardInfo`));
   board = boardSnapshot.val();
@@ -410,6 +486,7 @@ function RenderAll()
   RenderTrades();
   RenderPlayers();
   RenderMiniLog();
+  RenderNavAlerts();
   SyncCountdown();
 }
 
@@ -423,7 +500,7 @@ function RenderMe()
   const me = Me();
   if(!me) return;
 
-  document.getElementById("meDot").style.background = PawnColors[me.colorIndex % PawnColors.length];
+  const color = me.bankrupt ? "#9AA0A8" : PawnColors[me.colorIndex % PawnColors.length];
   document.getElementById("meName").innerText = me.name;
 
   const space = Space(me.position);
@@ -431,15 +508,43 @@ function RenderMe()
   if(me.inJail) sub = `Na Prisão (${me.jailTurns}/${board.maxJailTurns || 3})`;
   if(me.pendingDiceMod) sub += ` · próxima jogada: ${DiceName(me.pendingDiceMod)}`;
   if(me.bankrupt) sub = "Faliu";
-  document.getElementById("mePlace").innerText = sub;
+
+  const band = document.getElementById("mePlace");
+  band.innerText = sub;
+  band.style.background = color;
+  band.style.color = TextOn(color);
+
+  document.getElementById("mePlate").classList.toggle("turn", NeedsMe());
 
   const cashEl = document.getElementById("meCash");
-  cashEl.innerText = me.bankrupt ? "—" : `$${me.cash}`;
+  cashEl.innerText = me.bankrupt ? "FALIU" : `$${me.cash}`;
+  cashEl.classList.toggle("out", !!me.bankrupt);
 
-  document.getElementById("heldCards").innerHTML = heldCards
-    .map(c => `<div class="heldCard" title="${Esc(c.text)}"><b>${Esc(c.title)}</b><span>${Esc(c.text)}</span></div>`)
+  RenderHeldCards();
+}
+
+// Compactas (só o título); tocar abre o texto completo.
+function HeldKey(c) { return `${c.hold}|${c.title}`; }
+
+function RenderHeldCards()
+{
+  const me = Me();
+  const cards = me && me.bankrupt ? [] : heldCards;
+
+  document.getElementById("heldCards").innerHTML = cards
+    .map((c, i) => `<button class="heldCard${openHeld.has(HeldKey(c)) ? " open" : ""}" onclick="ToggleHeld(${i})" aria-expanded="${openHeld.has(HeldKey(c))}">
+      <span class="heldTitle">${Esc(c.title)}</span><span class="heldText">${Esc(c.text)}</span></button>`)
     .join("");
 }
+
+window.ToggleHeld = function(i)
+{
+  const c = heldCards[i];
+  if(!c) return;
+  const key = HeldKey(c);
+  if(openHeld.has(key)) openHeld.delete(key); else openHeld.add(key);
+  RenderHeldCards();
+};
 
 
 // =========================
@@ -468,12 +573,51 @@ function RenderActionPanel()
   {
     panelKey = key;
     pickedDice = [];
-    if(phase !== "AuctionChoice") auctionPick = null;
-    el.innerHTML = BuildPanelHTML(phase, prompt, mine);
+    if(phase !== "AuctionChoice") { auctionPick = null; auctionSeg = null; }
+
+    const built = BuildPanelHTML(phase, prompt, mine);
+    el.innerHTML = built.body;
+    document.getElementById("dock-agora").innerHTML = built.dock || "";
+    if(activeTab === "agora") document.getElementById("mainScroll").scrollTop = 0;
+
     AnimateDice(el);
+    if(phase === "AuctionChoice" && mine) RestoreAuctionChoice();
   }
 
   UpdatePanelDynamic(phase);
+}
+
+// ---- peças do painel ----
+
+function Btn(label, onclick, o)
+{
+  o = o || {};
+  const kind = { primary: "btnPrimary", ghost: "btnGhost", danger: "btnDanger", light: "btnGhostLight" }[o.kind || "primary"];
+  const cls = ["btn", kind, o.big ? "btnBig" : "", o.half ? "btnHalf" : "", o.cls || ""].filter(Boolean).join(" ");
+  return `<button class="${cls}"${o.id ? ` id="${o.id}"` : ""}${o.disabled ? " disabled" : ""} onclick="${onclick}">${label}</button>`;
+}
+
+// Placa da fase. O relógio (.panelTimer) some sozinho quando não há contagem.
+function Head(title, o)
+{
+  o = o || {};
+  return `<div class="head${o.tone ? ` tone-${o.tone}` : ""}"><div class="headInner">
+    <div class="headText"><div class="headTitle">${title}</div>${o.small ? `<div class="headSmall">${o.small}</div>` : ""}</div>
+    ${o.timer === false ? "" : `<span class="timer panelTimer"></span>`}</div></div>`;
+}
+
+function Line(text, kind) { return `<p class="line${kind ? " " + kind : ""}">${text}</p>`; }
+
+function DiceCount(dice)
+{
+  if(dice === "3d6pick2") return 3;
+  if(dice && dice !== "2d6" && dice.startsWith("1")) return 1;
+  return 2;
+}
+
+function HeroDiceHTML(n)
+{
+  return `<div class="grow heroDice">${`<div class="heroDie">?</div>`.repeat(n)}</div>`;
 }
 
 // Pontinhos na grade 3×3 (mesma tabela de LandlordsDieUI.cs); acima de 6
@@ -504,11 +648,11 @@ function DiceHTML(roll)
     return `<span class="die${dim ? " dim" : ""}" data-final="${v}">${DieFaceHTML(v)}</span>`;
   }).join("");
 
-  const tag = roll.dice !== "2d6" ? `<span class="diceTag">${DiceName(roll.dice)}</span>` : "";
-  const total = roll.dice === "1d6back" ? `← ${values[0]}` : (roll.total || "");
-  const extra = (roll.doubles ? " · DUPLA!" : "") + (roll.rerolled ? " · Não valeu!" : "");
+  const tag = roll.dice && roll.dice !== "2d6" ? `<span class="diceTag">${DiceName(roll.dice)}</span>` : "";
+  const total = roll.dice === "1d6back" ? `← ${values[0]}` : (roll.total ? `= ${roll.total}` : "");
+  const extra = [roll.doubles ? "DUPLA!" : "", roll.rerolled ? "Não valeu!" : ""].filter(Boolean).join(" · ");
 
-  return `<div class="diceRow" data-serial="${roll.serial || 0}" data-max="${MaxFace(roll.dice)}">${tag}${faces}<span class="diceTotal">${total}${extra}</span></div>`;
+  return `<div class="diceRow" data-serial="${roll.serial || 0}" data-max="${MaxFace(roll.dice)}">${tag}${faces}<span class="diceTotal">${total}${extra ? `<small>${extra}</small>` : ""}</span></div>`;
 }
 
 // ANIMAÇÃO DE ROLAGEM: só na primeira vez que uma rolagem (serial) aparece
@@ -562,98 +706,194 @@ function SpaceCardHTML(pos)
   {
     const labels = ["Terreno", "1 casa", "2 casas", "3 casas", "Hotel"];
     rentRows = `<div class="rentTable">${s.rent.map((r, i) => `<span>${labels[i]}</span><b>$${r}</b>`).join("")}</div>
-      <p class="hint">Grupo completo sem construção: aluguel base em dobro. Casa $${s.houseCost} · Hotel $${s.hotelCost}</p>`;
+      <p class="spaceNote">Grupo completo sem construção: aluguel base em dobro. Casa $${s.houseCost} · Hotel $${s.hotelCost}</p>`;
   }
   else if(s.type === "transport")
   {
     const m = board.transportRentMultipliers || [4, 8, 15, 25];
-    rentRows = `<p class="hint">Aluguel = rolagem nova de 2d6 × ${m.join(" / ")} (1 a ${m.length} transportes do dono).</p>`;
+    rentRows = `<p class="spaceNote">Aluguel = rolagem nova de 2d6 × ${m.join(" / ")} (1 a ${m.length} transportes do dono).</p>`;
   }
 
-  return `<div class="spaceCard"><div class="spaceBand" style="background:${GroupColor(s)}">${Esc(s.group || "TRANSPORTE")}</div>
-    <div class="spaceName">${Esc(s.name)}</div><div class="spacePrice">$${s.price}</div>${rentRows}</div>`;
+  const region = RegionName(s).toUpperCase();
+  const kicker = s.type === "transport" ? `TRANSPORTE${region ? " · " + region : ""}` : region;
+  const color = GroupColor(s);
+  const group = GroupLineText(s);
+
+  return `<div class="spaceCard">
+    <div class="spaceBand" style="background:${color}; color:${TextOn(color)}"><div class="spaceBandInner">
+      <div class="spaceBandText"><div class="spaceState">${Esc(kicker)}</div><div class="spaceName">${Esc(s.name)}</div></div>
+      <div class="spacePrice">$${s.price}</div>
+    </div></div>
+    ${rentRows}
+    ${group ? `<div class="spaceGroup">${group}</div>` : ""}
+  </div>`;
+}
+
+// "No grupo: Arraial do Cabo e Búzios são de Bia · Urca está livre"
+function GroupLineText(space)
+{
+  const others = space.type === "transport"
+    ? (board.spaces || []).filter(s => s.type === "transport" && s.pos !== space.pos)
+    : GroupSpaces(space.group).filter(s => s.pos !== space.pos);
+
+  if(!others.length) return "";
+
+  const buckets = new Map(); // dono ("" = livre) → nomes
+  others.forEach(s =>
+  {
+    const owner = SpaceState(s.pos).ownerId || "";
+    if(!buckets.has(owner)) buckets.set(owner, []);
+    buckets.get(owner).push(Esc(s.name));
+  });
+
+  const parts = Array.from(buckets, ([owner, names]) =>
+  {
+    const many = names.length > 1;
+    const list = JoinNames(names);
+    if(!owner) return `${list} ${many ? "estão livres" : "está livre"}`;
+    if(owner === currentPlayerId) return `${list} ${many ? "são seus" : "é seu"}`;
+    return `${list} ${many ? "são" : "é"} de ${Esc(PlayerName(owner))}`;
+  });
+
+  return `${space.type === "transport" ? "Outros transportes" : "No grupo"}: ${parts.join(" · ")}`;
+}
+
+function CardHTML(card)
+{
+  const kind = ["imprevisto", "sorte", "global", "neutra"].includes(card.kind) ? card.kind : "imprevisto";
+
+  return `<div class="grow"><div class="drawnCard kind-${kind}"><div class="drawnInner">
+    <span class="cardIcon" aria-hidden="true"></span>
+    <div class="cardKind">${Esc(KindLabel(card.kind))} · ${Esc(PlayerName(card.drawnBy))}</div>
+    <div class="cardTitle">${Esc(card.title)}</div>
+    <div class="cardText">${Esc(card.text)}</div>
+  </div></div></div>`;
 }
 
 function BuildPanelHTML(phase, prompt, mine)
 {
-  const actor = PlayerName(table.actorId);
-  const timer = `<span id="panelTimer" class="timer"></span>`;
+  const actor = Esc(PlayerName(table.actorId));
   const me = Me();
+  const skip = HostSkipHTML();
+  const gray = { tone: "gray" };
 
-  if(me && me.bankrupt) return `<p class="phaseTitle">Você faliu.</p><p>Acompanhe a viagem pela TV!</p>`;
+  // Devolve { body, dock }: corpo rola no meio, dock fica fixo embaixo (polegar).
+  const out = (body, dock) => ({ body, dock: (dock || "") + skip });
+
+  if(me && me.bankrupt) return out(Head("Você faliu.", { tone: "dark", timer: false }) + Line("Acompanhe a viagem pela TV!"));
 
   switch(phase)
   {
     case "Roll":
-      if(!mine) return `<p class="phaseTitle">Vez de ${Esc(actor)} ${timer}</p><p>Rolando os dados...</p>`;
-      return `<p class="phaseTitle">SUA VEZ! ${timer}</p>
-        ${prompt.dice && prompt.dice !== "2d6" ? `<p class="warn">Carta ativa: role ${DiceName(prompt.dice)}</p>` : ""}
-        <button class="btn btnBig" onclick="Act('roll')">ROLAR ${DiceName(prompt.dice).toUpperCase()}</button>
-        ${prompt.canUse1d20 ? `<button class="btn btnGhost" onclick="Act('roll1d20')">Usar Pista livre (1d20)</button>` : ""}`;
+    {
+      if(!mine) return out(Head(`Vez de ${actor}`, gray) + Line("Rolando os dados...", "hint"));
+      return out(
+        Head("SUA VEZ!")
+        + (prompt.dice && prompt.dice !== "2d6" ? Line(`Carta ativa: role ${DiceName(prompt.dice)}`, "warn") : "")
+        + HeroDiceHTML(DiceCount(prompt.dice)),
+        Btn(`ROLAR ${DiceName(prompt.dice).toUpperCase()}`, "Act('roll')", { big: true })
+        + (prompt.canUse1d20 ? Btn("Usar Pista livre (1d20)", "Act('roll1d20')", { kind: "ghost" }) : ""));
+    }
 
     case "JailChoice":
-      if(!mine) return `<p class="phaseTitle">${Esc(actor)} está na Prisão ${timer}</p>`;
-      return `<p class="phaseTitle">Você está na Prisão ${timer}</p>
-        <button class="btn" onclick="Act('rollJail')">Tentar tirar dupla</button>
-        <button class="btn btnGhost" ${prompt.canPayJail ? "" : "disabled"} onclick="Act('payJail')">Pagar $${prompt.amount}</button>
-        ${prompt.canUseLawyer ? `<button class="btn btnGhost" onclick="Act('useLawyer')">Usar Advogado de plantão</button>` : ""}`;
+    {
+      if(!mine) return out(Head(`${actor} está na Prisão`, gray));
+      const maxJail = board.maxJailTurns || 3;
+      const fine = board.jailFine != null ? board.jailFine : prompt.amount;
+      return out(
+        Head("Você está na Prisão", { tone: "dark" })
+        + Line(`Dupla sai de graça. Na ${maxJail}ª tentativa sem dupla, paga $${fine} e sai.`, "hint")
+        + HeroDiceHTML(2),
+        Btn("Tentar tirar dupla", "Act('rollJail')")
+        + Btn(`Pagar $${prompt.amount}`, "Act('payJail')", { kind: "ghost", half: prompt.canUseLawyer, disabled: !prompt.canPayJail })
+        + (prompt.canUseLawyer ? Btn("Usar Advogado", "Act('useLawyer')", { kind: "ghost", half: true }) : ""));
+    }
 
     case "RerollWindow":
-      return `<p class="phaseTitle">Rolagem de ${Esc(PlayerName(table.lastRoll && table.lastRoll.rollerId))}</p>${DiceHTML(table.lastRoll)}
-        ${HoldsCard("reroll") ? `<button class="btn btnBig btnDanger" onclick="Act('reroll')">NÃO VALEU!</button>` : `<p class="hint">Alguém pode dizer "Não valeu!"...</p>`}`;
+    {
+      const roller = Esc(PlayerName(table.lastRoll && table.lastRoll.rollerId));
+      const can = HoldsCard("reroll");
+      return out(
+        Head(`Rolagem de ${roller}`, { tone: "yellow" }) + DiceHTML(table.lastRoll)
+        + (can ? "" : Line(`Alguém pode dizer "Não valeu!"...`, "hint")),
+        can ? Btn("NÃO VALEU!", "Act('reroll')", { kind: "danger", big: true }) : "");
+    }
 
     case "PickDice":
-      if(!mine) return `<p class="phaseTitle">${Esc(actor)} escolhe 2 dos 3 dados ${timer}</p>${DiceHTML(table.lastRoll)}`;
-      return `<p class="phaseTitle">Morador local: escolha 2 dados ${timer}</p>
-        <div class="diceRow">${(prompt.values || []).map((v, i) => `<button class="die pickable" id="pick${i}" onclick="TogglePick(${i})">${v}</button>`).join("")}</div>
-        <button id="confirmPick" class="btn" disabled onclick="ConfirmPick()">Andar</button>`;
+    {
+      if(!mine) return out(Head(`${actor} escolhe 2 dos 3 dados`, gray) + DiceHTML(table.lastRoll));
+      const dice = (prompt.values || []).map((v, i) =>
+        `<button class="die pickable" id="pick${i}" aria-label="Dado ${v}" onclick="TogglePick(${i})">${DieFaceHTML(v)}</button>`).join("");
+      return out(
+        Head("Morador local: escolha 2 dados") + `<div class="grow"><div id="pickRow" class="diceRow pickRow">${dice}</div></div>`,
+        Btn("Andar", "ConfirmPick()", { id: "confirmPick", disabled: true }));
+    }
 
     case "Moving":
-      return `<p class="phaseTitle">${Esc(actor)} na estrada...</p>${DiceHTML(table.lastRoll)}`;
+      return out(Head(`${actor} na estrada...`, gray) + DiceHTML(table.lastRoll));
 
     case "ShowCard":
-      const card = table.lastCard || {};
-      return `<div class="drawnCard kind-${Esc(card.kind)}"><p class="label">${Esc(KindLabel(card.kind))} · ${Esc(PlayerName(card.drawnBy))}</p>
-        <p class="cardTitle">${Esc(card.title)}</p><p>${Esc(card.text)}</p></div>`;
+      return out(CardHTML(table.lastCard || {}));
 
     case "BuyDecision":
-      if(!mine) return `<p class="phaseTitle">${Esc(actor)} decide se compra ${timer}</p>${SpaceCardHTML(prompt.pos)}`;
-      return `<p class="phaseTitle">Comprar? ${timer}</p>${SpaceCardHTML(prompt.pos)}
-        <div class="row">
-          <button class="btn" ${prompt.canAfford ? "" : "disabled"} onclick="Act('buy')">Comprar $${prompt.amount}</button>
-          <button class="btn btnGhost" onclick="Act('decline')">Não comprar</button>
-        </div>
-        ${prompt.canAfford ? "" : `<p class="warn">Dinheiro insuficiente.</p>`}`;
+    {
+      if(!mine) return out(Head(`${actor} decide se compra`, gray) + SpaceCardHTML(prompt.pos));
+      return out(
+        Head("Comprar?") + SpaceCardHTML(prompt.pos) + (prompt.canAfford ? "" : Line("Dinheiro insuficiente.", "warn")),
+        Btn(`Comprar $${prompt.amount}`, "Act('buy')", { half: true, disabled: !prompt.canAfford })
+        + Btn("Não comprar", "Act('decline')", { kind: "ghost", half: true }));
+    }
 
     case "AuctionChoice":
-      if(!mine) return `<p class="phaseTitle">${Esc(actor)} caiu no Leilão ${timer}</p><p>Escolhendo o que leiloar...</p>`;
-      return BuildAuctionChoiceHTML(timer);
+    {
+      if(!mine) return out(Head(`${actor} caiu no Leilão`, gray) + Line("Escolhendo o que leiloar...", "hint"));
+      const built = BuildAuctionChoiceHTML();
+      return out(built.body, built.dock);
+    }
 
     case "Auction":
-      return BuildAuctionHTML();
+    {
+      const built = BuildAuctionHTML();
+      return out(built.body, built.dock);
+    }
 
     case "Vote":
-      return BuildVoteHTML(timer);
+      return out(BuildVoteHTML());
 
     case "Debt":
-      if(!mine) return `<p class="phaseTitle">${Esc(actor)} precisa levantar $${prompt.amount} ${timer}</p>`;
-      return `<p class="phaseTitle warn">Você deve $${prompt.amount} ${timer}</p>
-        <p>${Esc(prompt.reason || "")} — para: ${Esc(PlayerName(prompt.creditorId))}. Você tem $${me ? me.cash : 0}.</p>
-        <p class="hint">Venda construções ou faça hipoteca em "Meus locais", ou negocie com alguém.</p>
-        <button class="btn btnDanger" onclick="ConfirmBankrupt()">Declarar falência</button>`;
+    {
+      if(!mine) return out(Head(`${actor} precisa levantar $${prompt.amount}`, gray));
+      const cash = me ? me.cash : 0;
+      const missing = (prompt.amount || 0) - cash;
+      const creditor = Esc(PlayerName(prompt.creditorId));
+      return out(
+        Head(`Você deve $${prompt.amount}`, { tone: "red" })
+        + Line(`${prompt.reason ? `${Esc(prompt.reason)} — para` : "Para"}: ${creditor}. Você tem $${cash}.`)
+        + (missing > 0 ? Line(`Faltam $${missing}`, "warn") : "")
+        + Line("Venda construções ou faça hipoteca em Locais, ou negocie com alguém.", "hint"),
+        Btn("Ver meus locais", "ShowTab('locais')")
+        + Btn("Declarar falência", "ConfirmBankrupt()", { kind: "danger" }));
+    }
 
     case "Manage":
-      if(!mine) return `<p class="phaseTitle">Vez de ${Esc(actor)} ${timer}</p><p>Construindo ou negociando...</p>`;
+    {
+      if(!mine) return out(Head(`Vez de ${actor}`, gray) + Line("Construindo ou negociando...", "hint"));
       const again = prompt.type === "manageRollAgain";
-      return `<p class="phaseTitle">${again ? "Dupla! Rola de novo" : "Construa ou negocie"} ${timer}</p>
-        <p class="hint">Construção e hipoteca em "Meus locais".</p>
-        <button class="btn btnBig" onclick="Act('endTurn')">${again ? "ROLAR DE NOVO" : "ENCERRAR TURNO"}</button>`;
+      return out(
+        Head(ManageTitle()) + Line("Construção e hipoteca em Locais.", "hint"),
+        Btn(again ? "ROLAR DE NOVO" : "ENCERRAR TURNO", "Act('endTurn')", { big: true }));
+    }
 
     default:
       // Idle logo depois de uma rolagem (antes do peão andar): é aqui que a
       // animação dos dados roda no celular.
-      return `<p class="phaseTitle">Vez de ${Esc(PlayerName(table.currentTurnPlayerId))}</p>${DiceHTML(table.lastRoll)}`;
+      return out(Head(`Vez de ${Esc(PlayerName(table.currentTurnPlayerId))}`, gray) + DiceHTML(table.lastRoll));
   }
+}
+
+function ManageTitle()
+{
+  return table.prompt && table.prompt.type === "manageRollAgain" ? "Dupla! Rola de novo" : "Construa ou negocie";
 }
 
 function KindLabel(kind)
@@ -673,6 +913,7 @@ window.TogglePick = function(i)
   else if(pickedDice.length < 2) pickedDice.push(i);
 
   document.querySelectorAll(".die.pickable").forEach((el, j) => el.classList.toggle("selected", pickedDice.includes(j)));
+  document.getElementById("pickRow").classList.toggle("hasPick", pickedDice.length > 0);
   document.getElementById("confirmPick").disabled = pickedDice.length !== 2;
 };
 
@@ -692,34 +933,81 @@ window.ConfirmBankrupt = function()
 // LEILÃO — escolha (casa 20)
 // =========================
 
-function BuildAuctionChoiceHTML(timer)
+function BuildAuctionChoiceHTML()
 {
   const free = (board.spaces || []).filter(s => IsOwnable(s) && !SpaceState(s.pos).ownerId);
   const own = MyPlaces();
 
+  if(!auctionSeg || (auctionSeg === "gov" && !free.length) || (auctionSeg === "own" && !own.length))
+    auctionSeg = free.length || !own.length ? "gov" : "own";
+
   const item = (s, isOwn) =>
     `<button class="pickItem" id="ap${s.pos}" onclick="PickAuctionSpace(${s.pos}, ${isOwn})">
-      <span class="swatch" style="background:${GroupColor(s)}"></span>${Esc(s.name)} <small>$${s.price}${isOwn && SpaceState(s.pos).level ? " · " + LevelLabel(SpaceState(s.pos).level) : ""}</small></button>`;
+      <span class="swatch" style="background:${GroupColor(s)}"></span>
+      <span class="pickName">${Esc(s.name)}</span>
+      <span class="pickPrice">$${s.price}${isOwn && SpaceState(s.pos).level ? " · " + LevelLabel(SpaceState(s.pos).level) : ""}</span></button>`;
 
-  return `<p class="phaseTitle">Leilão! O que vai à venda? ${timer}</p>
-    ${free.length ? `<p class="label">Livres do governo (você ganha 5% de cashback)</p><div class="pickList">${free.map(s => item(s, false)).join("")}</div>` : ""}
-    ${own.length ? `<p class="label">Seus locais (você define o preço inicial)</p><div class="pickList">${own.map(s => item(s, true)).join("")}</div>` : ""}
-    <div id="ownAuctionOptions" style="display:none">
-      <input id="auctionStartPrice" type="number" min="1" step="1" inputmode="numeric" placeholder="Preço inicial" />
-      <label id="withBuildingsRow" class="checkRow" style="display:none"><input id="auctionWithBuildings" type="checkbox" /> Vender junto com as construções (senão, são destruídas)</label>
-    </div>
-    <div class="row">
-      <button class="btn" id="confirmAuctionPick" disabled onclick="ConfirmAuctionPick()">Leiloar</button>
-      <button class="btn btnGhost" onclick="Act('auctionPass')">Passar</button>
-    </div>`;
+  const body = Head("Leilão! O que vai à venda?")
+    + `<div class="seg">
+        <button id="segGov" class="segBtn" ${free.length ? "" : "disabled"} onclick="SetAuctionSeg('gov')">Do governo</button>
+        <button id="segOwn" class="segBtn" ${own.length ? "" : "disabled"} onclick="SetAuctionSeg('own')">Meus locais</button>
+      </div>`
+    + (!free.length && !own.length ? Line("Nenhum local disponível pra leiloar.", "hint") : "")
+    + `<div id="segListGov" class="segList">
+        ${Line("Livres do governo (você ganha 5% de cashback)", "hint")}
+        <div class="pickList">${free.map(s => item(s, false)).join("")}</div>
+      </div>
+      <div id="segListOwn" class="segList">
+        ${Line("Seus locais (você define o preço inicial)", "hint")}
+        <div class="pickList">${own.map(s => item(s, true)).join("")}</div>
+        <div id="ownAuctionOptions" class="ownOptions" style="display:none">
+          <label class="fieldRow">Preço inicial
+            <input id="auctionStartPrice" class="numInput" type="number" min="1" step="1" inputmode="numeric" placeholder="$" />
+          </label>
+          <label id="withBuildingsRow" class="checkRow" style="display:none"><input id="auctionWithBuildings" type="checkbox" /> Vender junto com as construções (senão, são destruídas)</label>
+        </div>
+      </div>`;
+
+  const dock = Btn("Leiloar", "ConfirmAuctionPick()", { id: "confirmAuctionPick", half: true, disabled: true })
+    + Btn("Passar", "Act('auctionPass')", { kind: "ghost", half: true });
+
+  return { body, dock };
 }
+
+// Depois de (re)montar o painel: aplica o botão ativo e a seleção atual.
+function RestoreAuctionChoice()
+{
+  SetAuctionSeg(auctionSeg || "gov");
+  if(auctionPick && document.getElementById(`ap${auctionPick.pos}`)) PickAuctionSpace(auctionPick.pos, auctionPick.isOwn);
+}
+
+window.SetAuctionSeg = function(seg)
+{
+  auctionSeg = seg;
+
+  const gov = document.getElementById("segGov");
+  if(!gov) return;
+  gov.classList.toggle("active", seg === "gov");
+  document.getElementById("segOwn").classList.toggle("active", seg === "own");
+  document.getElementById("segListGov").style.display = seg === "gov" ? "" : "none";
+  document.getElementById("segListOwn").style.display = seg === "own" ? "" : "none";
+
+  // Seleção da outra lista não vale mais.
+  if(auctionPick && auctionPick.isOwn !== (seg === "own"))
+  {
+    auctionPick = null;
+    document.querySelectorAll(".pickItem").forEach(el => el.classList.remove("selected"));
+    document.getElementById("ownAuctionOptions").style.display = "none";
+    document.getElementById("confirmAuctionPick").disabled = true;
+  }
+};
 
 window.PickAuctionSpace = function(pos, isOwn)
 {
   auctionPick = { pos, isOwn };
 
   document.querySelectorAll(".pickItem").forEach(el => el.classList.toggle("selected", el.id === `ap${pos}`));
-  document.getElementById("ownAuctionOptions").style.display = isOwn ? "block" : "none";
+  document.getElementById("ownAuctionOptions").style.display = isOwn ? "flex" : "none";
   document.getElementById("withBuildingsRow").style.display = isOwn && SpaceState(pos).level ? "flex" : "none";
   document.getElementById("confirmAuctionPick").disabled = false;
 
@@ -751,36 +1039,43 @@ window.ConfirmAuctionPick = function()
 function BuildAuctionHTML()
 {
   const a = table.auction;
-  if(!a) return `<p class="phaseTitle">Leilão encerrando...</p>`;
+  if(!a) return { body: Head("Leilão encerrando...", { tone: "orange", timer: false }) };
 
   const eligible = (a.eligible || []).includes(currentPlayerId);
   const calledOut = (a.calledOut || []).includes(currentPlayerId);
   const who = a.type === "Government" ? "do governo" : `de ${Esc(PlayerName(a.sellerId))}`;
   const note = a.type === "Emergency" ? "Hipoteca: sem lance, o governo compra pela metade." : (a.withBuildings ? "Vai com as construções!" : "");
 
-  let controls;
+  let controls = "";
+  let dock = "";
 
-  if(!eligible) controls = `<p class="hint">Você está vendendo — só assiste.</p>`;
-  else if(calledOut) controls = `<p class="hint">Você saiu desse leilão.</p>`;
-  else controls = `
-    <input id="bidInput" type="number" min="1" step="1" inputmode="numeric" placeholder="Seu lance" />
-    <div class="row quickBids">
-      <button class="btn btnGhost" onclick="QuickBid(1)">+1</button>
-      <button class="btn btnGhost" onclick="QuickBid(10)">+10</button>
-      <button class="btn btnGhost" onclick="QuickBid(50)">+50</button>
-    </div>
-    <div class="row">
-      <button class="btn" id="bidButton" onclick="SendBid()">DAR LANCE</button>
-      <button class="btn btnGhost" id="calloutButton" onclick="Act('callout')">Sair</button>
-    </div>`;
+  if(!eligible) controls = Line("Você está vendendo — só assiste.", "hint");
+  else if(calledOut) controls = Line("Você saiu desse leilão.", "hint");
+  else
+  {
+    controls = `
+      <label class="fieldRow">Seu lance
+        <input id="bidInput" class="numInput numBig" type="number" min="1" step="1" inputmode="numeric" placeholder="$" />
+      </label>
+      <div class="quickBids">
+        <button class="btn btnGhost btnQuick" onclick="QuickBid(1)">+1</button>
+        <button class="btn btnGhost btnQuick" onclick="QuickBid(10)">+10</button>
+        <button class="btn btnGhost btnQuick" onclick="QuickBid(50)">+50</button>
+      </div>`;
 
-  return `<p class="phaseTitle">LEILÃO · ${Esc(Space(a.pos).name)} <small>${who}</small></p>
-    ${note ? `<p class="hint">${note}</p>` : ""}
-    <div class="auctionTop">
-      <div class="clock"><div id="clockWhite" class="ring ringWhite"></div><div id="clockYellow" class="ring ringYellow"></div><div class="clockHole"><span id="clockNumber">25</span></div></div>
-      <div class="auctionBid"><p class="label">Maior lance</p><p id="auctionHighest" class="bigNumber"></p><p id="auctionHighestName" class="hint"></p></div>
-    </div>
-    ${controls}`;
+    dock = Btn("DAR LANCE", "SendBid()", { id: "bidButton", half: true })
+      + Btn("Sair", "Act('callout')", { id: "calloutButton", kind: "ghost", half: true });
+  }
+
+  const body = Head(`LEILÃO · ${Esc(Space(a.pos).name)}`, { tone: "orange", small: who, timer: false })
+    + (note ? Line(note, "hint") : "")
+    + `<div class="bidTop">
+        <div id="clockWhite" class="clock" aria-hidden="true"><span class="clockGap"></span><span id="clockYellow" class="clockYellow"></span><span id="clockNumber" class="clockHole"></span></div>
+        <div class="led bidLed"><div id="auctionHighest" class="bidValue"></div><div id="auctionHighestName" class="bidWho"></div></div>
+      </div>`
+    + controls;
+
+  return { body, dock };
 }
 
 function UpdateAuctionDynamic()
@@ -869,8 +1164,8 @@ function TickAuctionClock()
   const wEl = document.getElementById("clockWhite");
   const nEl = document.getElementById("clockNumber");
 
-  if(yEl) yEl.style.background = `conic-gradient(#F2C230 ${yDeg}deg, transparent 0deg)`;
-  if(wEl) wEl.style.background = `conic-gradient(#F4F1EA ${wDeg}deg, rgba(255,255,255,.1) 0deg)`;
+  if(yEl) yEl.style.background = `conic-gradient(#F2C230 0 ${yDeg}deg, #33373D ${yDeg}deg 360deg)`;
+  if(wEl) wEl.style.background = `conic-gradient(#F4F1EA 0 ${wDeg}deg, #33373D ${wDeg}deg 360deg)`;
 
   if(nEl)
   {
@@ -890,7 +1185,17 @@ function StopAuctionClock()
 // VOTAÇÃO
 // =========================
 
-function BuildVoteHTML(timer)
+// Duas placas de estrada com setas opostas (opção 0 ←, opção 1 →).
+function VoteSignHTML(i, label, o)
+{
+  const arrow = `<svg width="62" height="38" viewBox="0 0 56 34" style="transform:scaleX(${i === 0 ? 1 : -1})" aria-hidden="true"><path d="M20 3 4 17l16 14v-9h32V12H20z" fill="currentColor"></path></svg>`;
+  const cls = ["voteSign", o.dim ? "dim" : "", o.lost ? "lost" : ""].filter(Boolean).join(" ");
+
+  return `<button class="${cls}"${o.enabled ? ` onclick="SendVote(${i})"` : " disabled"}>
+    <span class="voteSignInner">${arrow}<span class="voteLabel">${Esc(label)}</span>${o.count != null ? `<span class="voteCount">${o.count}</span>` : ""}</span></button>`;
+}
+
+function BuildVoteHTML()
 {
   const v = table.vote;
   if(!v) return "";
@@ -900,18 +1205,28 @@ function BuildVoteHTML(timer)
   if(v.closed)
   {
     const tally = v.tally || [0, 0];
-    return `<p class="phaseTitle">${Esc(v.title)}</p><p class="bigNumber">${Esc(options[0])}: ${tally[0]} · ${Esc(options[1])}: ${tally[1]}</p><p class="hint">A minoria paga $${v.amount}.</p>`;
+    return Head(Esc(v.title), { tone: "blue", timer: false })
+      + Line(`A minoria paga $${v.amount}.`, "hint")
+      + `<div class="grow voteRow">
+          ${VoteSignHTML(0, options[0], { count: tally[0], lost: tally[0] < tally[1] })}
+          ${VoteSignHTML(1, options[1], { count: tally[1], lost: tally[1] < tally[0] })}
+        </div>`;
   }
 
   const canVote = (v.voters || []).includes(currentPlayerId);
   const voted = (v.voted || []).includes(currentPlayerId);
 
-  return `<p class="phaseTitle">${Esc(v.title)} ${timer}</p><p class="hint">A minoria paga $${v.amount} ao governo. Empate: ninguém paga.</p>
-    ${!canVote ? "" : voted ? `<p>Voto registrado! Esperando os outros...</p>` : `
-      <div class="row">
-        <button class="btn btnBig" onclick="SendVote(0)">${Esc(options[0])}</button>
-        <button class="btn btnBig" onclick="SendVote(1)">${Esc(options[1])}</button>
-      </div>`}`;
+  // A escolha de cada um não é publicada (só "voted"): depois de votar, as
+  // duas placas ficam apagadas por igual.
+  const open = canVote && !voted;
+
+  return Head(Esc(v.title), { tone: "blue" })
+    + Line(`A minoria paga $${v.amount} ao governo. Empate: ninguém paga.`, "hint")
+    + (voted ? Line("Voto registrado! Esperando os outros...") : "")
+    + `<div class="grow voteRow">
+        ${VoteSignHTML(0, options[0], { enabled: open, dim: !open })}
+        ${VoteSignHTML(1, options[1], { enabled: open, dim: !open })}
+      </div>`;
 }
 
 window.SendVote = function(choice)
@@ -926,18 +1241,31 @@ window.SendVote = function(choice)
 
 function RenderPlaces()
 {
-  const el = document.getElementById("tab-places");
+  const el = document.getElementById("placesList");
   const places = MyPlaces();
-
-  if(!places.length) { el.innerHTML = `<p class="hint">Você ainda não tem locais.</p>`; return; }
-
   const manageable = IsMyAction() && (table.phase === "Manage" || table.phase === "Debt");
+
+  // Durante a Gestão/Dívida, a placa da fase (com o relógio) vem junto.
+  let head = "";
+  if(manageable && table.phase === "Debt")
+  {
+    const p = table.prompt || {};
+    const me = Me();
+    const missing = (p.amount || 0) - (me ? me.cash : 0);
+    head = Head(`Você deve $${p.amount}`, { tone: "red", small: missing > 0 ? `Faltam $${missing}` : "" });
+  }
+  else if(manageable) head = Head(ManageTitle());
+  document.getElementById("placesHead").innerHTML = head;
+
+  if(!places.length) { el.innerHTML = Line("Você ainda não tem locais.", "hint"); return; }
+
   const refundPct = 50;
 
   el.innerHTML = places.map(s =>
   {
     const st = SpaceState(s.pos);
     const full = s.type === "property" && OwnsFullGroup(currentPlayerId, s.group);
+    const color = GroupColor(s);
 
     let actions = "";
 
@@ -945,20 +1273,25 @@ function RenderPlaces()
     {
       if(s.type === "property" && table.phase === "Manage")
       {
-        actions += `<button class="btn btnSmall" ${CanBuild(s) ? "" : "disabled"} onclick="Act('build', ${s.pos})">+ ${(st.level || 0) >= 3 ? "Hotel" : "Casa"} $${NextBuildCost(s, st.level || 0)}</button>`;
+        actions += `<button class="actBtn solid" ${CanBuild(s) ? "" : "disabled"} onclick="Act('build', ${s.pos})">+ ${(st.level || 0) >= 3 ? "Hotel" : "Casa"} $${NextBuildCost(s, st.level || 0)}</button>`;
       }
 
       if(st.level)
       {
-        actions += `<button class="btn btnSmall btnGhost" ${CanSellBuilding(s) ? "" : "disabled"} onclick="Act('sellBuilding', ${s.pos})">Vender construção (+$${Math.floor(NextBuildCost(s, st.level - 1) * refundPct / 100)})</button>`;
+        actions += `<button class="actBtn" ${CanSellBuilding(s) ? "" : "disabled"} onclick="Act('sellBuilding', ${s.pos})">Vender +$${Math.floor(NextBuildCost(s, st.level - 1) * refundPct / 100)}</button>`;
       }
 
-      actions += `<button class="btn btnSmall btnGhost" ${table.auction ? "disabled" : ""} onclick="ConfirmMortgage(${s.pos})">Hipoteca</button>`;
+      actions += `<button class="actBtn" ${table.auction ? "disabled" : ""} onclick="ConfirmMortgage(${s.pos})">Hipoteca</button>`;
     }
 
-    return `<div class="placeRow">
-      <span class="swatch" style="background:${GroupColor(s)}"></span>
-      <div class="placeInfo"><b>${Esc(s.name)}</b><small>${s.type === "transport" ? "Transporte" : Esc(s.group)}${full ? " · grupo completo" : ""} ${LevelLabel(st.level)}</small></div>
+    const tag = s.type === "transport"
+      ? "Transporte"
+      : [full ? "grupo completo" : RegionName(s), LevelLabel(st.level)].filter(Boolean).join(" · ");
+
+    return `<div class="placeCard">
+      <div class="placeBand" style="background:${color}; color:${TextOn(color)}">
+        <div class="placeName">${Esc(s.name)}</div><div class="placeTag">${Esc(tag)}</div>
+      </div>
       <div class="placeActions">${actions}</div>
     </div>`;
   }).join("");
@@ -995,23 +1328,40 @@ function RenderTrades()
   };
 
   document.getElementById("incomingTrades").innerHTML = incoming.map(t => `
-    <div class="panel tradeCard">
-      <p><b>${Esc(PlayerName(t.fromId))}</b> oferece: ${describe(t.offerCash, t.offerPos)}</p>
-      <p>e pede: ${describe(t.requestCash, t.requestPos)}</p>
-      <div class="row">
-        <button class="btn btnSmall" onclick="TradeRespond('tradeAccept', '${t.id}')">Aceitar</button>
-        <button class="btn btnSmall btnGhost" onclick="TradeRespond('tradeReject', '${t.id}')">Recusar</button>
+    <div class="offerSign"><div class="offerInner">
+      <div class="offerTitle">Proposta de ${Esc(PlayerName(t.fromId))}</div>
+      <div class="offerLine">Oferece: <b>${describe(t.offerCash, t.offerPos)}</b></div>
+      <div class="offerLine">E pede: <b>${describe(t.requestCash, t.requestPos)}</b></div>
+      <div class="offerButtons">
+        <button class="btn btnPrimary btnMid" onclick="TradeRespond('tradeAccept', '${t.id}')">Aceitar</button>
+        <button class="btn btnGhostLight btnMid" onclick="TradeRespond('tradeReject', '${t.id}')">Recusar</button>
       </div>
-    </div>`).join("");
+    </div></div>`).join("");
 
   document.getElementById("outgoingTrades").innerHTML = outgoing.map(t => `
-    <div class="panel tradeCard">
-      <p>Pra <b>${Esc(PlayerName(t.toId))}</b>: você dá ${describe(t.offerCash, t.offerPos)} · pede ${describe(t.requestCash, t.requestPos)}</p>
-      <button class="btn btnSmall btnGhost" onclick="TradeRespond('tradeCancel', '${t.id}')">Cancelar</button>
+    <div class="outRow">
+      <div>Pra ${Esc(PlayerName(t.toId))}: você dá ${describe(t.offerCash, t.offerPos)} · pede ${describe(t.requestCash, t.requestPos)}</div>
+      <button class="btn btnGhost btnInline" onclick="TradeRespond('tradeCancel', '${t.id}')">Cancelar</button>
     </div>`).join("");
+
+  document.getElementById("tradeEmpty").style.display = incoming.length || outgoing.length ? "none" : "";
 
   RenderTradeBuilder();
 }
+
+// Negociar tem duas visões: propostas (list) e montar (build).
+window.SetTradeView = function(view)
+{
+  tradeView = view;
+  document.getElementById("tradeListView").style.display = view === "list" ? "" : "none";
+  document.getElementById("tradeBuildView").style.display = view === "build" ? "" : "none";
+
+  document.getElementById("dock-negociar").innerHTML = view === "list"
+    ? Btn("Montar proposta", "SetTradeView('build')")
+    : Btn("Voltar", "SetTradeView('list')", { kind: "ghost", half: true }) + Btn("Enviar proposta", "SendTradeProposal()", { half: true });
+
+  document.getElementById("mainScroll").scrollTop = 0;
+};
 
 window.RenderTradeBuilder = function()
 {
@@ -1033,8 +1383,8 @@ window.RenderTradeBuilder = function()
     .filter(s => IsOwnable(s) && SpaceState(s.pos).ownerId === playerId)
     .map(s => `<label class="checkRow ${IsTradable(playerId, s.pos) ? "" : "disabled"}">
       <input type="checkbox" data-pos="${s.pos}" class="${prefix}" ${IsTradable(playerId, s.pos) ? "" : "disabled"} />
-      <span class="swatch" style="background:${GroupColor(s)}"></span>${Esc(s.name)}</label>`)
-    .join("") || `<p class="hint">nenhum local</p>`;
+      <span class="swatch" style="background:${GroupColor(s)}"></span><span>${Esc(s.name)}</span></label>`)
+    .join("") || Line("nenhum local", "hint");
 
   document.getElementById("tradeOfferList").innerHTML = list(currentPlayerId, "offerPos");
   document.getElementById("tradeRequestList").innerHTML = selected ? list(selected, "requestPos") : "";
@@ -1067,6 +1417,8 @@ window.SendTradeProposal = function()
   document.getElementById("tradeOfferCash").value = "";
   document.getElementById("tradeRequestCash").value = "";
   tradeBuilderKey = null;
+  RenderTradeBuilder();
+  SetTradeView("list");
   ShowToast("Proposta enviada!");
 };
 
@@ -1082,7 +1434,7 @@ window.TradeRespond = function(type, tradeId)
 
 function RenderPlayers()
 {
-  const el = document.getElementById("tab-players");
+  const el = document.getElementById("scoreList");
 
   el.innerHTML = (table.seating || []).map(id =>
   {
@@ -1092,19 +1444,23 @@ function RenderPlayers()
     const places = (board.spaces || []).filter(s => IsOwnable(s) && SpaceState(s.pos).ownerId === id).length;
     const isTurn = id === table.currentTurnPlayerId;
 
-    return `<div class="playerRow${isTurn ? " turn" : ""}${p.bankrupt ? " bankrupt" : ""}">
-      <span class="dot" style="background:${PawnColors[p.colorIndex % PawnColors.length]}"></span>
-      <div class="placeInfo"><b>${Esc(p.name)}${id === currentPlayerId ? " (você)" : ""}</b>
-        <small>${places} locais · patrimônio $${p.netWorth}${p.inJail ? " · PRESO" : ""}${p.holdsReroll ? " · tem \"Não valeu!\"" : ""}</small></div>
-      <b class="money">${p.bankrupt ? "FALIU" : "$" + p.cash}</b>
+    return `<div class="scoreRow${isTurn ? " turn" : ""}${p.bankrupt ? " bankrupt" : ""}">
+      <div class="scoreStrip" style="background:${p.bankrupt ? "#9AA0A8" : PawnColors[p.colorIndex % PawnColors.length]}"></div>
+      <div class="scoreBody">
+        <div class="scoreTop"><span class="scoreName">${Esc(p.name)}${id === currentPlayerId ? " (você)" : ""}</span>
+          <span class="scoreCash${p.bankrupt ? " out" : ""}">${p.bankrupt ? "FALIU" : "$" + p.cash}</span></div>
+        <div class="scoreSub">${places} locais · patrimônio $${p.netWorth}${p.inJail ? " · PRESO" : ""}${p.holdsReroll ? " · tem \"Não valeu!\"" : ""}</div>
+      </div>
     </div>`;
   }).join("");
 }
 
+// Agora: só a última mensagem (LED). Placar: as 3 últimas, a mais nova em cima.
 function RenderMiniLog()
 {
   const log = table.log || [];
-  document.getElementById("miniLog").innerHTML = log.slice(-3).reverse().map(l => `<p>${Esc(l)}</p>`).join("");
+  document.getElementById("ledLine").innerText = log.length ? log[log.length - 1] : "";
+  document.getElementById("scoreLog").innerHTML = log.slice(-3).reverse().map(l => `<p>${Esc(l)}</p>`).join("");
 }
 
 
@@ -1137,8 +1493,9 @@ function SyncCountdown()
 
 function PaintCountdown()
 {
-  const el = document.getElementById("panelTimer");
-  if(el) el.innerText = countdownInterval && countdownRemaining > 0 ? `${countdownRemaining}s` : "";
+  // Pode haver mais de um relógio (Agora e o topo de Locais).
+  const text = countdownInterval && countdownRemaining > 0 ? `${countdownRemaining}s` : "";
+  document.querySelectorAll(".panelTimer").forEach(el => { el.innerText = text; });
 }
 
 function StopCountdown()
@@ -1184,11 +1541,12 @@ async function OpenFinalScore()
   document.getElementById("finalWinner").innerText = final.winnerId === currentPlayerId ? "VOCÊ VENCEU!" : (winner ? winner.name : "");
   document.getElementById("finalReason").innerText = reasons[final.reason] || "";
 
-  document.getElementById("finalRanking").innerHTML = ranking.map((r, i) => `
-    <div class="playerRow${r.id === currentPlayerId ? " turn" : ""}">
-      <b class="rank">${i + 1}º</b>
-      <span class="dot" style="background:${PawnColors[(r.colorIndex || 0) % PawnColors.length]}"></span>
-      <div class="placeInfo"><b>${Esc(r.name)}</b></div>
-      <b class="money">${r.bankrupt ? "FALIU" : "$" + r.netWorth}</b>
-    </div>`).join("");
+  document.getElementById("finalRanking").innerHTML = ranking.map((r, i) =>
+  {
+    const color = r.bankrupt ? "#9AA0A8" : PawnColors[(r.colorIndex || 0) % PawnColors.length];
+    return `<div class="rankRow${r.id === currentPlayerId ? " me" : ""}${r.bankrupt ? " bankrupt" : ""}">
+      <div class="rankNum" style="background:${color}; color:${TextOn(color)}">${i + 1}º</div>
+      <div class="rankBody"><span class="rankName">${Esc(r.name)}</span><span class="rankValue">${r.bankrupt ? "FALIU" : "$" + r.netWorth}</span></div>
+    </div>`;
+  }).join("");
 }

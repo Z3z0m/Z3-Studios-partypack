@@ -7,14 +7,14 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
   />
 
   <title>Landlord's</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
-    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Overpass:wght@500;700;800;900&family=Overpass+Mono:wght@600;700&family=Doto:wght@800;900&display=swap"
     rel="stylesheet"
   />
 
@@ -27,7 +27,7 @@
 
 <body>
 
-  <div class="container">
+  <div class="app">
 
     <!-- =========================
          LOBBY
@@ -35,10 +35,30 @@
 
     <div id="lobbyScreen" class="screen active">
 
-      <h1 class="wordmark">LANDLORD'S</h1>
-      <p class="subtitle">Edição Sudeste · ES → MG → RJ → SP</p>
+      <div class="screenBody">
 
-      <p>Esperando o anfitrião começar a viagem...</p>
+        <div class="sign">
+          <div class="signInner">
+            <div class="wordmark">Landlord's</div>
+            <div class="signSub">Edição Sudeste</div>
+            <div class="routeChips">
+              <span style="background:#8A5A2B">ES</span>→<span style="background:#07552F; box-shadow:0 0 0 1px #FFFFFF">MG</span>→<span style="background:#C8441A">RJ</span>→<span style="background:#1F6FB2">SP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="namePlate">
+          <div class="namePlateBand"></div>
+          <div id="lobbyName" class="namePlateName"></div>
+        </div>
+
+        <div class="led ledBig">Esperando o anfitrião começar a viagem...</div>
+
+      </div>
+
+      <div class="screenDock">
+        <button class="btn btnPrimary btnHuge hostOnly" onclick="SendHostCommand()">Começar Jogo</button>
+      </div>
 
     </div>
 
@@ -49,19 +69,19 @@
 
     <div id="tutorialScreen" class="screen">
 
-      <h2>COMO JOGAR</h2>
-
-      <p>Acompanhem a explicação das regras na TV!</p>
-
-      <div id="tutorialControls">
-
-        <div class="row">
-          <button class="btn" onclick="SendTutorialAction('prev')">← Anterior</button>
-          <button class="btn" onclick="SendTutorialAction('next')">Próxima →</button>
+      <div class="screenBody">
+        <div class="sign">
+          <div class="signInner">
+            <div class="signTitle">COMO JOGAR</div>
+            <div class="signSub">Acompanhem a explicação das regras na TV!</div>
+          </div>
         </div>
+      </div>
 
+      <div id="tutorialControls" class="screenDock hostOnly">
+        <button class="btn btnPrimary btnHalf" onclick="SendTutorialAction('prev')">← Anterior</button>
+        <button class="btn btnPrimary btnHalf" onclick="SendTutorialAction('next')">Próxima →</button>
         <button class="btn btnGhost" onclick="SendTutorialAction('skip')">Pular Tutorial</button>
-
       </div>
 
     </div>
@@ -71,65 +91,104 @@
          PLAYING
     ========================== -->
 
-    <div id="playingScreen" class="screen">
+    <div id="playingScreen" class="screen" data-tab="agora">
 
-      <!-- MEU STATUS -->
-      <div class="meCard">
-        <span id="meDot" class="dot"></span>
-        <div class="meInfo">
-          <div id="meName" class="meName"></div>
-          <div id="mePlace" class="meSub"></div>
+      <!-- MINHA PLACA (fixa) -->
+      <div class="plateWrap">
+        <div id="mePlate" class="mePlate">
+          <div id="mePlace" class="mePlateBand"></div>
+          <div class="mePlateRow">
+            <div id="meName" class="meName"></div>
+            <div id="meCash" class="meCash"></div>
+          </div>
         </div>
-        <div id="meCash" class="meCash">$0</div>
       </div>
 
+      <!-- CARTAS GUARDADAS (só na aba Agora) -->
       <div id="heldCards" class="heldCards"></div>
 
-      <!-- PAINEL DA FASE ATUAL (preenchido por RenderActionPanel) -->
-      <div id="actionPanel" class="panel"></div>
+      <!-- MEIO (rola) -->
+      <div id="mainScroll" class="mainScroll">
 
-      <!-- ABAS -->
-      <div class="tabs">
-        <button class="tab active" data-tab="places" onclick="ShowTab('places')">Meus locais</button>
-        <button class="tab" data-tab="trade" onclick="ShowTab('trade')">Negociar <span id="tradeBadge" class="badge"></span></button>
-        <button class="tab" data-tab="players" onclick="ShowTab('players')">Placar</button>
-      </div>
-
-      <div id="tab-places" class="tabBody active"></div>
-
-      <div id="tab-trade" class="tabBody">
-
-        <div id="incomingTrades"></div>
-
-        <div class="panel">
-          <p class="label">Propor negociação com:</p>
-          <select id="tradeTarget" onchange="RenderTradeBuilder()"></select>
-
-          <div class="tradeCols">
-            <div>
-              <p class="label">Você oferece</p>
-              <div id="tradeOfferList" class="checkList"></div>
-              <input id="tradeOfferCash" type="number" min="0" step="1" inputmode="numeric" placeholder="$ dinheiro" />
-            </div>
-            <div>
-              <p class="label">Você pede</p>
-              <div id="tradeRequestList" class="checkList"></div>
-              <input id="tradeRequestCash" type="number" min="0" step="1" inputmode="numeric" placeholder="$ dinheiro" />
-            </div>
-          </div>
-
-          <button class="btn" onclick="SendTradeProposal()">Enviar proposta</button>
+        <div id="tab-agora" class="tabBody active">
+          <!-- preenchido por RenderActionPanel -->
+          <div id="actionPanel" class="actionPanel"></div>
         </div>
 
-        <div id="outgoingTrades"></div>
+        <div id="tab-locais" class="tabBody">
+          <div id="placesHead"></div>
+          <div id="placesList" class="placesList"></div>
+        </div>
+
+        <div id="tab-negociar" class="tabBody">
+
+          <div id="tradeListView" class="tradeView">
+            <div id="incomingTrades" class="tradeStack"></div>
+            <div id="outgoingTrades" class="tradeStack"></div>
+            <p id="tradeEmpty" class="line hint">Nenhuma proposta no momento.</p>
+          </div>
+
+          <div id="tradeBuildView" class="tradeView" style="display:none">
+
+            <label class="fieldLabel">PROPOR NEGOCIAÇÃO COM
+              <select id="tradeTarget" onchange="RenderTradeBuilder()"></select>
+            </label>
+
+            <div class="tradeCols">
+              <div class="tradeCol">
+                <div class="tradeColTitle">VOCÊ OFERECE</div>
+                <div id="tradeOfferList" class="checkList"></div>
+                <input id="tradeOfferCash" class="cashInput" type="number" min="0" step="1" inputmode="numeric" placeholder="$ dinheiro" aria-label="Dinheiro oferecido" />
+              </div>
+              <div class="tradeCol">
+                <div class="tradeColTitle">VOCÊ PEDE</div>
+                <div id="tradeRequestList" class="checkList"></div>
+                <input id="tradeRequestCash" class="cashInput" type="number" min="0" step="1" inputmode="numeric" placeholder="$ dinheiro" aria-label="Dinheiro pedido" />
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div id="tab-placar" class="tabBody">
+          <div id="scoreList" class="scoreList"></div>
+          <div id="scoreLog" class="led ledLog"></div>
+        </div>
 
       </div>
 
-      <div id="tab-players" class="tabBody"></div>
+      <!-- BOTÕES (fixos, perto do polegar) -->
+      <div class="dock">
+        <div id="dock-agora" class="dockSet active"></div>
+        <div id="dock-negociar" class="dockSet"></div>
+      </div>
 
-      <div id="miniLog" class="miniLog"></div>
+      <!-- PAINEL DE MENSAGEM (última do log, só na aba Agora) -->
+      <div id="ledLine" class="led ledLine"></div>
 
-      <p id="rejectedText" class="toast"></p>
+      <!-- NAVEGAÇÃO (fixa) -->
+      <nav class="nav">
+        <button class="navBtn active" data-tab="agora" onclick="ShowTab('agora')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3 5 21M15 3l4 18M12 5v3M12 11v3M12 17v3"></path></svg>
+          <span>Agora</span>
+          <span id="agoraBadge" class="navBadge"></span>
+        </button>
+        <button class="navBtn" data-tab="locais" onclick="ShowTab('locais')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21zM12 7.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path></svg>
+          <span>Locais</span>
+          <span id="locaisBadge" class="navBadge"></span>
+        </button>
+        <button class="navBtn" data-tab="negociar" onclick="ShowTab('negociar')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"></path></svg>
+          <span>Negociar</span>
+          <span id="tradeBadge" class="navBadge"></span>
+        </button>
+        <button class="navBtn" data-tab="placar" onclick="ShowTab('placar')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-6M12 20V5M19 20v-9"></path></svg>
+          <span>Placar</span>
+        </button>
+      </nav>
 
     </div>
 
@@ -140,24 +199,38 @@
 
     <div id="finalScoreScreen" class="screen">
 
-      <p class="label">FIM DA VIAGEM</p>
-      <h1 id="finalWinner" class="wordmark"></h1>
-      <p id="finalReason" class="subtitle"></p>
+      <div class="screenBody">
 
-      <div id="finalRanking"></div>
+        <div class="sign">
+          <div class="signInner">
+            <div class="signKicker">FIM DA VIAGEM</div>
+            <div id="finalWinner" class="finalWinner"></div>
+            <div id="finalReason" class="signSub"></div>
+          </div>
+        </div>
 
-      <button class="btn btnGhost" onclick="window.location.href='../index.html'">Voltar ao Início</button>
+        <div id="finalRanking" class="rankList"></div>
+
+      </div>
+
+      <div class="screenDock">
+        <button class="btn btnPrimary hostOnly" onclick="SendHostCommand()">Jogar de Novo</button>
+        <button class="btn btnGhost" onclick="window.location.href='../index.html'">Voltar ao Início</button>
+      </div>
 
     </div>
 
-    <button id="hostButton" class="btn hostButton" style="display:none" onclick="SendHostCommand()">Começar Jogo</button>
+    <!-- AVISO DE AÇÃO RECUSADA -->
+    <p id="rejectedText" class="toast"></p>
 
   </div>
 
   <div id="pauseOverlay" class="pauseOverlay">
-    <div class="pauseOverlayCard">
-      <h2>Jogo Pausado</h2>
-      <p>Aguarde o host retomar...</p>
+    <div class="sign signYellow">
+      <div class="signInner">
+        <div class="signTitle">Jogo Pausado</div>
+        <div class="signSub">Aguarde o host retomar...</div>
+      </div>
     </div>
   </div>
 
