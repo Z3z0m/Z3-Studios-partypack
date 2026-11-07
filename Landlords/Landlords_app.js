@@ -218,10 +218,19 @@ function CanBuild(space)
   const me = Me();
   if(!me || space.type !== "property") return false;
   const st = SpaceState(space.pos);
-  if(st.ownerId !== currentPlayerId || !OwnsFullGroup(currentPlayerId, space.group)) return false;
-  if(st.level >= HotelLevel) return false;
-  const minLevel = Math.min(...GroupSpaces(space.group).map(s => SpaceState(s.pos).level || 0));
-  if((st.level || 0) > minLevel) return false;
+  if(st.ownerId !== currentPlayerId || st.level >= HotelLevel) return false;
+
+  // Parou na própria casa neste turno: 1 construção ali sem grupo completo
+  // nem construção por igual (prompt.canBuildHere, ver ValidateBuild no host).
+  const landedHere = table && table.phase === "Manage" && table.prompt && table.prompt.canBuildHere && table.prompt.pos === space.pos;
+
+  if(!landedHere)
+  {
+    if(!OwnsFullGroup(currentPlayerId, space.group)) return false;
+    const minLevel = Math.min(...GroupSpaces(space.group).map(s => SpaceState(s.pos).level || 0));
+    if((st.level || 0) > minLevel) return false;
+  }
+
   return me.cash >= NextBuildCost(space, st.level || 0);
 }
 
@@ -246,7 +255,7 @@ function IsMyAction() { return table && table.actorId === currentPlayerId; }
 function HoldsCard(hold) { return heldCards.some(c => c.hold === hold); }
 
 // Fases em que o ator precisa tocar em algo (Moving/ShowCard/Idle não contam).
-const DecisionPhases = ["Roll", "JailChoice", "PickDice", "BuyDecision", "AuctionChoice", "Debt", "Manage"];
+const DecisionPhases = ["Roll", "JailChoice", "PickDice", "BuyDecision", "AuctionChoice", "Debt", "Manage", "TransportRoll", "PayRent"];
 
 // "Precisam de mim agora?" — usado no aviso da aba Agora e no contorno da placa.
 function NeedsMe()
@@ -255,6 +264,9 @@ function NeedsMe()
   if(!table || !me || me.bankrupt) return false;
 
   if(IsMyAction() && DecisionPhases.includes(table.phase)) return true;
+
+  // Carta tirada: o host espera o "OK, li" de quem tirou.
+  if(IsMyAction() && table.phase === "ShowCard" && table.prompt && table.prompt.type === "cardOk") return true;
 
   const a = table.auction;
   if(table.phase === "Auction" && a && (a.eligible || []).includes(currentPlayerId) && !(a.calledOut || []).includes(currentPlayerId)) return true;
@@ -833,7 +845,39 @@ function BuildPanelHTML(phase, prompt, mine)
       return out(Head(`${actor} na estrada...`, gray) + DiceHTML(table.lastRoll));
 
     case "ShowCard":
-      return out(CardHTML(table.lastCard || {}));
+    {
+      // Quem tirou confirma que leu (o host segura o jogo até o OK ou o timeout).
+      const card = CardHTML(table.lastCard || {});
+      if(mine && prompt.type === "cardOk") return out(card, Btn("OK, LI A CARTA", "Act('ok')", { big: true }));
+      return out(card + (prompt.type === "cardOk" ? Line(`Esperando ${actor} ler a carta...`, "hint") : ""));
+    }
+
+    case "TransportRoll":
+    {
+      const place = Space(prompt.pos);
+      const placeName = Esc(place ? place.name : "Transporte");
+      const owner = Esc(PlayerName(prompt.creditorId));
+      if(!mine) return out(Head(`${actor} caiu em ${placeName}`, gray) + Line(`Vai rolar 2d6 × ${prompt.amount} pro aluguel de ${owner}.`, "hint"));
+      return out(
+        Head(`Transporte de ${owner}`, { tone: "orange" })
+        + Line(`${placeName}: aluguel = 2d6 × ${prompt.amount}.`)
+        + HeroDiceHTML(2),
+        Btn("ROLAR 2D6", "Act('roll')", { big: true }));
+    }
+
+    case "PayRent":
+    {
+      // Aluguel calculado: o jogador vê quanto e pra quem e confirma antes da cobrança.
+      const owner = Esc(PlayerName(prompt.creditorId));
+      const transportRoll = table.lastRoll && table.lastRoll.purpose === "transport";
+      if(!mine) return out(Head(`${actor} paga $${prompt.amount} a ${owner}`, gray) + (transportRoll ? DiceHTML(table.lastRoll) : SpaceCardHTML(prompt.pos)));
+      return out(
+        Head(`Aluguel: $${prompt.amount}`, { tone: "red" })
+        + Line(`${Esc(prompt.reason || "Esse local")} é de ${owner}. Você tem $${me ? me.cash : 0}.`)
+        + (transportRoll ? DiceHTML(table.lastRoll) : SpaceCardHTML(prompt.pos))
+        + (prompt.canAfford ? "" : Line("Dinheiro insuficiente: depois de confirmar, você vai precisar levantar o valor.", "warn")),
+        Btn(`PAGAR $${prompt.amount}`, "Act('ok')", { big: true }));
+    }
 
     case "BuyDecision":
     {
@@ -879,9 +923,19 @@ function BuildPanelHTML(phase, prompt, mine)
     {
       if(!mine) return out(Head(`Vez de ${actor}`, gray) + Line("Construindo ou negociando...", "hint"));
       const again = prompt.type === "manageRollAgain";
+
+      // Parou na própria casa: atalho pra construir lá (sem precisar do grupo).
+      const here = prompt.canBuildHere ? Space(prompt.pos) : null;
+      const hereSt = here ? SpaceState(here.pos) : null;
+      const hereBtn = here && CanBuild(here)
+        ? Btn(`+ ${(hereSt.level || 0) >= 3 ? "Hotel" : "Casa"} em ${Esc(here.name)} $${NextBuildCost(here, hereSt.level || 0)}`, `Act('build', ${here.pos})`)
+        : "";
+
       return out(
-        Head(ManageTitle()) + Line("Construção e hipoteca em Locais.", "hint"),
-        Btn(again ? "ROLAR DE NOVO" : "ENCERRAR TURNO", "Act('endTurn')", { big: true }));
+        Head(ManageTitle())
+        + (here ? Line(`Você parou em ${Esc(here.name)}: pode construir lá agora, mesmo sem o grupo completo.`, "warn") : "")
+        + Line("Construção e hipoteca em Locais.", "hint"),
+        hereBtn + Btn(again ? "ROLAR DE NOVO" : "ENCERRAR TURNO", "Act('endTurn')", { big: true }));
     }
 
     default:
@@ -1202,13 +1256,20 @@ function BuildVoteHTML()
 
   const options = v.options || ["A", "B"];
 
+  // "continue" = fim do tempo/rodadas: continuar a partida? (choice 0 = continuar).
+  const isContinue = v.kind === "continue";
+  const rule = isContinue
+    ? "A maioria decide. Empate encerra."
+    : `A minoria paga $${v.amount} ao governo. Quem não votar também paga.`;
+
   if(v.closed)
   {
     const tally = v.tally || [0, 0];
+    const tie = tally[0] === tally[1];
     return Head(Esc(v.title), { tone: "blue", timer: false })
-      + Line(`A minoria paga $${v.amount}.`, "hint")
+      + Line(v.result ? Esc(v.result) : rule, "hint")
       + `<div class="grow voteRow">
-          ${VoteSignHTML(0, options[0], { count: tally[0], lost: tally[0] < tally[1] })}
+          ${VoteSignHTML(0, options[0], { count: tally[0], lost: tally[0] < tally[1] || (isContinue && tie) })}
           ${VoteSignHTML(1, options[1], { count: tally[1], lost: tally[1] < tally[0] })}
         </div>`;
   }
@@ -1221,7 +1282,7 @@ function BuildVoteHTML()
   const open = canVote && !voted;
 
   return Head(Esc(v.title), { tone: "blue" })
-    + Line(`A minoria paga $${v.amount} ao governo. Empate: ninguém paga.`, "hint")
+    + Line(rule, "hint")
     + (voted ? Line("Voto registrado! Esperando os outros...") : "")
     + `<div class="grow voteRow">
         ${VoteSignHTML(0, options[0], { enabled: open, dim: !open })}
