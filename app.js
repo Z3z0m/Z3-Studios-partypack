@@ -328,6 +328,18 @@ window.joinRoom = async function()
         `FinalChapter/FinalChapter_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
     }
 
+    else if(detectedGameMode == "Ludo")
+    {
+      window.location.href =
+        `Ludo/Ludo_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
+    else if(detectedGameMode == "SemPiedade")
+    {
+      window.location.href =
+        `SemPiedade/SemPiedade_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+    }
+
     else
     {
       status.innerText =

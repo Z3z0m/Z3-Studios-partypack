@@ -112,9 +112,9 @@ let auctionPick = null; // { pos, isOwn }
 let auctionSeg = null;  // "gov" | "own" — botão ativo na escolha do leilão
 let rejectedTimeout = null;
 
-let activeTab = "agora";  // agora | locais | negociar | placar
-let tradeView = "list";   // list (propostas) | build (montar)
+let activeTab = "agora";  // agora | locais | negociar (proposta, sem botão na nav) | placar
 let openHeld = new Set(); // cartas guardadas abertas (texto completo)
+let openPlace = null;     // local aberto (card completo) na aba Locais
 
 let countdownInterval = null;
 let countdownKey = null;
@@ -122,6 +122,12 @@ let countdownRemaining = 0;
 
 let auctionInterval = null;
 let auctionClock = null; // { yellow, white, yellowTotal, whiteTotal, key }
+
+let autoRoll = null;            // { turn, type } — "Rolar de novo" já rola quando a fase Roll chegar
+let cardOkKey = null;           // painel em que o "OK" da carta já foi mandado (carta + botão = 1 OK só)
+let buyProposalUsed = null;     // "turno|local" em que a proposta já foi enviada ou fechada (uma chance só)
+let dismissedTrades = new Set(); // propostas recebidas já respondidas no pop-up
+let popupTradeKey = null;
 
 let unsubscribers = [];
 
@@ -253,6 +259,31 @@ function IsTradable(playerId, pos)
 
 function IsMyAction() { return table && table.actorId === currentPlayerId; }
 function HoldsCard(hold) { return heldCards.some(c => c.hold === hold); }
+
+// Proposta de COMPRA: só do local onde o jogador parou, na própria vez,
+// depois de resolver a casa (aluguel pago → fase Manage).
+function TradeHere()
+{
+  const me = Me();
+  if(!me || me.bankrupt || !IsMyAction() || table.phase !== "Manage") return null;
+
+  const space = Space(me.position);
+  if(!IsOwnable(space)) return null;
+
+  const ownerId = SpaceState(space.pos).ownerId;
+  if(!ownerId || ownerId === currentPlayerId) return null;
+
+  const owner = table.players[ownerId];
+  if(!owner || owner.bankrupt) return null;
+
+  return { pos: space.pos, ownerId, tradable: IsTradable(ownerId, space.pos) };
+}
+
+function CanBuildAny() { return MyPlaces().some(s => CanBuild(s)); }
+
+// Uma chance por parada: enviou ou fechou no "X", acabou.
+function BuyKey(here) { return `${table.turnNumber}|${here.pos}`; }
+function CanBuyHere() { const h = TradeHere(); return !!(h && h.tradable && BuyKey(h) !== buyProposalUsed); }
 
 // Fases em que o ator precisa tocar em algo (Moving/ShowCard/Idle não contam).
 const DecisionPhases = ["Roll", "JailChoice", "PickDice", "BuyDecision", "AuctionChoice", "Debt", "Manage", "TransportRoll", "PayRent"];
@@ -452,6 +483,7 @@ function StopPlayingListeners()
   unsubscribers = [];
   StopCountdown();
   StopAuctionClock();
+  HideTradePopup();
 }
 
 async function OpenPlaying()
@@ -460,7 +492,7 @@ async function OpenPlaying()
 
   panelKey = null;
   tradeBuilderKey = null;
-  SetTradeView(tradeView);
+  if(activeTab === "negociar") ShowTab("agora");
 
   const boardSnapshot = await get(ref(db, `rooms/${currentRoomCode}/currentState/boardInfo`));
   board = boardSnapshot.val();
@@ -578,7 +610,9 @@ function RenderActionPanel()
     table.auction ? `${table.auction.pos}|${table.auction.type}|${(table.auction.calledOut || []).includes(currentPlayerId)}` : "",
     table.vote ? `${table.vote.cardId}|${(table.vote.voted || []).includes(currentPlayerId)}|${table.vote.closed}` : "",
     phase === "RerollWindow" || phase === "Idle" ? JSON.stringify(table.lastRoll || {}) : "",
-    phase === "Manage" || phase === "Debt" ? me && me.cash : ""
+    phase === "Manage" || phase === "Debt" ? me && me.cash : "",
+    phase === "Manage" ? `${CanBuildAny()}|${CanBuyHere()}|${HoldsCard("roll1d20")}` : "",
+    JSON.stringify(table.orderRoll || "")
   ].join("#");
 
   if(key !== panelKey)
@@ -651,6 +685,9 @@ function DiceHTML(roll)
 {
   if(!roll || !roll.values) return "";
 
+  // Cada celular só mostra as PRÓPRIAS rolagens — as dos outros ficam na TV.
+  if(roll.rollerId && roll.rollerId !== currentPlayerId) return "";
+
   const values = roll.values || [];
   const picked = roll.picked || [];
 
@@ -707,23 +744,75 @@ function AnimateDice(container)
   if(total) total.style.animationDelay = `${750 + (dice.length - 1) * 120}ms`;
 }
 
-function SpaceCardHTML(pos)
+// MESMA CONTA de LandlordsGameManager.ComputePropertyRent / PayRent:
+// construção → rent[nível]; terreno → rent[0] (×2 com grupo completo);
+// depois cada modificador de carta soma +% (arredondando pra cima).
+// Transporte não tem valor fixo: 2d6 × multiplicador (pela qtd. do dono).
+function CeilPercent(value, percent)
+{
+  if(value <= 0 || percent <= 0) return 0;
+  return Math.floor((value * percent + 99) / 100);
+}
+
+function CurrentRent(space)
+{
+  const st = SpaceState(space.pos);
+  const tags = space.tags || [];
+  const transport = space.type === "transport";
+
+  // Feriadão (com tag) só vale pros locais da tag; transporte só pega os sem tag.
+  const mods = (table.modifiers || []).filter(m => m.tag == null || (!transport && tags.includes(m.tag)));
+  const notes = mods.map(m => `${m.title} +${m.percent}%`);
+
+  if(transport)
+  {
+    const m = board.transportRentMultipliers || [4, 8, 15, 25];
+    const count = Math.max(1, (board.spaces || []).filter(s => s.type === "transport" && SpaceState(s.pos).ownerId === st.ownerId).length);
+    const index = Math.min(count, m.length) - 1;
+    return { text: `2d6×${m[index]}${mods.length ? "+" : ""}`, index, notes };
+  }
+
+  const level = Math.min(st.level || 0, HotelLevel);
+  const full = level === 0 && !!st.ownerId && OwnsFullGroup(st.ownerId, space.group);
+
+  let amount = level > 0 ? space.rent[level] : space.rent[0] * (full ? 2 : 1);
+  mods.forEach(m => { amount += CeilPercent(amount, m.percent); });
+
+  if(full) notes.unshift("grupo completo ×2");
+  return { amount, text: `$${amount}`, index: level, notes };
+}
+
+// o.current: destaca em vermelho o aluguel que vale AGORA (aba Locais).
+function SpaceCardHTML(pos, o)
 {
   const s = Space(pos);
   if(!s) return "";
+
+  o = o || {};
+  const cur = o.current && IsOwnable(s) ? CurrentRent(s) : null;
+  const nowNote = cur && cur.notes.length ? `<p class="spaceNote nowNote">Agora: ${Esc(cur.notes.join(" · "))}</p>` : "";
 
   let rentRows = "";
 
   if(s.type === "property" && s.rent)
   {
     const labels = ["Terreno", "1 casa", "2 casas", "3 casas", "Hotel"];
-    rentRows = `<div class="rentTable">${s.rent.map((r, i) => `<span>${labels[i]}</span><b>$${r}</b>`).join("")}</div>
-      <p class="spaceNote">Grupo completo sem construção: aluguel base em dobro. Casa $${s.houseCost} · Hotel $${s.hotelCost}</p>`;
+    rentRows = `<div class="rentTable">${s.rent.map((r, i) => cur && cur.index === i
+        ? `<span class="now">${labels[i]} · agora</span><b class="now">$${cur.amount}</b>`
+        : `<span>${labels[i]}</span><b>$${r}</b>`).join("")}</div>
+      ${nowNote}
+      <div class="buildCosts">
+        <div class="buildCost"><span>Construir casa</span><b>$${s.houseCost}</b></div>
+        <div class="buildCost"><span>Construir hotel</span><b>$${s.hotelCost}</b></div>
+      </div>
+      <p class="spaceNote">Grupo completo sem construção: aluguel base em dobro.</p>`;
   }
   else if(s.type === "transport")
   {
     const m = board.transportRentMultipliers || [4, 8, 15, 25];
-    rentRows = `<p class="spaceNote">Aluguel = rolagem nova de 2d6 × ${m.join(" / ")} (1 a ${m.length} transportes do dono).</p>`;
+    const list = m.map((x, i) => cur && cur.index === i ? `<b class="now">${x}</b>` : x).join(" / ");
+    rentRows = `<p class="spaceNote">Aluguel = rolagem nova de 2d6 × ${list} (1 a ${m.length} transportes do dono).</p>`
+      + (cur ? `<p class="spaceNote nowNote">Agora: 2d6 × ${m[cur.index]}${cur.notes.length ? " · " + Esc(cur.notes.join(" · ")) : ""}</p>` : "");
   }
 
   const region = RegionName(s).toUpperCase();
@@ -770,11 +859,12 @@ function GroupLineText(space)
   return `${space.type === "transport" ? "Outros transportes" : "No grupo"}: ${parts.join(" · ")}`;
 }
 
-function CardHTML(card)
+function CardHTML(card, tappable)
 {
   const kind = ["imprevisto", "sorte", "global", "neutra"].includes(card.kind) ? card.kind : "imprevisto";
+  const tap = tappable ? ` tappable" role="button" tabindex="0" aria-label="OK" onclick="CardOk()` : "";
 
-  return `<div class="grow"><div class="drawnCard kind-${kind}"><div class="drawnInner">
+  return `<div class="grow"><div class="drawnCard kind-${kind}${tap}"><div class="drawnInner">
     <span class="cardIcon" aria-hidden="true"></span>
     <div class="cardKind">${Esc(KindLabel(card.kind))} · ${Esc(PlayerName(card.drawnBy))}</div>
     <div class="cardTitle">${Esc(card.title)}</div>
@@ -798,7 +888,29 @@ function BuildPanelHTML(phase, prompt, mine)
   {
     case "Roll":
     {
+      // Sorteio da ordem (antes do 1º turno): maior soma começa.
+      if(prompt.type === "orderRoll")
+      {
+        if(!mine) return out(Head(`Quem começa? Vez de ${actor}`, gray) + OrderRollHTML());
+        return out(
+          Head("QUEM COMEÇA?")
+          + Line("Role os dados: maior soma joga primeiro.", "hint")
+          + HeroDiceHTML(2)
+          + OrderRollHTML(),
+          Btn("ROLAR 2D6", "Act('roll')", { big: true }));
+      }
+
       if(!mine) return out(Head(`Vez de ${actor}`, gray) + Line("Rolando os dados...", "hint"));
+
+      // Tirou dupla e apertou "Rolar de novo": rola direto, sem segundo toque.
+      if(autoRoll && autoRoll.turn === table.turnNumber && prompt.type === "roll" && !isGamePaused)
+      {
+        const type = autoRoll.type === "roll1d20" && prompt.canUse1d20 ? "roll1d20" : "roll";
+        autoRoll = null;
+        setTimeout(() => Act(type), 0);
+        return out(Head("Rolando de novo...") + HeroDiceHTML(type === "roll1d20" ? 1 : DiceCount(prompt.dice)));
+      }
+
       return out(
         Head("SUA VEZ!")
         + (prompt.dice && prompt.dice !== "2d6" ? Line(`Carta ativa: role ${DiceName(prompt.dice)}`, "warn") : "")
@@ -823,10 +935,12 @@ function BuildPanelHTML(phase, prompt, mine)
 
     case "RerollWindow":
     {
-      const roller = Esc(PlayerName(table.lastRoll && table.lastRoll.rollerId));
+      const rollerId = table.lastRoll && table.lastRoll.rollerId;
+      const roller = Esc(PlayerName(rollerId));
       const can = HoldsCard("reroll");
       return out(
         Head(`Rolagem de ${roller}`, { tone: "yellow" }) + DiceHTML(table.lastRoll)
+        + (rollerId !== currentPlayerId ? Line("Confira os dados na TV.", "hint") : "")
         + (can ? "" : Line(`Alguém pode dizer "Não valeu!"...`, "hint")),
         can ? Btn("NÃO VALEU!", "Act('reroll')", { kind: "danger", big: true }) : "");
     }
@@ -847,8 +961,10 @@ function BuildPanelHTML(phase, prompt, mine)
     case "ShowCard":
     {
       // Quem tirou confirma que leu (o host segura o jogo até o OK ou o timeout).
-      const card = CardHTML(table.lastCard || {});
-      if(mine && prompt.type === "cardOk") return out(card, Btn("OK, LI A CARTA", "Act('ok')", { big: true }));
+      // Tocar na própria carta também vale como OK.
+      const canOk = mine && prompt.type === "cardOk";
+      const card = CardHTML(table.lastCard || {}, canOk);
+      if(canOk) return out(card, Btn("OK", "CardOk()", { big: true }));
       return out(card + (prompt.type === "cardOk" ? Line(`Esperando ${actor} ler a carta...`, "hint") : ""));
     }
 
@@ -870,7 +986,7 @@ function BuildPanelHTML(phase, prompt, mine)
       // Aluguel calculado: o jogador vê quanto e pra quem e confirma antes da cobrança.
       const owner = Esc(PlayerName(prompt.creditorId));
       const transportRoll = table.lastRoll && table.lastRoll.purpose === "transport";
-      if(!mine) return out(Head(`${actor} paga $${prompt.amount} a ${owner}`, gray) + (transportRoll ? DiceHTML(table.lastRoll) : SpaceCardHTML(prompt.pos)));
+      if(!mine) return out(Head(`${actor} paga $${prompt.amount} a ${owner}`, gray) + SpaceCardHTML(prompt.pos));
       return out(
         Head(`Aluguel: $${prompt.amount}`, { tone: "red" })
         + Line(`${Esc(prompt.reason || "Esse local")} é de ${owner}. Você tem $${me ? me.cash : 0}.`)
@@ -914,7 +1030,7 @@ function BuildPanelHTML(phase, prompt, mine)
         Head(`Você deve $${prompt.amount}`, { tone: "red" })
         + Line(`${prompt.reason ? `${Esc(prompt.reason)} — para` : "Para"}: ${creditor}. Você tem $${cash}.`)
         + (missing > 0 ? Line(`Faltam $${missing}`, "warn") : "")
-        + Line("Venda construções ou faça hipoteca em Locais, ou negocie com alguém.", "hint"),
+        + Line("Venda construções ou faça hipoteca em Locais.", "hint"),
         Btn("Ver meus locais", "ShowTab('locais')")
         + Btn("Declarar falência", "ConfirmBankrupt()", { kind: "danger" }));
     }
@@ -931,24 +1047,111 @@ function BuildPanelHTML(phase, prompt, mine)
         ? Btn(`+ ${(hereSt.level || 0) >= 3 ? "Hotel" : "Casa"} em ${Esc(here.name)} $${NextBuildCost(here, hereSt.level || 0)}`, `Act('build', ${here.pos})`)
         : "";
 
+      // Só oferece construir/negociar quando dá pra fazer de fato.
+      const trade = TradeHere();
+      const canBuy = CanBuyHere();
+      const can1d20 = again && HoldsCard("roll1d20") && me && !me.pendingDiceMod;
+
+      const endBtn = again
+        ? Btn("ROLAR DE NOVO", "RollAgain('roll')", { big: true })
+          + (can1d20 ? Btn("Rolar com Pista livre (1d20)", "RollAgain('roll1d20')", { kind: "ghost" }) : "")
+        : Btn("ENCERRAR TURNO", "Act('endTurn')", { big: true });
+
       return out(
         Head(ManageTitle())
         + (here ? Line(`Você parou em ${Esc(here.name)}: pode construir lá agora, mesmo sem o grupo completo.`, "warn") : "")
-        + Line("Construção e hipoteca em Locais.", "hint"),
-        hereBtn + Btn(again ? "ROLAR DE NOVO" : "ENCERRAR TURNO", "Act('endTurn')", { big: true }));
+        + (CanBuildAny() ? Line("Construção e hipoteca em Locais.", "hint") : "")
+        + (canBuy ? Line(`Quer ${Esc(Space(trade.pos).name)}? Faça uma proposta de compra a ${Esc(PlayerName(trade.ownerId))}.`, "hint") : ""),
+        hereBtn
+        + (canBuy ? Btn("Fazer proposta", "OpenBuyProposal()", { kind: "ghost" }) : "")
+        + endBtn);
     }
 
     default:
+      if(table.orderRoll && table.orderRoll.active)
+      {
+        const o = table.orderRoll;
+        if(o.done) return out(Head("Ordem definida!", { timer: false }) + OrderRollHTML());
+        if(o.tiePause) return out(Head("Empate! Rolam de novo", { tone: "yellow", timer: false }) + OrderRollHTML());
+        return out(Head("Quem começa?", gray) + DiceHTML(table.lastRoll) + OrderRollHTML());
+      }
+
       // Idle logo depois de uma rolagem (antes do peão andar): é aqui que a
       // animação dos dados roda no celular.
       return out(Head(`Vez de ${Esc(PlayerName(table.currentTurnPlayerId))}`, gray) + DiceHTML(table.lastRoll));
   }
 }
 
+// Lista do sorteio da ordem: quanto cada um tirou (desempates com "/"); no
+// fim, na ordem de jogo com a posição.
+function OrderRollHTML()
+{
+  const o = table.orderRoll;
+  if(!o) return "";
+
+  const ids = o.done && o.order ? o.order : (table.seating || []);
+  const tied = o.tied || [];
+
+  const rows = ids.map((id, i) =>
+  {
+    const p = table.players[id];
+    if(!p) return "";
+
+    const rolls = (o.rolls && o.rolls[id]) || [];
+    const value = rolls.length ? rolls.join(" / ") : "…";
+    const rank = o.done ? `<span class="orderRank">${i + 1}º</span>` : "";
+    const tie = !o.done && tied.includes(id) ? `<small>EMPATE</small>` : "";
+    const rolling = !o.done && table.phase === "Roll" && table.actorId === id;
+
+    return `<div class="orderRow${rolling ? " rolling" : ""}">
+      <span class="orderStrip" style="background:${PawnColors[p.colorIndex % PawnColors.length]}"></span>
+      ${rank}<span class="orderName">${Esc(p.name)}${id === currentPlayerId ? " (você)" : ""}</span>
+      <span class="orderValue">${value}${tie}</span>
+    </div>`;
+  }).join("");
+
+  return `<div class="orderList">${rows}</div>`;
+}
+
 function ManageTitle()
 {
-  return table.prompt && table.prompt.type === "manageRollAgain" ? "Dupla! Rola de novo" : "Construa ou negocie";
+  if(table.prompt && table.prompt.type === "manageRollAgain") return "Dupla! Rola de novo";
+  return CanBuildAny() || CanBuyHere() ? "Construa ou negocie" : "Fim da jogada";
 }
+
+window.RollAgain = function(type)
+{
+  if(isGamePaused) return;
+  autoRoll = { turn: table.turnNumber, type };
+  Act("endTurn");
+};
+
+window.CardOk = function()
+{
+  if(isGamePaused || cardOkKey === panelKey) return;
+  cardOkKey = panelKey;
+  Act("ok");
+};
+
+window.OpenBuyProposal = function()
+{
+  if(!CanBuyHere()) return;
+
+  document.getElementById("tradeOfferCash").value = "";
+  tradeBuilderKey = null;
+  RenderTradeBuilder();
+  ShowTab("negociar");
+};
+
+// Fechar no "X" (ou a vez acabar) gasta a chance da proposta.
+window.CloseBuyProposal = function()
+{
+  const here = TradeHere();
+  if(here) buyProposalUsed = BuyKey(here);
+  panelKey = null;
+  ShowTab("agora");
+  RenderAll();
+};
 
 function KindLabel(kind)
 {
@@ -1325,7 +1528,6 @@ function RenderPlaces()
   el.innerHTML = places.map(s =>
   {
     const st = SpaceState(s.pos);
-    const full = s.type === "property" && OwnsFullGroup(currentPlayerId, s.group);
     const color = GroupColor(s);
 
     let actions = "";
@@ -1345,18 +1547,24 @@ function RenderPlaces()
       actions += `<button class="actBtn" ${table.auction ? "disabled" : ""} onclick="ConfirmMortgage(${s.pos})">Hipoteca</button>`;
     }
 
-    const tag = s.type === "transport"
-      ? "Transporte"
-      : [full ? "grupo completo" : RegionName(s), LevelLabel(st.level)].filter(Boolean).join(" · ");
+    // Fechado: só o nome + aluguel de agora. Tocar abre o card completo;
+    // tocar de novo (ou em outro local) fecha.
+    const open = openPlace === s.pos;
+    const header = open
+      ? `<div class="placeInfo" role="button" tabindex="0" aria-expanded="true" onclick="TogglePlace(${s.pos})">${SpaceCardHTML(s.pos, { current: true })}</div>`
+      : `<button class="placeBand" style="background:${color}; color:${TextOn(color)}" aria-expanded="false" onclick="TogglePlace(${s.pos})">
+          <span class="placeName">${Esc(s.name)}</span><span class="placeRent">${CurrentRent(s).text}</span>
+        </button>`;
 
-    return `<div class="placeCard">
-      <div class="placeBand" style="background:${color}; color:${TextOn(color)}">
-        <div class="placeName">${Esc(s.name)}</div><div class="placeTag">${Esc(tag)}</div>
-      </div>
-      <div class="placeActions">${actions}</div>
-    </div>`;
+    return `<div class="placeCard${open ? " open" : ""}">${header}<div class="placeActions">${actions}</div></div>`;
   }).join("");
 }
+
+window.TogglePlace = function(pos)
+{
+  openPlace = openPlace === pos ? null : pos;
+  RenderPlaces();
+};
 
 window.ConfirmMortgage = function(pos)
 {
@@ -1372,120 +1580,128 @@ window.ConfirmMortgage = function(pos)
 // NEGOCIAÇÃO
 // =========================
 
+// Negociação só existe como PROPOSTA DE COMPRA: o jogador da vez parou no
+// local de alguém, pagou o aluguel e toca em "Fazer proposta" (uma chance).
+// Quem recebe responde num pop-up — não há aba nem lista de propostas.
 function RenderTrades()
 {
-  const trades = table.trades || [];
-  const incoming = trades.filter(t => t.toId === currentPlayerId);
-  const outgoing = trades.filter(t => t.fromId === currentPlayerId);
+  const incoming = (table.trades || []).filter(t => t.toId === currentPlayerId);
+  RenderTradePopup(incoming);
 
-  const badge = document.getElementById("tradeBadge");
-  badge.innerText = incoming.length ? incoming.length : "";
-
-  const describe = (cash, positions) =>
+  if(activeTab === "negociar")
   {
-    const parts = (positions || []).map(p => Esc(Space(p).name));
-    if(cash) parts.push(`$${cash}`);
-    return parts.length ? parts.join(", ") : "nada";
-  };
-
-  document.getElementById("incomingTrades").innerHTML = incoming.map(t => `
-    <div class="offerSign"><div class="offerInner">
-      <div class="offerTitle">Proposta de ${Esc(PlayerName(t.fromId))}</div>
-      <div class="offerLine">Oferece: <b>${describe(t.offerCash, t.offerPos)}</b></div>
-      <div class="offerLine">E pede: <b>${describe(t.requestCash, t.requestPos)}</b></div>
-      <div class="offerButtons">
-        <button class="btn btnPrimary btnMid" onclick="TradeRespond('tradeAccept', '${t.id}')">Aceitar</button>
-        <button class="btn btnGhostLight btnMid" onclick="TradeRespond('tradeReject', '${t.id}')">Recusar</button>
-      </div>
-    </div></div>`).join("");
-
-  document.getElementById("outgoingTrades").innerHTML = outgoing.map(t => `
-    <div class="outRow">
-      <div>Pra ${Esc(PlayerName(t.toId))}: você dá ${describe(t.offerCash, t.offerPos)} · pede ${describe(t.requestCash, t.requestPos)}</div>
-      <button class="btn btnGhost btnInline" onclick="TradeRespond('tradeCancel', '${t.id}')">Cancelar</button>
-    </div>`).join("");
-
-  document.getElementById("tradeEmpty").style.display = incoming.length || outgoing.length ? "none" : "";
-
-  RenderTradeBuilder();
+    // A vez acabou/mudou de fase com a tela aberta: fecha (e gasta a chance).
+    if(!CanBuyHere()) { CloseBuyProposal(); return; }
+    RenderTradeBuilder();
+  }
 }
 
-// Negociar tem duas visões: propostas (list) e montar (build).
-window.SetTradeView = function(view)
+function DescribeTradeSide(cash, positions)
 {
-  tradeView = view;
-  document.getElementById("tradeListView").style.display = view === "list" ? "" : "none";
-  document.getElementById("tradeBuildView").style.display = view === "build" ? "" : "none";
+  const parts = (positions || []).map(p => Esc(Space(p).name));
+  if(cash) parts.push(`$${cash}`);
+  return parts.length ? parts.join(", ") : "nada";
+}
 
-  document.getElementById("dock-negociar").innerHTML = view === "list"
-    ? Btn("Montar proposta", "SetTradeView('build')")
-    : Btn("Voltar", "SetTradeView('list')", { kind: "ghost", half: true }) + Btn("Enviar proposta", "SendTradeProposal()", { half: true });
+// t (timestamp da proposta) entra na chave: os ids ("t1"...) recomeçam numa
+// partida nova.
+function TradeKey(t) { return `${t.id}|${t.t}`; }
 
-  document.getElementById("mainScroll").scrollTop = 0;
-};
-
-window.RenderTradeBuilder = function()
+// Proposta recebida: pop-up por cima de qualquer aba, até aceitar ou recusar.
+function RenderTradePopup(incoming)
 {
-  const select = document.getElementById("tradeTarget");
-  const others = (table.seating || []).filter(id => id !== currentPlayerId && table.players[id] && !table.players[id].bankrupt);
+  const el = document.getElementById("tradePopup");
+  const me = Me();
+  const t = me && !me.bankrupt ? incoming.find(x => !dismissedTrades.has(TradeKey(x))) : null;
+  const key = t ? TradeKey(t) : null;
 
-  const selected = others.includes(select.value) ? select.value : others[0];
+  if(key === popupTradeKey) return;
+  popupTradeKey = key;
 
-  // Reconstrói só quando muda o alvo ou a posse de algum local — senão
+  el.classList.toggle("active", !!t);
+  if(!t) { el.innerHTML = ""; return; }
+
+  if(navigator.vibrate) navigator.vibrate(60);
+
+  el.innerHTML = `<div class="offerSign modalCard" role="dialog" aria-modal="true" aria-labelledby="tradePopupTitle"><div class="offerInner">
+    <div id="tradePopupTitle" class="offerTitle">Proposta de ${Esc(PlayerName(t.fromId))}</div>
+    <div class="offerLine">Oferece: <b>${DescribeTradeSide(t.offerCash, t.offerPos)}</b></div>
+    <div class="offerLine">E pede: <b>${DescribeTradeSide(t.requestCash, t.requestPos)}</b></div>
+    <div class="offerButtons">
+      <button class="btn btnPrimary btnMid" onclick="TradeRespond('tradeAccept', '${t.id}')">Aceitar</button>
+      <button class="btn btnGhostLight btnMid" onclick="TradeRespond('tradeReject', '${t.id}')">Recusar</button>
+    </div>
+  </div></div>`;
+}
+
+function HideTradePopup()
+{
+  popupTradeKey = null;
+  const el = document.getElementById("tradePopup");
+  el.classList.remove("active");
+  el.innerHTML = "";
+}
+
+function RenderTradeBuilder()
+{
+  const here = TradeHere();
+  if(!here) return;
+
+  // Reconstrói só quando muda o local ou a posse de algum local — senão
   // perderia as caixas marcadas a cada atualização da mesa.
-  const key = `${others.join(",")}|${selected}|${JSON.stringify((table.board || []).map(s => s ? `${s.ownerId}:${s.level}` : ""))}`;
+  const key = `${here.pos}|${here.ownerId}|${JSON.stringify((table.board || []).map(s => s ? `${s.ownerId}:${s.level}` : ""))}`;
   if(key === tradeBuilderKey) return;
   tradeBuilderKey = key;
 
-  select.innerHTML = others.map(id => `<option value="${id}">${Esc(PlayerName(id))}</option>`).join("");
-  if(selected) select.value = selected;
+  const space = Space(here.pos);
+  document.getElementById("proposalSub").innerText = `${space.name} · de ${PlayerName(here.ownerId)}`;
 
-  const list = (playerId, prefix) => (board.spaces || [])
-    .filter(s => IsOwnable(s) && SpaceState(s.pos).ownerId === playerId)
-    .map(s => `<label class="checkRow ${IsTradable(playerId, s.pos) ? "" : "disabled"}">
-      <input type="checkbox" data-pos="${s.pos}" class="${prefix}" ${IsTradable(playerId, s.pos) ? "" : "disabled"} />
-      <span class="swatch" style="background:${GroupColor(s)}"></span><span>${Esc(s.name)}</span></label>`)
+  document.getElementById("tradeOfferList").innerHTML = (board.spaces || [])
+    .filter(s => IsOwnable(s) && SpaceState(s.pos).ownerId === currentPlayerId)
+    .map(s =>
+    {
+      const ok = IsTradable(currentPlayerId, s.pos);
+      return `<label class="checkRow ${ok ? "" : "disabled"}">
+        <input type="checkbox" data-pos="${s.pos}" class="offerPos" ${ok ? "" : "disabled"} />
+        <span class="swatch" style="background:${GroupColor(s)}"></span><span>${Esc(s.name)}</span></label>`;
+    })
     .join("") || Line("nenhum local", "hint");
 
-  document.getElementById("tradeOfferList").innerHTML = list(currentPlayerId, "offerPos");
-  document.getElementById("tradeRequestList").innerHTML = selected ? list(selected, "requestPos") : "";
-};
+  // Pedido fixo: o local onde você parou.
+  document.getElementById("tradeRequestList").innerHTML =
+    `<div class="checkRow"><span class="swatch" style="background:${GroupColor(space)}"></span><span>${Esc(space.name)}</span></div>`;
+}
 
 window.SendTradeProposal = function()
 {
-  const targetId = document.getElementById("tradeTarget").value;
-  if(!targetId) { ShowToast("Escolha com quem negociar."); return; }
+  const here = TradeHere();
+  if(!here || !CanBuyHere()) { CloseBuyProposal(); return; }
 
-  const checked = cls => Array.from(document.querySelectorAll(`input.${cls}:checked`)).map(el => parseInt(el.dataset.pos, 10));
-  const cash = id => Math.max(0, parseInt(document.getElementById(id).value, 10) || 0);
+  const offerPos = Array.from(document.querySelectorAll("input.offerPos:checked")).map(el => parseInt(el.dataset.pos, 10));
+  const offerCash = Math.max(0, parseInt(document.getElementById("tradeOfferCash").value, 10) || 0);
 
-  const proposal = {
-    targetId,
-    offerPos: checked("offerPos"),
-    requestPos: checked("requestPos"),
-    offerCash: cash("tradeOfferCash"),
-    requestCash: cash("tradeRequestCash")
-  };
+  if(!offerPos.length && !offerCash) { ShowToast("Ofereça dinheiro ou algum local."); return; }
 
-  if(!proposal.offerPos.length && !proposal.requestPos.length && !proposal.offerCash && !proposal.requestCash)
-  {
-    ShowToast("Monte a proposta primeiro.");
-    return;
-  }
+  const me = Me();
+  if(me && offerCash > me.cash) { ShowToast("Você não tem esse dinheiro."); return; }
 
-  SendAction("tradePropose", proposal);
+  SendAction("tradePropose", { targetId: here.ownerId, offerPos, requestPos: [here.pos], offerCash, requestCash: 0 });
 
+  buyProposalUsed = BuyKey(here);
   document.getElementById("tradeOfferCash").value = "";
-  document.getElementById("tradeRequestCash").value = "";
   tradeBuilderKey = null;
-  RenderTradeBuilder();
-  SetTradeView("list");
+  panelKey = null;
+  ShowTab("agora");
+  RenderAll();
   ShowToast("Proposta enviada!");
 };
 
 window.TradeRespond = function(type, tradeId)
 {
+  const t = (table.trades || []).find(x => x.id === tradeId);
+  if(t) dismissedTrades.add(TradeKey(t));
   SendAction(type, { tradeId });
+  RenderTrades();
 };
 
 

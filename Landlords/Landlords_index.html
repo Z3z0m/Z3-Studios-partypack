@@ -120,19 +120,21 @@
           <div id="placesList" class="placesList"></div>
         </div>
 
+        <!-- PROPOSTA DE COMPRA: sem botão na navegação; só abre pelo
+             "Fazer proposta" (parou no local de alguém e pagou o aluguel). -->
         <div id="tab-negociar" class="tabBody">
 
-          <div id="tradeListView" class="tradeView">
-            <div id="incomingTrades" class="tradeStack"></div>
-            <div id="outgoingTrades" class="tradeStack"></div>
-            <p id="tradeEmpty" class="line hint">Nenhuma proposta no momento.</p>
-          </div>
+          <div class="tradeView">
 
-          <div id="tradeBuildView" class="tradeView" style="display:none">
-
-            <label class="fieldLabel">PROPOR NEGOCIAÇÃO COM
-              <select id="tradeTarget" onchange="RenderTradeBuilder()"></select>
-            </label>
+            <div class="proposalHead">
+              <div class="proposalText">
+                <div class="proposalTitle">PROPOSTA DE COMPRA</div>
+                <div id="proposalSub" class="proposalSub"></div>
+              </div>
+              <button class="closeBtn" onclick="CloseBuyProposal()" aria-label="Fechar proposta">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+              </button>
+            </div>
 
             <div class="tradeCols">
               <div class="tradeCol">
@@ -143,7 +145,6 @@
               <div class="tradeCol">
                 <div class="tradeColTitle">VOCÊ PEDE</div>
                 <div id="tradeRequestList" class="checkList"></div>
-                <input id="tradeRequestCash" class="cashInput" type="number" min="0" step="1" inputmode="numeric" placeholder="$ dinheiro" aria-label="Dinheiro pedido" />
               </div>
             </div>
 
@@ -161,7 +162,9 @@
       <!-- BOTÕES (fixos, perto do polegar) -->
       <div class="dock">
         <div id="dock-agora" class="dockSet active"></div>
-        <div id="dock-negociar" class="dockSet"></div>
+        <div id="dock-negociar" class="dockSet">
+          <button class="btn btnPrimary btnBig" onclick="SendTradeProposal()">Enviar proposta</button>
+        </div>
       </div>
 
       <!-- PAINEL DE MENSAGEM (última do log, só na aba Agora) -->
@@ -178,11 +181,6 @@
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21zM12 7.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path></svg>
           <span>Locais</span>
           <span id="locaisBadge" class="navBadge"></span>
-        </button>
-        <button class="navBtn" data-tab="negociar" onclick="ShowTab('negociar')">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"></path></svg>
-          <span>Negociar</span>
-          <span id="tradeBadge" class="navBadge"></span>
         </button>
         <button class="navBtn" data-tab="placar" onclick="ShowTab('placar')">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-6M12 20V5M19 20v-9"></path></svg>
@@ -224,6 +222,9 @@
     <p id="rejectedText" class="toast"></p>
 
   </div>
+
+  <!-- PROPOSTA RECEBIDA (pop-up, preenchido por RenderTradePopup) -->
+  <div id="tradePopup" class="modalOverlay"></div>
 
   <div id="pauseOverlay" class="pauseOverlay">
     <div class="sign signYellow">
