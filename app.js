@@ -58,6 +58,75 @@ let roomExists = false;
 
 
 // =========================
+// GAME PAGES (modo de jogo da sala -> página do jogo)
+// =========================
+
+const GamePages =
+{
+  FindAI:         "FindAI/FindAI_index.html",
+  ChaosCourt:     "ChaosCourt/ChaosCourt_index.html",
+  ColorsIn:       "ColorsIn/ColorsIn_index.html",
+  NextAthena:     "Trivia/Trivia_index.html",
+  InBetween:      "InBetween/InBetween_index.html",
+  RankingIt:      "RankingIt/RankingIt_index.html",
+  Stop:           "Stop/Stop_index.html",
+  MauMau:         "MauMau/MauMau_index.html",
+  CorridaEstelar: "CorridaEstelar/CorridaEstelar_index.html",
+  Glimpse:        "Glimpse/Glimpse_index.html",
+  Aposta:         "Aposta/Aposta_index.html",
+  Landlords:      "Landlords/Landlords_index.html",
+  FinalChapter:   "FinalChapter/FinalChapter_index.html",
+  Ludo:           "Ludo/Ludo_index.html",
+  SemPiedade:     "SemPiedade/SemPiedade_index.html"
+};
+
+// MODOS QUE NÃO RECEBEM O NOME NA URL
+const GamesWithoutName = ["NextAthena"];
+
+// PARÂMETROS DO MODO BOT repassados da tela de entrada pra página do jogo
+// (ver bot/README.md). Sem eles na URL, a URL do jogo fica igual a antes.
+const BotParamKeys = ["bot", "seed", "speed", "tap", "hoststart"];
+
+function ReadBotParams()
+{
+  const params =
+    new URLSearchParams(window.location.search);
+
+  const botParams = {};
+
+  BotParamKeys.forEach((key) =>
+  {
+    if(params.has(key)) botParams[key] = params.get(key);
+  });
+
+  return botParams;
+}
+
+function BuildGameUrl(gameMode, roomCode, playerName, playerId, botParams)
+{
+  const page = GamePages[gameMode];
+
+  if(!page) return null;
+
+  let url = GamesWithoutName.includes(gameMode)
+    ? `${page}?room=${roomCode}&id=${playerId}`
+    : `${page}?room=${roomCode}&name=${playerName}&id=${playerId}`;
+
+  BotParamKeys.forEach((key) =>
+  {
+    const value = botParams[key];
+
+    if(value !== undefined && value !== null && value !== "")
+    {
+      url += `&${key}=${encodeURIComponent(value)}`;
+    }
+  });
+
+  return url;
+}
+
+
+// =========================
 // CHECK ROOM CODE
 // =========================
 
@@ -181,7 +250,7 @@ window.joinRoom = async function()
     .toUpperCase()
     .trim();
 
-  const playerName =
+  let playerName =
     document
     .getElementById("playerName")
     .value
@@ -189,6 +258,18 @@ window.joinRoom = async function()
 
   const status =
     document.getElementById("status");
+
+  // MODO BOT: parâmetros da URL, ou nome digitado com prefixo "bot:"
+  // (ex.: "bot:Bia" entra como bot=auto com o nome "Bia").
+
+  const botParams = ReadBotParams();
+
+  if(playerName.toLowerCase().startsWith("bot:"))
+  {
+    playerName = playerName.slice(4).trim();
+
+    if(!botParams.bot) botParams.bot = "auto";
+  }
 
   // VALIDATIONS
 
@@ -251,93 +332,12 @@ window.joinRoom = async function()
 
     // REDIRECT
 
-    if(detectedGameMode == "FindAI")
-    {
-      window.location.href =
-        `FindAI/FindAI_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
+    const gameUrl =
+      BuildGameUrl(detectedGameMode, roomCode, playerName, playerId, botParams);
 
-    else if(detectedGameMode == "ChaosCourt")
+    if(gameUrl)
     {
-      window.location.href =
-        `ChaosCourt/ChaosCourt_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-    else if(detectedGameMode == "ColorsIn")
-    {
-      window.location.href =
-        `ColorsIn/ColorsIn_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "NextAthena")
-    {
-      window.location.href =
-        `Trivia/Trivia_index.html?room=${roomCode}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "InBetween")
-    {
-      window.location.href =
-        `InBetween/InBetween_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "RankingIt")
-    {
-      window.location.href =
-        `RankingIt/RankingIt_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "Stop")
-    {
-      window.location.href =
-        `Stop/Stop_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "MauMau")
-    {
-      window.location.href =
-        `MauMau/MauMau_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "CorridaEstelar")
-    {
-      window.location.href =
-        `CorridaEstelar/CorridaEstelar_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "Glimpse")
-    {
-      window.location.href =
-        `Glimpse/Glimpse_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "Aposta")
-    {
-      window.location.href =
-        `Aposta/Aposta_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "Landlords")
-    {
-      window.location.href =
-        `Landlords/Landlords_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "FinalChapter")
-    {
-      window.location.href =
-        `FinalChapter/FinalChapter_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "Ludo")
-    {
-      window.location.href =
-        `Ludo/Ludo_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
-    }
-
-    else if(detectedGameMode == "SemPiedade")
-    {
-      window.location.href =
-        `SemPiedade/SemPiedade_index.html?room=${roomCode}&name=${playerName}&id=${playerId}`;
+      window.location.href = gameUrl;
     }
 
     else
@@ -402,3 +402,15 @@ window.HandleRoomCodeKeydown =
 
 window.HandlePlayerNameKeydown =
   HandlePlayerNameKeydown;
+
+
+// =========================
+// MODO BOT (só carrega com ?bot=… na URL — ver bot/README.md)
+// =========================
+
+if(new URLSearchParams(window.location.search).has("bot"))
+{
+  import("./bot/bot.js")
+    .then((bot) => bot.RunEntry())
+    .catch((error) => console.error("[Z3Bot]", error));
+}

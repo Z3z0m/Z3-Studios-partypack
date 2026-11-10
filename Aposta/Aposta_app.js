@@ -826,3 +826,16 @@ function RenderScoreboard(playersSnapshot, container)
     container.appendChild(item);
   });
 }
+
+
+// =========================
+// MODO BOT (só carrega com ?bot=… na URL — ver bot/README.md)
+// Sem cérebro próprio ainda: usa o "macaco" genérico do bot/bot.js.
+// =========================
+
+if(params.has("bot"))
+{
+  import("../bot/bot.js")
+    .then((bot) => bot.StartBot({ game: "Aposta" }))
+    .catch((error) => console.error("[Z3Bot]", error));
+}

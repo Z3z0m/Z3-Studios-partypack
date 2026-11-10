@@ -1827,3 +1827,32 @@ async function OpenFinalScore()
     </div>`;
   }).join("");
 }
+
+
+// =========================
+// MODO BOT (só carrega com ?bot=… na URL — ver bot/README.md)
+// getState é SÓ LEITURA: o cérebro (Landlords_bot.js) decide olhando o
+// estado, mas age tocando nos mesmos botões que o jogador.
+// =========================
+
+if(params.has("bot"))
+{
+  import("../bot/bot.js")
+    .then((bot) => bot.StartBot(
+    {
+      game: "Landlords",
+      brain: () => import("./Landlords_bot.js"),
+      getState: () => (
+      {
+        gameState: currentGameState,
+        isHost,
+        isGamePaused,
+        playerId: currentPlayerId,
+        activeTab,
+        board,
+        table,
+        heldCards: heldCards.slice()
+      })
+    }))
+    .catch((error) => console.error("[Z3Bot]", error));
+}

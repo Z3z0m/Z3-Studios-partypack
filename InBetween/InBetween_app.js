@@ -2176,3 +2176,16 @@ function OpenVoteResultDevPreview(outcome)
     topLabel.className = "label label--blue";
   }
 }
+
+
+// =========================
+// MODO BOT (só carrega com ?bot=… na URL — ver bot/README.md)
+// Sem cérebro próprio ainda: usa o "macaco" genérico do bot/bot.js.
+// =========================
+
+if(params.has("bot"))
+{
+  import("../bot/bot.js")
+    .then((bot) => bot.StartBot({ game: "InBetween" }))
+    .catch((error) => console.error("[Z3Bot]", error));
+}

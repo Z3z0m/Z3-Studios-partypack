@@ -970,3 +970,32 @@ async function OpenFinalScore()
     finalDiv.appendChild(item);
   });
 }
+
+
+// =========================
+// MODO BOT (só carrega com ?bot=… na URL — ver bot/README.md)
+// getState é SÓ LEITURA: o cérebro (MauMau_bot.js) decide olhando o estado,
+// mas age tocando nos mesmos botões que o jogador.
+// =========================
+
+if(params.has("bot"))
+{
+  import("../bot/bot.js")
+    .then((bot) => bot.StartBot(
+    {
+      game: "MauMau",
+      brain: () => import("./MauMau_bot.js"),
+      getState: () => (
+      {
+        gameState: currentGameState,
+        isHost,
+        isGamePaused,
+        round: currentRound,
+        playerId: currentPlayerId,
+        playerNames: { ...playerNames },
+        hand: currentHand.slice(),
+        table: currentTable
+      })
+    }))
+    .catch((error) => console.error("[Z3Bot]", error));
+}
