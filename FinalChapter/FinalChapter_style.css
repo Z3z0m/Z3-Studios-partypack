@@ -1,28 +1,33 @@
 /* =========================
-   ÚLTIMO CAPÍTULO — celular
-   Tokens espelham FinalChapterTheme.cs (bastidor de estúdio à noite:
-   carpete escuro, fita crepe bege, luz vermelha de "gravando").
-   Identidade visual provisória (GDD §8).
+   ÚLTIMO CAPÍTULO — dispositivo
+   "O roteiro do morto": o dispositivo é a sua cópia do roteiro.
+   Topo = aba na cor do personagem; base = abas de fichário (iguais às da TV);
+   sua decisão = folha de papel; vez de outra pessoa = azul-carbono.
+   Referência: Design/FinalChapter/Client/*.dc.html (390×844).
 ========================== */
 
 :root
 {
-  --bg: #14121A;
-  --surface: #1E1B26;
-  --surface-high: #2A2634;
-  --line: #3A3546;
-  --paper: #F3E9D2;
-  --room: #E6E4EA;
-  --ink: #26232D;
-  --text: #F4F1EA;
-  --muted: #A39FB0;
-  --onair: #E23B3B;
-  --spot: #F5C542;
-  --yes: #3FA35B;
-  --no: #E23B3B;
-  --maybe: #EE8A2A;
-  --door: #C8372D;
-  --passage: #2F6FD0;
+  --bg: #17167A;          /* carbono */
+  --paper: #F5F5EF;
+  --ink: #17167A;         /* tinta escura sobre papel */
+  --ink-2: #23229A;       /* banda ONDE, texto secundário */
+  --pen: #D4201A;         /* caneta: COM O QUÊ, ✗, Palpitar, toast */
+  --marker: #FFE500;      /* marca-texto */
+  --corridor: #DFE1F6;
+  --muted-on-bg: #C9CAF0;
+  --tab-off: #2B2AA6;
+  --line-on-bg: #4A49C4;
+  --final-bg: #BC1A14;
+  --yes: #0B7A3B;
+  --maybe: #A85200;
+  --gossip-head: #B91A14;
+
+  --display: "Abril Fatface", Georgia, serif;
+  --mono: "Courier Prime", "Courier New", monospace;
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
 }
 
 *
@@ -31,250 +36,397 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html, body { height: 100%; }
+
 body
 {
   margin: 0;
   background: var(--bg);
-  color: var(--text);
-  font-family: "Archivo", system-ui, sans-serif;
+  color: var(--paper);
+  font-family: var(--mono);
   font-size: 16px;
 }
+
+button { font-family: inherit; }
 
 .container
 {
   max-width: 560px;
   margin: 0 auto;
-  padding: 16px 14px 90px;
 }
 
-h1, h2
-{
-  font-family: "Archivo Black", sans-serif;
-  letter-spacing: 1px;
-  margin: 8px 0;
-}
+h1, h2, p { margin: 0; }
 
-p { margin: 6px 0; line-height: 1.35; }
+mark { background: var(--marker); color: var(--ink); padding: 0 4px; }
 
 .screen { display: none; }
-.screen.active { display: block; animation: fadeIn .25s ease both; }
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
-.wordmark
+.screen.active
 {
-  color: var(--text);
-  font-size: 34px;
-  text-align: center;
-  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(18px + var(--safe-t)) 16px calc(16px + var(--safe-b));
+  animation: fadeIn .25s ease both;
 }
 
-.subtitle
-{
-  text-align: center;
-  color: var(--onair);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-size: 13px;
-  font-weight: 800;
-}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-#lobbyScreen p, #tutorialScreen p, #tutorialScreen h2, #finalScoreScreen .label { text-align: center; }
-
-.label
-{
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.hint { color: var(--muted); font-size: 13px; }
-.yes { color: var(--yes); }
-.no { color: var(--no); }
-.maybe { color: var(--maybe); }
-
-.row { display: flex; gap: 10px; }
-.row > * { flex: 1; }
-
-#tutorialControls { flex-direction: column; gap: 10px; margin-top: 20px; }
+.row { display: flex; gap: 12px; }
 
 /* =========================
-   BOTÕES
+   BOTÕES (cantos retos, borda 3px, sombra dura)
 ========================== */
 
 .btn
 {
   display: block;
   width: 100%;
-  margin: 8px 0;
-  padding: 14px;
-  border: none;
-  border-radius: 12px;
-  background: var(--onair);
-  color: #fff;
-  font-family: "Archivo", sans-serif;
-  font-weight: 800;
-  font-size: 16px;
-  letter-spacing: .5px;
+  min-height: 44px;
+  margin: 0;
+  padding: 4px 12px;
+  border: 3px solid var(--pen);
+  border-radius: 0;
+  background: var(--pen);
+  color: #FFFFFF;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.15;
   cursor: pointer;
-  transition: transform .08s ease, opacity .15s ease;
+  flex: none;
 }
 
-.btn:active:not(:disabled) { transform: scale(.97); }
-.btn:disabled { opacity: .35; cursor: default; }
+.btn:active:not(:disabled) { transform: translateY(2px); }
+.btn:disabled { opacity: .4; cursor: default; }
 
-.btnGhost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2px var(--line); }
-.btnSpot { background: var(--spot); color: var(--ink); }
-.btnPassage { background: var(--passage); }
+.btnMarker { background: var(--marker); border-color: var(--marker); color: var(--ink); }
+.btnGhost { background: transparent; border-color: var(--paper); color: var(--paper); }
+.btnGhostInk { background: transparent; border-color: var(--ink); color: var(--ink); }
+.btnInk { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
-.hostButton
-{
-  position: fixed;
-  left: 50%;
-  bottom: 14px;
-  transform: translateX(-50%);
-  width: calc(100% - 28px);
-  max-width: 532px;
-  z-index: 10;
-}
+.row > .btn { flex: 1 1 0; min-width: 0; width: auto; }
 
 /* =========================
-   LOBBY — ESCOLHA DE PERSONAGEM (igual ao avatar do ColorsIn)
+   PEÃO (bolinha com inicial)
 ========================== */
 
-.charGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 18px; }
+.pawnDot
+{
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  font-family: var(--mono);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pawnDot.onBg { border-color: var(--paper); }
+
+/* =========================
+   LOBBY — Cel-Lobby
+========================== */
+
+.wordmark
+{
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.subtitle
+{
+  margin-top: 6px;
+  align-self: center;
+  padding: 2px 8px;
+  background: var(--marker);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.sectionLabel
+{
+  margin: 14px 0 8px;
+  font-size: 15px;
+  line-height: 18px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-align: center;
+}
+
+.charGrid
+{
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(68px, 1fr);
+  gap: 8px;
+}
 
 .charItem
 {
-  position: relative;
-  padding: 12px 12px 12px 14px;
-  border: 3px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
-  cursor: pointer;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 3px solid var(--paper);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
   text-align: left;
-  color: var(--text);
-  font-family: inherit;
-  transition: transform .12s ease, border-color .12s ease;
-}
-
-.charItem .dot { width: 22px; height: 22px; margin-bottom: 6px; }
-.charItem b { display: block; font-size: 15px; }
-.charItem small { display: block; color: var(--muted); font-size: 12px; line-height: 1.25; margin-top: 3px; }
-.charItem.selected { border-color: var(--onair); transform: scale(1.03); box-shadow: 0 0 0 4px rgba(226,59,59,.2); }
-.charItem.taken { filter: grayscale(1); opacity: .35; cursor: not-allowed; }
-.charItem .takenBy { position: absolute; top: 8px; right: 10px; font-size: 11px; font-weight: 800; color: var(--muted); }
-
-/* =========================
-   SETAS DE MOVIMENTO
-========================== */
-
-.stepsLeft { font-family: "Archivo Black", sans-serif; font-size: 40px; color: var(--spot); text-align: center; line-height: 1; margin: 6px 0 0; }
-.stepsLeft small { display: block; font-family: "Archivo", sans-serif; font-size: 12px; color: var(--muted); font-weight: 800; letter-spacing: 2px; }
-
-.dpad
-{
-  display: grid;
-  grid-template-columns: repeat(3, 74px);
-  grid-template-rows: repeat(3, 74px);
-  gap: 8px;
-  justify-content: center;
-  margin: 12px 0;
-}
-
-.arrow
-{
-  border: none;
-  border-radius: 16px;
-  background: var(--surface-high);
-  color: var(--text);
-  font-size: 30px;
-  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 3px;
   cursor: pointer;
-  box-shadow: inset 0 -4px 0 rgba(0,0,0,.35);
 }
 
-.arrow:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
-.arrow:disabled { opacity: .18; cursor: default; }
-.arrow.enter { background: var(--spot); color: var(--ink); font-size: 12px; line-height: 1.1; }
-.arrow.up { grid-column: 2; grid-row: 1; }
-.arrow.left { grid-column: 1; grid-row: 2; }
-.arrow.right { grid-column: 3; grid-row: 2; }
-.arrow.down { grid-column: 2; grid-row: 3; }
-.dpadCenter { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: center; }
+.charItem .charTop { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.charItem .charName { font-family: var(--display); font-size: 18px; line-height: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.charItem .charSub { font-size: 13px; line-height: 15px; }
+
+.charItem.selected { background: var(--marker); border-color: #FFFFFF; }
+.charItem.taken { background: var(--tab-off); border-color: var(--tab-off); color: var(--paper); cursor: default; }
+
+.waitText { margin: 10px 0; font-size: 15px; line-height: 19px; text-align: center; }
+.loadingText { grid-column: 1 / -1; font-size: 17px; text-align: center; }
+
+.btnStart { height: 56px; font-size: 20px; }
 
 /* =========================
-   MEU STATUS
+   TUTORIAL — Cel-Tutorial
 ========================== */
 
-.meCard
+#tutorialScreen.active { padding-top: calc(24px + var(--safe-t)); padding-bottom: calc(24px + var(--safe-b)); }
+
+.tutorialSheet
 {
+  flex: 1;
+  min-height: 0;
+  padding: 28px 22px;
+  background: var(--paper);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+.tutorialSheet h1 { font-family: var(--display); font-weight: 400; font-size: 54px; line-height: 1.05; }
+.tutorialSheet p { font-size: 24px; line-height: 32px; font-weight: 700; }
+
+#tutorialControls { margin-top: 16px; flex-direction: column; gap: 12px; }
+.btnTutorial { height: 60px; font-size: 19px; }
+.btnSkip { height: 54px; font-size: 18px; }
+
+/* =========================
+   PLAYING — estrutura (topo / conteúdo rolável / abas)
+========================== */
+
+#playingScreen.active
+{
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* TOPO — CelTopo */
+.celTopo
+{
+  flex: none;
+  height: calc(68px + var(--safe-t));
+  padding: var(--safe-t) 16px 0;
+  border-radius: 0 0 16px 16px;
+  background: var(--tab-off);
+  color: var(--paper);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--surface);
 }
 
-.dot
+.topoInfo { min-width: 0; }
+.meName { font-family: var(--display); font-size: 23px; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meSub { font-size: 15px; line-height: 19px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meTimer { flex: none; font-size: 36px; line-height: 1; font-weight: 700; }
+.meTimer:empty { display: none; }
+
+.tabArea
 {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  flex: none;
-  box-shadow: 0 0 0 2px rgba(0,0,0,.5);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.dot.light { box-shadow: 0 0 0 2px var(--ink); }
-.dot.dark { box-shadow: 0 0 0 2px var(--text); }
+.tabBody { display: none; }
 
-.meCard .dot { width: 28px; height: 28px; }
-.meInfo { flex: 1; min-width: 0; }
-.meName { font-weight: 800; font-size: 18px; }
-.meSub { color: var(--muted); font-size: 13px; }
-.meTimer { font-family: "Archivo Black", sans-serif; font-size: 22px; color: var(--spot); }
+.tabBody.active
+{
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ABAS — CelAbas */
+.tabs
+{
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  background: var(--bg);
+}
+
+.tab
+{
+  position: relative;
+  min-width: 0;
+  height: calc(60px + var(--safe-b));
+  padding: 0 2px var(--safe-b);
+  border: none;
+  border-radius: 12px 12px 0 0;
+  background: var(--tab-off);
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.tab.active { height: calc(72px + var(--safe-b)); background: var(--paper); color: var(--ink); }
+.tab.alert:not(.active) { background: var(--marker); color: var(--ink); }
+
+.badge
+{
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--pen);
+  color: #FFFFFF;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.badge:empty { display: none; }
 
 /* =========================
-   PAINEL DA FASE
+   ABA CENA — modos do painel
+   mine   = minha decisão (folha de papel)
+   watch  = vez de outra pessoa (carbono)
+   result = resultado do palpite / fofoca
 ========================== */
 
-.panel
+#tab-cena.mode-watch { padding: 26px 18px 14px; gap: 16px; }
+#tab-cena.mode-result { padding: 14px 16px 12px; gap: 14px; }
+#tab-cena.mode-mine { padding: 0; }
+
+.mode-mine #miniLog,
+.mode-mine #skipButton,
+.mode-result #miniLog { display: none; }
+
+.panel { display: flex; flex-direction: column; }
+.panel.watch { flex: none; gap: 16px; }
+.panel.result { flex: none; gap: 14px; }
+
+.panel.sheet
 {
-  margin: 12px 0;
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--surface);
+  flex: 1;
+  min-height: 0;
+  margin: 12px 16px;
+  padding: 22px 20px;
+  background: var(--paper);
+  color: var(--ink);
+  gap: 14px;
+  overflow-y: auto;
 }
 
-#actionPanel { border: 2px solid var(--line); }
-#actionPanel.mine { border-color: var(--onair); }
+.panel.sheet.bleed { margin: 10px 8px 8px; padding: 10px 8px 8px; gap: 8px; }
+.panel.sheet.guess { margin: 10px 8px 8px; padding: 0; gap: 0; overflow: hidden; }
 
-.phaseTitle
+/* MINI LOG (espectador e aba Mapa) */
+.miniLog
 {
-  font-family: "Archivo Black", sans-serif;
-  font-size: 19px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 2px solid var(--line-on-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 17px;
+  line-height: 22px;
+  color: var(--muted-on-bg);
 }
 
-.diceRow { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+.miniLog:empty { display: none; }
+.miniLog p:first-child { color: var(--paper); font-weight: 700; }
+
+.btnSkipDecision { height: 48px; font-size: 17px; }
+
+/* =========================
+   ESPECTADOR — Cel-Espectador
+========================== */
+
+.watchTitle { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1.1; }
+.watchTitle .mk { color: var(--marker); }
+
+.turnWho { display: flex; align-items: center; gap: 8px; font-size: 17px; line-height: 22px; }
+
+/* =========================
+   DADOS (mesma animação do Landlords)
+========================== */
+
+.diceRow { display: flex; align-items: center; gap: 10px; }
 
 .die
 {
-  width: 52px;
-  height: 52px;
-  padding: 7px;
-  border-radius: 10px;
+  width: 66px;
+  height: 66px;
+  padding: 10px;
   background: var(--paper);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 3px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  flex: none;
 }
 
 .die i { display: block; border-radius: 50%; }
 .die i.pip { background: var(--ink); }
+.die.blank i.pip { background: var(--corridor); }
+
+.diceTotal { margin-left: 6px; font-size: 26px; line-height: 1.1; font-weight: 700; }
+.diceTotal small { display: block; font-size: 18px; color: var(--marker); }
+
+/* Sua vez: dados grandes na folha */
+.diceRow.big { flex: 1; min-height: 120px; justify-content: center; gap: 14px; }
+.diceRow.big .die { width: 104px; height: 104px; padding: 14px; gap: 6px; background: #FFFFFF; border: 4px solid var(--ink); }
+.diceRow.big .diceTotal { margin: 0; font-size: 22px; line-height: 26px; }
+.diceRow.big .diceTotal small { font-size: inherit; color: inherit; }
+
+/* Andando: dados pequenos ao lado dos passos */
+.diceRow.small { gap: 6px; }
+.diceRow.small .die { width: 38px; height: 38px; padding: 6px; gap: 2px; background: #FFFFFF; border: 2px solid var(--ink); }
+.diceRow.small .diceTotal { margin-left: 2px; font-size: 18px; }
 
 .diceRow.rolling .die:not(.landed) { animation: dieTumble .32s linear infinite; }
 .diceRow.rolling .die:nth-of-type(2):not(.landed) { animation-duration: .28s; animation-direction: reverse; }
@@ -285,265 +437,574 @@ p { margin: 6px 0; line-height: 1.35; }
 @keyframes diePop { from { transform: scale(1.3); } to { transform: scale(1); } }
 @keyframes totalIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 
-.diceTotal { font-family: "Archivo Black", sans-serif; font-size: 22px; }
+/* =========================
+   SUA VEZ — Cel-SuaVez
+========================== */
 
-/* ESCOLHA DO PALPITE */
-.chipGroup { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.sceneNo { font-size: 17px; font-weight: 700; letter-spacing: 1.5px; color: var(--ink-2); }
+.rollTitle { font-family: var(--display); font-weight: 400; font-size: 64px; line-height: 1.05; }
+.rollTitle.small { font-size: 44px; }
+
+.rollHint { font-size: 18px; line-height: 23px; }
+.btnCalled { height: 60px; font-size: 21px; }
+
+.btnRoll
+{
+  height: 74px;
+  border-color: var(--ink);
+  font-size: 26px;
+  box-shadow: 0 6px 0 var(--ink);
+  margin-bottom: 6px;
+}
+
+.btnRoll:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); }
+
+.btnPassage
+{
+  min-height: 62px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.passKey
+{
+  flex: none;
+  width: 32px;
+  height: 32px;
+  background: var(--marker);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+/* =========================
+   ANDANDO — Cel-Andando
+========================== */
+
+.moveTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; }
+.stepsLeft { display: flex; align-items: baseline; gap: 10px; }
+.stepsNum { font-family: var(--display); font-size: 50px; line-height: 1; color: var(--pen); }
+.stepsLbl { font-size: 16px; line-height: 18px; font-weight: 700; }
+
+.dpad
+{
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(3, 70px);
+  grid-template-rows: repeat(3, 68px);
+  gap: 7px;
+  flex: none;
+}
+
+.arrow
+{
+  padding: 0 2px;
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  background: var(--corridor);
+  color: var(--ink);
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.arrow:active:not(:disabled) { transform: translateY(2px); }
+.arrow:disabled { opacity: .2; cursor: default; }
+.arrow.enter { padding: 0 1px; background: var(--marker); font-size: 15px; line-height: 1.1; overflow-wrap: anywhere; }
+.arrow.up { grid-column: 2; grid-row: 1; }
+.arrow.left { grid-column: 1; grid-row: 2; }
+.arrow.right { grid-column: 3; grid-row: 2; }
+.arrow.down { grid-column: 2; grid-row: 3; }
+
+.dpadCenter { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: center; }
+.dpadCenter .pawnDot { border-width: 3px; box-shadow: 0 0 0 6px var(--marker); }
+
+.moveHint { padding: 0 8px; font-size: 17px; line-height: 21px; }
+
+.doorBtn { height: 76px; background: var(--marker); border-color: var(--ink); color: var(--ink); font-size: 22px; }
+.btnStop { height: 46px; font-size: 18px; }
+
+.moveMap { flex: none; margin-top: auto; }
+
+/* =========================
+   PALPITE — Cel-Palpite / Cel-Rodada-Final
+========================== */
+
+.guessHead { flex: none; padding: 12px 14px 10px; border-bottom: 3px solid var(--ink); }
+.guessHead h1 { font-family: var(--display); font-weight: 400; font-size: 27px; line-height: 1.1; }
+.guessHead h1.big { font-size: 32px; }
+.guessHead .hintLine { margin-top: 4px; font-size: 16px; line-height: 20px; }
+.sentence { margin-top: 6px; font-size: 18px; line-height: 25px; font-weight: 700; }
+
+.guessBody
+{
+  flex: 1;
+  min-height: 0;
+  padding: 10px 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.groupLabel { margin-top: 8px; font-size: 15px; line-height: 18px; font-weight: 700; letter-spacing: 1.5px; }
+.groupLabel:first-child { margin-top: 0; }
+
+.chipGroup { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .chip
 {
-  padding: 9px 11px;
-  border: 2px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface-high);
-  color: var(--text);
-  font-family: inherit;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  background: #FFFFFF;
+  color: var(--ink);
+  font-size: 15px;
   font-weight: 700;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   cursor: pointer;
 }
 
-.chip.selected { border-color: var(--spot); background: rgba(245,197,66,.15); }
-.chip.known { opacity: .45; text-decoration: line-through; }
-.chip .dot { width: 12px; height: 12px; display: inline-block; vertical-align: -1px; margin-right: 6px; }
+.chip.selected { background: var(--marker); }
+.chip.known { opacity: .55; text-decoration: line-through; }
 
-.guessSummary
-{
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 10px 0;
-}
-
-.itemCard
-{
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--paper);
-  color: var(--ink);
-  text-align: center;
-}
-
-.itemCard .kind { padding: 4px; font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #fff; }
-.itemCard .name { padding: 10px 6px; font-weight: 800; font-size: 14px; min-height: 52px; display: flex; align-items: center; justify-content: center; }
-
-/* FOFOCA */
-.gossipCard
-{
-  margin: 10px 0;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--paper);
-  color: var(--ink);
-  border-left: 6px solid var(--onair);
-}
-
-.gossipCard .label { color: var(--onair); }
-.gossipCard b { display: block; font-family: "Archivo Black", sans-serif; font-size: 18px; margin: 4px 0; }
-.gossipCard.fresh { animation: gossipIn .4s cubic-bezier(.34,1.56,.64,1) both; }
-
-@keyframes gossipIn { from { transform: rotate(-3deg) scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.guessFoot { flex: none; padding: 10px 14px 12px; border-top: 3px solid var(--ink); display: flex; flex-direction: column; gap: 8px; }
+.btnGuess { height: 56px; font-size: 22px; }
+.btnPass { height: 44px; font-size: 16px; }
 
 /* =========================
-   ABAS
+   FOFOCA (eu escolho) — Cel-Fofoca-Escolhe
 ========================== */
 
-.tabs { display: flex; gap: 6px; margin-top: 16px; }
-
-.tab
+.panel.gossipPick
 {
   flex: 1;
-  padding: 10px 4px;
-  border: none;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--muted);
-  font-family: inherit;
-  font-weight: 800;
-  font-size: 13px;
+  min-height: 0;
+  margin: 12px 16px;
+  transform: rotate(-0.6deg);
+}
+
+.gpHead { flex: none; padding: 12px 18px; background: var(--pen); color: #FFFFFF; }
+.gpHead h1 { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1.08; }
+
+.gpBody
+{
+  flex: 1;
+  min-height: 0;
+  padding: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.gpBody > p { font-size: 19px; line-height: 25px; }
+
+.gpOption
+{
+  flex: 1;
+  min-height: 96px;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  background: #FFFFFF;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
   cursor: pointer;
 }
 
-.tab.active { background: var(--surface-high); color: var(--text); box-shadow: inset 0 -3px 0 var(--onair); }
+.gpOption .band { flex: none; padding: 6px 14px; font-size: 18px; font-weight: 700; letter-spacing: 1px; }
+.gpOption .name { flex: 1; min-height: 0; padding: 0 14px; display: flex; align-items: center; font-family: var(--display); font-size: 36px; line-height: 1.08; }
+.gpOption:active { transform: translateY(2px); }
 
-.badge
-{
-  display: inline-block;
-  min-width: 18px;
-  border-radius: 9px;
-  background: var(--onair);
-  color: #fff;
-  font-size: 11px;
-}
-
-.badge:empty { display: none; }
-
-.tabBody { display: none; margin-top: 8px; }
-.tabBody.active { display: block; }
+.gpFoot { font-size: 16px; line-height: 20px; font-weight: 700; text-align: center; }
 
 /* =========================
-   BLOQUINHO
+   RESULTADO / FOFOCA RECEBIDA — Cel-Fofoca-Recebe
 ========================== */
 
-.tagBar { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
-.tagBar:empty { display: none; }
+.resultHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.resultHead h1 { font-family: var(--display); font-weight: 400; font-size: 25px; line-height: 1.1; }
 
-.notesWrap { overflow-x: auto; border-radius: 12px; background: var(--surface); }
-
-.notes { border-collapse: collapse; width: 100%; font-size: 13px; }
-.notes th, .notes td { border-bottom: 1px solid var(--line); padding: 0; text-align: center; }
-
-.notes th.itemCol, .notes td.itemCol
+.stamp
 {
-  position: sticky;
-  left: 0;
-  background: var(--surface);
-  text-align: left;
-  padding: 6px 8px;
-  white-space: nowrap;
-  font-weight: 700;
-  z-index: 1;
+  flex: none;
+  padding: 0 10px 2px;
+  border: 3px solid var(--marker);
+  color: var(--marker);
+  font-family: var(--display);
+  font-size: 22px;
+  line-height: 1.2;
+  transform: rotate(-4deg);
 }
 
-.notes th { padding: 6px 4px; color: var(--muted); font-size: 11px; font-weight: 800; }
-.notes th .dot { width: 12px; height: 12px; display: block; margin: 0 auto 3px; }
-.notes tr.section td { background: var(--surface-high); color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 2px; padding: 5px 8px; text-align: left; }
-.notes tr.faceUp td.itemCol { color: var(--muted); text-decoration: line-through; }
-.notes tr.mine td.itemCol { color: var(--yes); }
+.stamp.ok { background: var(--paper); border-color: var(--yes); color: var(--yes); }
+
+.miniCards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+
+.miniCard { min-width: 0; height: 104px; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; }
+.miniCard .band { flex: none; padding: 2px 6px; font-size: 13px; line-height: 18px; font-weight: 700; }
+.miniCard .name { flex: 1; min-height: 0; padding: 0 6px; display: flex; align-items: center; font-size: 15px; line-height: 18px; font-weight: 700; overflow-wrap: anywhere; }
+
+.resultLine { font-size: 19px; line-height: 24px; }
+
+.gossipFresh
+{
+  padding: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  transform: rotate(-1.2deg);
+  box-shadow: 0 8px 0 var(--pen);
+  animation: gossipIn .4s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+.gossipFresh .head { font-size: 15px; line-height: 18px; font-weight: 700; letter-spacing: 1px; color: var(--gossip-head); }
+.gossipFresh .item { margin-top: 8px; font-family: var(--display); font-size: 32px; line-height: 1.08; }
+.gossipFresh .text { margin-top: 10px; font-size: 20px; line-height: 26px; }
+
+@keyframes gossipIn { from { transform: rotate(-4deg) scale(.85); opacity: 0; } to { transform: rotate(-1.2deg); opacity: 1; } }
+
+.btnNote { min-height: 58px; margin-top: 8px; font-size: 17px; line-height: 21px; }
+
+/* =========================
+   BLOQUINHO — Cel-Bloquinho
+========================== */
+
+#tab-notes { --itemW: 120px; }
+
+.notesHint { margin: 8px 12px 6px; font-size: 15px; line-height: 19px; }
+
+.tagBar { flex: none; display: flex; gap: 6px; padding: 0 12px 8px; overflow-x: auto; }
+.tagBar:empty { display: none; }
+
+.tagChip
+{
+  flex: none;
+  height: 44px;
+  padding: 0 10px;
+  border: 2px solid var(--marker);
+  border-radius: 0;
+  background: transparent;
+  color: var(--marker);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.notesSheet { flex: 1 0 auto; background: var(--paper); color: var(--ink); }
+
+.nHead
+{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 58px;
+  display: flex;
+  background: var(--paper);
+  border-bottom: 3px solid var(--ink);
+}
+
+.nHead .nItemCol { flex: none; width: var(--itemW); }
+
+.nCol { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.nCol .nName { max-width: 100%; overflow: hidden; white-space: nowrap; font-size: 13px; line-height: 15px; font-weight: 700; }
+
+.nSection { padding: 4px 8px; background: var(--ink); color: var(--paper); font-size: 14px; line-height: 18px; font-weight: 700; letter-spacing: 1.5px; }
+
+.nKnown
+{
+  min-height: 34px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--muted-on-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.nKnown.mine { background: var(--marker); }
+.nKnown.face { background: var(--corridor); }
+.nKnown .nKnownName { text-decoration: line-through; }
+.nKnown .why { flex: none; font-size: 13px; font-weight: 400; }
+
+.nRow { min-height: 44px; display: flex; align-items: stretch; border-bottom: 1px solid var(--muted-on-bg); }
+
+.nRow .nItem
+{
+  flex: none;
+  width: var(--itemW);
+  padding: 2px 4px 2px 8px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  line-height: 15px;
+  font-weight: 700;
+}
 
 .cell
 {
-  width: 100%;
-  min-width: 40px;
-  height: 36px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
   border: none;
+  border-left: 1px solid var(--muted-on-bg);
+  border-radius: 0;
   background: transparent;
-  color: var(--text);
-  font-family: inherit;
-  font-weight: 800;
-  font-size: 16px;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   cursor: pointer;
-  line-height: 1;
 }
 
-.cell.s1 { color: var(--yes); }
-.cell.s2 { color: var(--no); }
-.cell.s3 { color: var(--maybe); }
-.cell.auto { cursor: default; opacity: .7; }
-.cell small { display: block; font-size: 9px; color: var(--maybe); }
+.cell svg { display: block; }
+.cell .q { font-size: 21px; line-height: 19px; font-weight: 700; color: var(--maybe); }
+.cell small { font-size: 12px; line-height: 12px; font-weight: 700; color: var(--maybe); max-width: 100%; overflow: hidden; white-space: nowrap; }
+.cell:active { background: var(--corridor); }
+
+/* Faixa QUEM quase branca (Socorrista) ganha filete de tinta pra não sumir no papel. */
+.band.pale { box-shadow: inset 0 -2px 0 var(--ink); }
+.stripCard .band.pale { box-shadow: inset -3px 0 0 var(--ink); }
+
+/* Nomes de carta quebram com hífen ("Desfibri-lador"), não no meio da palavra. */
+.miniCard .name, .handCard .name, .tableCard .name, .stripCard .name, .gpOption .name { hyphens: auto; -webkit-hyphens: auto; }
 
 /* =========================
-   CARTAS / FOFOCAS
+   CARTAS — Cel-Cartas
 ========================== */
 
-.handGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#tab-hand { padding: 18px 16px; gap: 12px; }
+
+.cardsTitle { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.1; }
+.cardsTitle span { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+.cardsTitle.second { margin-top: 12px; }
+
+.cardsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+.handCard { min-width: 0; height: 136px; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; }
+.handCard .band { flex: none; padding: 4px 10px; font-size: 15px; line-height: 20px; font-weight: 700; letter-spacing: 1px; }
+.handCard .name { flex: 1; min-height: 0; padding: 0 10px; display: flex; align-items: center; font-family: var(--display); font-size: 25px; line-height: 1.08; overflow-wrap: anywhere; }
+
+.tableCard { min-width: 0; height: 104px; border: 3px solid var(--paper); display: flex; flex-direction: column; }
+.tableCard .band { flex: none; padding: 3px 8px; font-size: 14px; line-height: 18px; font-weight: 700; letter-spacing: 1px; }
+.tableCard .name { flex: 1; min-height: 0; padding: 0 8px; display: flex; align-items: center; font-family: var(--display); font-size: 22px; line-height: 1.08; overflow-wrap: anywhere; }
 
 /* =========================
-   MAPA (grade do FinalChapter_Map.json)
+   FOFOCAS — Cel-Fofocas
+========================== */
+
+#tab-gossips { padding: 16px; gap: 14px; }
+
+.emptyText { padding: 24px 4px; font-size: 20px; line-height: 27px; }
+
+.gossipItem { flex: none; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; }
+.gossipItem .body { padding: 14px 14px 12px; }
+.gossipItem .head { font-size: 14px; line-height: 18px; font-weight: 700; letter-spacing: 1px; color: var(--gossip-head); }
+.gossipItem .item { margin-top: 4px; font-family: var(--display); font-size: 25px; line-height: 1.1; }
+.gossipItem .text { margin-top: 6px; font-size: 17px; line-height: 22px; }
+
+.gossipItem .btnNoteRow
+{
+  min-height: 46px;
+  padding: 4px 10px;
+  border: none;
+  border-top: 3px solid var(--ink);
+  border-radius: 0;
+  background: var(--marker);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 19px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* =========================
+   MAPA — aba (Cel-Mapa)
+========================== */
+
+#tab-map { padding-top: 12px; }
+#mapView { display: flex; flex-direction: column; gap: 14px; }
+
+.mapFrame { align-self: center; width: calc(100% - 8px); padding: 4px; background: var(--paper); }
+
+.legend { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; font-size: 16px; line-height: 21px; }
+.legend > div { display: flex; align-items: center; gap: 12px; }
+
+.legendMe { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 0 0 4px var(--marker); }
+.legendKey { flex: none; width: 28px; height: 28px; background: var(--marker); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 700; }
+
+#mapLog { margin: 4px 16px 14px; padding-top: 12px; gap: 6px; font-size: 16px; line-height: 21px; }
+
+/* =========================
+   MAPA — grade (MapaCel)
 ========================== */
 
 .map
 {
+  position: relative;
   display: grid;
   gap: 1px;
   width: 100%;
-  aspect-ratio: 21 / 17;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--surface);
+  background: var(--paper);
+  color: var(--ink);
   user-select: none;
+  -webkit-user-select: none;
 }
 
-.mCell { background: var(--paper); border-radius: 2px; position: relative; }
-.mCell.door { box-shadow: inset 0 0 0 2px var(--door); }
-.mCell.reach { background: var(--spot); cursor: pointer; animation: pulse 1s ease-in-out infinite alternate; }
-
-@keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.15); } }
+.mCell { position: relative; background: var(--corridor); }
+.mCell.reach { background: var(--marker); cursor: pointer; }
 
 .mRoom
 {
-  background: var(--room);
+  position: relative;
+  background: #FFFFFF;
+  border: 2px solid var(--ink);
+}
+
+.mRoom.reach { background: var(--marker); cursor: pointer; }
+
+.mName
+{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 1px 2px;
+  overflow: hidden;
+  font-size: clamp(8px, 2.7vw, 11px);
+  line-height: 1;
+  font-weight: 700;
+}
+
+.mDoor { position: absolute; background: var(--pen); z-index: 1; }
+
+.mPass
+{
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 14px;
+  height: 14px;
+  background: var(--ink);
+  color: var(--marker);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mRoom .pawns
+{
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  display: flex;
+  justify-content: center;
+}
+
+.mRoom .pawns .pawnDot { margin: 0 -1px; }
+
+.mStage
+{
+  background: var(--ink);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-size: 16px;
+}
+
+.map .pawnDot { width: 17px; height: 17px; border-width: 1.5px; font-size: 11px; position: relative; z-index: 2; }
+.mCell .pawnDot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.map .pawnDot.me { box-shadow: 0 0 0 2px var(--marker), 0 0 0 4px var(--ink); }
+
+/* =========================
+   FINAL — Cel-Revelacao (fundo azul, igual ao resto)
+========================== */
+
+#finalScoreScreen.active { padding-top: calc(26px + var(--safe-t)); gap: 14px; }
+
+.finalKicker { font-size: 17px; font-weight: 700; letter-spacing: 1.5px; color: var(--marker); }
+.finalTitle { font-family: var(--display); font-weight: 400; font-size: 50px; line-height: 1.05; }
+
+.tornSheet
+{
+  flex: 1;
+  min-height: 0;
+  padding: 34px 16px 16px;
+  background: var(--paper);
   color: var(--ink);
-  border-radius: 4px;
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 1.05;
-  padding: 2px;
+  clip-path: polygon(0 3%, 7% 1%, 14% 3.4%, 22% 0.8%, 31% 3%, 40% 1%, 49% 3.4%, 58% 0.8%, 67% 3%, 76% 1%, 85% 3.4%, 93% 1%, 100% 2.8%, 100% 100%, 0 100%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  text-align: center;
-  overflow: hidden;
-  position: relative;
+  gap: 14px;
 }
 
-.mRoom.reach { background: #F8DF8F; box-shadow: inset 0 0 0 3px var(--spot); cursor: pointer; }
-.mRoom.here { box-shadow: inset 0 0 0 3px var(--onair); }
-.mRoom .pass { position: absolute; right: 2px; bottom: 2px; width: 13px; height: 13px; border-radius: 50%; background: var(--passage); color: #fff; font-size: 8px; display: flex; align-items: center; justify-content: center; }
-.mRoom .pawns { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin-top: 2px; }
+.revealLine { font-family: var(--display); font-size: 25px; line-height: 1.2; }
 
-.mStage { background: #2C2A30; color: var(--muted); border-radius: 4px; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; text-align: center; }
+.solution { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 
-.pawn
-{
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1.5px rgba(0,0,0,.55);
-}
+.stripCard { flex: 1 1 0; min-height: 60px; border: 3px solid var(--ink); background: #FFFFFF; display: flex; }
+.stripCard .band { flex: none; width: 92px; padding: 0 8px; display: flex; align-items: center; font-size: 15px; line-height: 18px; font-weight: 700; }
+.stripCard .name { flex: 1; min-width: 0; padding: 0 12px; display: flex; align-items: center; font-family: var(--display); font-size: 24px; line-height: 1.08; }
 
-.pawn.light { box-shadow: 0 0 0 1.5px var(--ink); }
-.pawn.dark { box-shadow: 0 0 0 1.5px var(--text); }
-.pawn.me { outline: 2px solid var(--spot); outline-offset: 1px; }
-.mCell .pawn { position: absolute; inset: 15%; width: auto; height: auto; }
-
-.roomList { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.finalButtons { flex: none; display: flex; flex-direction: column; gap: 8px; }
+.btnAgain { height: 56px; font-size: 20px; }
+.finalButtons .btnGhost { height: 48px; font-size: 17px; }
 
 /* =========================
-   FINAL
+   TOAST / PAUSA — Cel-Pausa
 ========================== */
-
-.solution { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 18px 0; }
-.revealLine { text-align: center; font-style: italic; font-size: 18px; margin: 12px 0 24px; }
-
-/* =========================
-   LOG / TOAST / PAUSA
-========================== */
-
-.miniLog
-{
-  margin-top: 16px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.miniLog:empty { display: none; }
-.miniLog p:first-child { color: var(--text); }
 
 .toast
 {
   position: fixed;
-  left: 50%;
-  bottom: 80px;
-  transform: translateX(-50%) translateY(20px);
-  max-width: 90%;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--onair);
-  color: #fff;
+  left: 16px;
+  right: 16px;
+  bottom: calc(90px + var(--safe-b));
+  max-width: 528px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  background: var(--pen);
+  color: #FFFFFF;
+  font-size: 17px;
+  line-height: 22px;
   font-weight: 700;
   text-align: center;
   opacity: 0;
+  transform: translateY(12px);
   pointer-events: none;
   transition: opacity .2s ease, transform .2s ease;
   z-index: 20;
 }
 
-.toast.active { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.active { opacity: 1; transform: none; }
 
 .pauseOverlay
 {
@@ -552,10 +1013,36 @@ p { margin: 6px 0; line-height: 1.35; }
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,.75);
+  background: rgba(11, 11, 62, .82);
   z-index: 30;
 }
 
 .pauseOverlay.active { display: flex; }
 
-.pauseOverlayCard { padding: 24px; border-radius: 16px; background: var(--surface); text-align: center; }
+.pauseOverlayCard
+{
+  width: 322px;
+  max-width: calc(100% - 32px);
+  padding: 28px 24px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+  transform: rotate(-1.2deg);
+}
+
+.pauseOverlayCard h2 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1.1; }
+.pauseOverlayCard p { margin-top: 10px; font-size: 19px; line-height: 25px; }
+
+/* =========================
+   TELAS ESTREITAS (360px)
+========================== */
+
+@media (max-width: 374px)
+{
+  #tab-notes { --itemW: 104px; }
+  .nCol .nName { font-size: 12px; }
+  .rollTitle { font-size: 56px; }
+  .watchTitle { font-size: 36px; }
+  .gpOption .name { font-size: 32px; }
+  .dpad { grid-template-columns: repeat(3, 66px); grid-template-rows: repeat(3, 64px); }
+}

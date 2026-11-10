@@ -7,14 +7,14 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
   />
 
   <title>Último Capítulo</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
-    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Caveat:wght@700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet"
   />
 
@@ -35,14 +35,16 @@
 
     <div id="lobbyScreen" class="screen active">
 
-      <h1 class="wordmark">ÚLTIMO CAPÍTULO</h1>
-      <p class="subtitle">Quem matou o Roteirista?</p>
+      <h1 class="wordmark">Último Capítulo</h1>
+      <div class="subtitle">Quem matou o Roteirista?</div>
 
-      <p class="label" style="text-align:center;margin-top:18px">Escolha seu personagem</p>
+      <h2 class="sectionLabel">ESCOLHA SEU PERSONAGEM</h2>
 
       <div id="characterGrid" class="charGrid"></div>
 
-      <p id="lobbyWaitingText">Esperando o anfitrião começar a gravação...</p>
+      <p id="lobbyWaitingText" class="waitText">Esperando o anfitrião começar a gravação...</p>
+
+      <button id="hostButton" class="btn btnMarker btnStart hostOnly" style="display:none" onclick="SendHostCommand()">Começar Jogo</button>
 
     </div>
 
@@ -53,18 +55,19 @@
 
     <div id="tutorialScreen" class="screen">
 
-      <h2>COMO JOGAR</h2>
-
-      <p>Acompanhem a explicação das regras na TV!</p>
+      <div class="sheet tutorialSheet">
+        <h1>Como jogar</h1>
+        <p>Acompanhem a explicação das regras na TV!</p>
+      </div>
 
       <div id="tutorialControls">
 
         <div class="row">
-          <button class="btn" onclick="SendTutorialAction('prev')">← Anterior</button>
-          <button class="btn" onclick="SendTutorialAction('next')">Próxima →</button>
+          <button class="btn btnGhost btnTutorial" onclick="SendTutorialAction('prev')">← Anterior</button>
+          <button class="btn btnMarker btnTutorial" onclick="SendTutorialAction('next')">Próxima →</button>
         </div>
 
-        <button class="btn btnGhost" onclick="SendTutorialAction('skip')">Pular Tutorial</button>
+        <button class="btn btnGhost btnSkip" onclick="SendTutorialAction('skip')">Pular Tutorial</button>
 
       </div>
 
@@ -77,44 +80,50 @@
 
     <div id="playingScreen" class="screen">
 
-      <!-- MEU STATUS -->
-      <div class="meCard">
-        <span id="meDot" class="dot"></span>
-        <div class="meInfo">
+      <!-- TOPO: aba na cor do meu personagem -->
+      <header id="celTopo" class="celTopo">
+        <div class="topoInfo">
           <div id="meName" class="meName"></div>
           <div id="meSub" class="meSub"></div>
         </div>
         <div id="meTimer" class="meTimer"></div>
-      </div>
+      </header>
 
-      <!-- PAINEL DA FASE ATUAL (preenchido por RenderActionPanel) -->
-      <div id="actionPanel" class="panel"></div>
+      <main class="tabArea">
 
-      <!-- ABAS -->
-      <div class="tabs">
-        <button class="tab active" data-tab="notes" onclick="ShowTab('notes')">Bloquinho</button>
-        <button class="tab" data-tab="hand" onclick="ShowTab('hand')">Cartas</button>
-        <button class="tab" data-tab="gossips" onclick="ShowTab('gossips')">Fofocas <span id="gossipBadge" class="badge"></span></button>
-        <button class="tab" data-tab="map" onclick="ShowTab('map')">Mapa</button>
-      </div>
+        <section id="tab-cena" class="tabBody active">
+          <!-- PAINEL DA FASE ATUAL (preenchido por RenderActionPanel) -->
+          <div id="actionPanel" class="panel"></div>
+          <div id="miniLog" class="miniLog"></div>
+          <button id="skipButton" class="btn btnGhost btnSkipDecision hostOnly" style="display:none" onclick="SendHostCommand()">Pular decisão atual</button>
+        </section>
 
-      <div id="tab-notes" class="tabBody active">
-        <p class="hint">Toque: vazio → <b class="yes">✓</b> tem → <b class="no">✗</b> não tem → <b class="maybe">?</b> talvez. Segure (ou toque com a etiqueta ativa) pra marcar um palpite #.</p>
-        <div id="tagBar" class="tagBar"></div>
-        <div id="notesGrid" class="notesWrap"></div>
-      </div>
+        <section id="tab-notes" class="tabBody">
+          <p class="notesHint">Toque: vazio → <b>✓</b> tem → <b>✗</b> não tem → <b>?</b> talvez</p>
+          <div id="tagBar" class="tagBar"></div>
+          <div id="notesGrid" class="notesSheet"></div>
+        </section>
 
-      <div id="tab-hand" class="tabBody"></div>
+        <section id="tab-hand" class="tabBody"></section>
 
-      <div id="tab-gossips" class="tabBody"></div>
+        <section id="tab-gossips" class="tabBody"></section>
 
-      <div id="tab-map" class="tabBody">
-        <div id="mapView"></div>
-      </div>
+        <section id="tab-map" class="tabBody">
+          <div id="mapView"></div>
+        </section>
 
-      <div id="miniLog" class="miniLog"></div>
+      </main>
 
-      <p id="rejectedText" class="toast"></p>
+      <!-- ABAS DE FICHÁRIO -->
+      <nav class="tabs" aria-label="Abas">
+        <button class="tab active" data-tab="cena" style="flex:1 1 0" onclick="ShowTab('cena')">Cena</button>
+        <button class="tab" data-tab="notes" style="flex:1.45 1 0" onclick="ShowTab('notes')">Bloquinho</button>
+        <button class="tab" data-tab="hand" style="flex:1.05 1 0" onclick="ShowTab('hand')">Cartas</button>
+        <button class="tab" data-tab="gossips" style="flex:1.2 1 0" onclick="ShowTab('gossips')">Fofocas<span id="gossipBadge" class="badge"></span></button>
+        <button class="tab" data-tab="map" style="flex:1 1 0" onclick="ShowTab('map')">Mapa</button>
+      </nav>
+
+      <p id="rejectedText" class="toast" role="status"></p>
 
     </div>
 
@@ -125,25 +134,27 @@
 
     <div id="finalScoreScreen" class="screen">
 
-      <p class="label">A REVELAÇÃO</p>
-      <h1 id="finalWinner" class="wordmark"></h1>
+      <p class="finalKicker">A ÚLTIMA PÁGINA</p>
+      <h1 id="finalWinner" class="finalTitle"></h1>
 
-      <div id="finalSolution" class="solution"></div>
+      <div class="tornSheet">
+        <p id="finalLine" class="revealLine"></p>
+        <div id="finalSolution" class="solution"></div>
+      </div>
 
-      <p id="finalLine" class="revealLine"></p>
-
-      <button class="btn btnGhost" onclick="window.location.href='../index.html'">Voltar ao Início</button>
+      <div class="finalButtons">
+        <button id="againButton" class="btn btnMarker btnAgain hostOnly" style="display:none" onclick="SendHostCommand()">Jogar de Novo</button>
+        <button class="btn btnGhost" onclick="window.location.href='../index.html'">Voltar ao Início</button>
+      </div>
 
     </div>
-
-    <button id="hostButton" class="btn hostButton" style="display:none" onclick="SendHostCommand()">Começar Jogo</button>
 
   </div>
 
   <div id="pauseOverlay" class="pauseOverlay">
     <div class="pauseOverlayCard">
       <h2>Jogo Pausado</h2>
-      <p>Aguarde o host retomar...</p>
+      <p>Aguarde o anfitrião retomar...</p>
     </div>
   </div>
 

@@ -7,14 +7,17 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
   />
+
+  <meta name="theme-color" content="#141414" />
 
   <title>Sem Piedade</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap"
     rel="stylesheet"
   />
 
@@ -35,17 +38,17 @@
 
     <div id="lobbyScreen" class="screen active">
 
-      <h1 class="wordmark">SEM PIEDADE</h1>
-      <p class="subtitle">Conquista mundial com missão secreta</p>
+      <!-- Cabeçalho grande (jogador) ou compacto (anfitrião): RenderLobby -->
+      <div id="lobbyHead"></div>
 
-      <p class="label" style="text-align:center;margin-top:18px">Escolha seu exército</p>
-      <div id="colorGrid" class="colorGrid"></div>
+      <div class="pad">
+        <div id="colorSection"></div>
+        <div id="lobbyConfig"></div>
+        <div id="teamPicker"></div>
+        <div id="lobbyRoster"></div>
+      </div>
 
-      <div id="teamPicker"></div>
-
-      <div id="lobbyConfig" class="panel"></div>
-
-      <p id="lobbyWaitingText">Esperando o anfitrião começar...</p>
+      <div id="lobbyWaiting" class="dock waitBar" role="status"></div>
 
     </div>
 
@@ -54,20 +57,24 @@
          TUTORIAL
     ========================== -->
 
-    <div id="tutorialScreen" class="screen">
+    <div id="tutorialScreen" class="screen inkScreen">
 
-      <h2>COMO JOGAR</h2>
+      <div class="band bandTutorial" aria-hidden="true"></div>
 
-      <p>Acompanhem a explicação das regras na TV!</p>
+      <div class="tutorialInner">
+        <p class="kicker">Como jogar</p>
+        <h1 class="display">Olho<br>na TV!</h1>
+        <p id="tutorialText" class="lead">As regras aparecem na tela grande.</p>
+      </div>
 
-      <div id="tutorialControls">
+      <div id="tutorialControls" class="dock tutorialDock">
 
         <div class="row">
-          <button class="btn" onclick="SendTutorialAction('prev')">← Anterior</button>
-          <button class="btn" onclick="SendTutorialAction('next')">Próxima →</button>
+          <button type="button" class="btn btnGhost" onclick="SendTutorialAction('prev')">← Anterior</button>
+          <button type="button" class="btn btnPaper" onclick="SendTutorialAction('next')">Próxima →</button>
         </div>
 
-        <button class="btn btnGhost" onclick="SendTutorialAction('skip')">Pular Tutorial</button>
+        <button type="button" class="btnLink" onclick="SendTutorialAction('skip')">Pular tutorial</button>
 
       </div>
 
@@ -81,37 +88,41 @@
     <div id="playingScreen" class="screen">
 
       <!-- MEU STATUS -->
-      <div class="meCard">
-        <span id="meDot" class="dot"></span>
+      <header class="topBar">
+        <span id="meDot" class="meSwatch" aria-hidden="true"></span>
         <div class="meInfo">
           <div id="meName" class="meName"></div>
           <div id="meSub" class="meSub"></div>
         </div>
-        <div id="meTimer" class="meTimer"></div>
-      </div>
+        <div id="meTimer" class="meTimer" role="timer" aria-label="Segundos restantes"></div>
+      </header>
 
       <!-- MISSÃO (só neste celular; escondida até tocar) -->
-      <button id="missionCard" class="missionCard" onclick="ToggleMission()"></button>
+      <button id="missionCard" type="button" class="missionCard closed" aria-expanded="false" onclick="ToggleMission()"></button>
 
-      <!-- PAINEL DA FASE ATUAL (preenchido por RenderActionPanel) -->
-      <div id="actionPanel" class="panel"></div>
+      <div id="playBody" class="playBody">
 
-      <!-- MÃO DE CARTAS (só as suas) -->
-      <div id="cardsPanel"></div>
+        <!-- PAINEL DA FASE ATUAL (preenchido por RenderActionPanel) -->
+        <div id="actionPanel"></div>
 
-      <!-- MAPA -->
-      <div class="mapHeader">
-        <p class="label">Mapa</p>
-        <button id="zoomButton" class="zoomButton" style="visibility:hidden" onclick="ResetMapView()">Ver tudo</button>
+        <!-- MÃO DE CARTAS (só as suas) -->
+        <div id="cardsPanel"></div>
+
+        <!-- MAPA -->
+        <div id="mapWrap" class="mapWrap">
+          <p class="label mapLabel">Mapa</p>
+          <div id="mapView"></div>
+          <button id="zoomButton" type="button" class="zoomButton" style="visibility:hidden" onclick="ResetMapView()">Ver tudo</button>
+        </div>
+
+        <!-- LISTA DA FASE e o que fica abaixo do mapa (movidos do actionPanel) -->
+        <div id="choicePanel"></div>
+
+        <div id="miniLog" class="miniLog" aria-live="polite"></div>
+
       </div>
-      <div id="mapView"></div>
 
-      <!-- LISTA DE TERRITÓRIOS DA FASE (sempre abaixo do mapa; movida do actionPanel) -->
-      <div id="choicePanel" class="panel"></div>
-
-      <div id="miniLog" class="miniLog"></div>
-
-      <p id="rejectedText" class="toast"></p>
+      <p id="rejectedText" class="toast" role="status" aria-live="assertive"></p>
 
     </div>
 
@@ -122,25 +133,36 @@
 
     <div id="finalScoreScreen" class="screen">
 
-      <p class="label">FIM DE JOGO</p>
-      <h1 id="finalWinner" class="wordmark"></h1>
-      <p id="finalReason" class="hint"></p>
+      <header class="finalHead">
+        <div id="finalBand" class="band" aria-hidden="true"></div>
+        <div class="finalHeadInner">
+          <p class="kicker">Fim de jogo</p>
+          <h1 id="finalWinner" class="display"></h1>
+          <p id="finalReason" class="finalReason"></p>
+        </div>
+      </header>
 
-      <p class="label" style="margin-top:14px">As missões de todo mundo</p>
-      <div id="finalRanking" class="panel"></div>
-
-      <button class="btn btnGhost" onclick="window.location.href='../index.html'">Voltar ao Início</button>
+      <div class="pad">
+        <h2 class="sectionTitle">As missões de todo mundo</h2>
+        <div id="finalRanking"></div>
+      </div>
 
     </div>
 
-    <button id="hostButton" class="btn hostButton" style="display:none" onclick="SendHostCommand()">Começar Jogo</button>
-
   </div>
 
-  <div id="pauseOverlay" class="pauseOverlay">
-    <div class="pauseOverlayCard">
-      <h2>Jogo Pausado</h2>
-      <p>Aguarde o host retomar...</p>
+  <!-- BARRA FIXA: botões da fase (movidos do actionPanel) + botão do anfitrião -->
+  <div id="actionBar" class="dock actionBar empty">
+    <div id="barSlot" class="barSlot"></div>
+    <button id="hostButton" type="button" class="btn btnPrimary hostButton" style="display:none" onclick="SendHostCommand()">Começar jogo</button>
+    <a id="homeLink" class="btnLink" href="../index.html" style="display:none">Voltar ao início</a>
+  </div>
+
+  <div id="pauseOverlay" class="pauseOverlay" role="alertdialog" aria-modal="true" aria-labelledby="pauseTitle">
+    <div class="pauseCard">
+      <div class="pauseIcon" aria-hidden="true"><span></span><span></span></div>
+      <h2 id="pauseTitle">Jogo pausado</h2>
+      <p>Aguarde o anfitrião retomar... o seu relógio também parou.</p>
     </div>
   </div>
 

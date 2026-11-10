@@ -58,7 +58,9 @@ const currentPlayerId = params.get("id");
 // =========================
 
 const KindLabels = { person: "QUEM", weapon: "COM O QUÊ", room: "ONDE" };
-const KindColors = { weapon: "#E23B3B", room: "#2F6FD0" };
+
+// Fases em que o ator decide algo no dispositivo (painel vira folha de papel).
+const DecisionPhases = ["Roll", "Moving", "Guess", "FinalGuess", "Gossip"];
 
 const RejectedReasonLabels = {
   "not-now": "Agora não é hora disso.",
@@ -69,9 +71,11 @@ const RejectedReasonLabels = {
 };
 
 const Arrows = { up: "↑", down: "↓", left: "←", right: "→" };
+const ArrowWords = { up: "para cima", down: "para baixo", left: "para a esquerda", right: "para a direita" };
 
 // Bloquinho: vazio → ✓ tem → ✗ não tem → ? talvez (símbolos diferentes, não só cor — GDD §5).
 const NoteSymbols = ["", "✓", "✗", "?"];
+const NoteWords = ["vazio", "tem", "não tem", "talvez"];
 
 
 // =========================
@@ -86,7 +90,7 @@ let info = null;     // currentState/info (conteúdo + mapa, estático)
 let table = null;    // currentState/table (público)
 let hand = [];       // players/{eu}/hand (privado)
 let gossips = [];    // players/{eu}/gossips (privado)
-let notes = {};      // players/{eu}/notes (bloquinho, só o celular escreve)
+let notes = {};      // players/{eu}/notes (bloquinho, só o dispositivo escreve)
 
 let lastActionT = 0;
 let panelKey = null;
@@ -94,6 +98,10 @@ let situationKey = null; // fase+ator+turno: muda = zera a seleção do palpite 
 let pick = { person: null, weapon: null, room: null };
 let seenGossipCount = 0;
 let rejectedTimeout = null;
+
+let currentTab = "cena";
+let decisionKey = null;  // fase+ator+turno+tipo (sem os passos): muda = nova decisão → pula pra aba Cena
+let guessOpen = false;   // "Palpitar aqui" (chamado) abre o formulário na mesma folha
 
 let countdownInterval = null;
 let countdownRemaining = 0;
@@ -138,20 +146,68 @@ function Me() { return table && table.players ? table.players[currentPlayerId] :
 function PlayerName(id) { return id && table && table.players && table.players[id] ? table.players[id].name : ""; }
 function CharacterOf(id) { const p = table && table.players ? table.players[id] : null; return p ? p.character : null; }
 
-function PersonColor(personId) { const p = People().find(x => x.id === personId); return p ? p.color : "#888"; }
+function PersonColor(personId) { const p = People().find(x => x.id === personId); return p ? p.color : "#888888"; }
 
-// Peões claros/escuros (Socorrista branco, Diretor preto) ganham contorno (GDD §2).
-function ToneClass(hex)
+// Cor do texto sobre a cor do personagem: rosa, laranja e branco ficam com
+// tinta escura; o resto, branco.
+function Luminance(hex)
 {
-  if(!hex || hex.length < 7) return "";
+  if(!hex || hex.length < 7 || hex[0] !== "#") return 0;
   const r = parseInt(hex.substr(1, 2), 16) / 255, g = parseInt(hex.substr(3, 2), 16) / 255, b = parseInt(hex.substr(5, 2), 16) / 255;
-  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-  return lum > 0.6 ? "light" : (lum < 0.18 ? "dark" : "");
+  return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
-function DotHTML(color, extra) { return `<span class="dot ${ToneClass(color)} ${extra || ""}" style="background:${color}"></span>`; }
+function InkOn(hex) { return Luminance(hex) > 0.55 ? "var(--ink)" : "#FFFFFF"; }
+
+// "O Herói" → H, "A Figurante" → F (pula o artigo).
+function Initial(name)
+{
+  const words = String(name || "").trim().split(/\s+/);
+  const word = words.length > 1 && /^(o|a|os|as)$/i.test(words[0]) ? words[1] : words[0];
+  return (word || "").charAt(0).toUpperCase();
+}
+
+// Peão: bolinha na cor do personagem com a inicial.
+function PawnHTML(personId, size, extraCls)
+{
+  const p = People().find(x => x.id === personId);
+  const color = p ? p.color : "#888888";
+  const font = size <= 17 ? 11 : Math.round(size * 0.6);
+  return `<span class="pawnDot ${extraCls || ""}" aria-hidden="true" style="width:${size}px;height:${size}px;font-size:${font}px;background:${color};color:${InkOn(color)}">${p ? Initial(p.name) : ""}</span>`;
+}
+
+function DotHTML(color, size, extraCls)
+{
+  return `<span class="pawnDot ${extraCls || ""}" aria-hidden="true" style="width:${size}px;height:${size}px;background:${color}"></span>`;
+}
+
+// Nome curto e legível pro mapa, pro "Entrar" e pra legenda: "Cenário da
+// Mansão" → "Mansão", "Depósito de Cenários" → "Depósito". (O shortName do
+// conteúdo é sigla de 3 letras, feita pro cabeçalho compacto da TV.)
+function MapName(id)
+{
+  return ItemName(id).replace(/^Cenário d[aoe]s?\s+/i, "").replace(/\s+de Cenários$/i, "");
+}
+
+// Artigo do conteúdo: "com o Martelo" / "com a Claquete", "no Camarim" / "na Cidade".
+function Article(id) { const it = Item(id); return it && it.article ? it.article : ""; }
+function WithArticle(id) { const a = Article(id); return a ? `com ${a}` : "com"; }
+function InArticle(id) { const a = Article(id); return a === "o" ? "no" : (a === "a" ? "na" : "em"); }
+
+// Faixa de tipo da carta: QUEM na cor do personagem, COM O QUÊ caneta, ONDE tinta.
+function Band(id)
+{
+  const kind = KindOf(id);
+  // Cor quase branca (Socorrista) some sobre o papel: ganha um filete de tinta.
+  if(kind === "person") { const c = PersonColor(id); return { label: KindLabels.person, bg: c, ink: InkOn(c), cls: Luminance(c) > 0.9 ? "pale" : "" }; }
+  if(kind === "weapon") return { label: KindLabels.weapon, bg: "var(--pen)", ink: "#FFFFFF", cls: "" };
+  return { label: KindLabels.room, bg: "var(--ink-2)", ink: "#FFFFFF", cls: "" };
+}
+
+function BandHTML(id) { const b = Band(id); return `<span class="band ${b.cls}" style="background:${b.bg};color:${b.ink}">${b.label}</span>`; }
 
 function IsMyAction() { return table && table.actorId === currentPlayerId; }
+function IsMyDecision() { return !!table && IsMyAction() && DecisionPhases.includes(table.phase); }
 function FaceUp() { return AsList(table && table.faceUpCards); }
 function Seating() { return AsList(table && table.seating); }
 
@@ -163,12 +219,14 @@ function WhereLabel(pawn)
   return pawn.room ? ItemName(pawn.room) : "no corredor";
 }
 
-function ItemCardHTML(id)
+function MiniCardHTML(id) { return `<div class="miniCard">${BandHTML(id)}<span class="name">${Esc(ItemName(id))}</span></div>`; }
+function HandCardHTML(id) { return `<div class="handCard">${BandHTML(id)}<span class="name">${Esc(ItemName(id))}</span></div>`; }
+function TableCardHTML(id) { return `<div class="tableCard"><span class="band">${KindLabels[KindOf(id)]}</span><span class="name">${Esc(ItemName(id))}</span></div>`; }
+
+function StripCardHTML(id)
 {
-  const kind = KindOf(id);
-  const color = kind === "person" ? PersonColor(id) : KindColors[kind];
-  const ink = ToneClass(color) === "light" ? "#26232D" : "#fff";
-  return `<div class="itemCard"><div class="kind" style="background:${color};color:${ink}">${KindLabels[kind]}</div><div class="name">${Esc(ItemName(id))}</div></div>`;
+  const b = Band(id);
+  return `<div class="stripCard"><span class="band ${b.cls}" style="background:${b.bg};color:${b.ink}">${b.label}</span><span class="name">${Esc(ItemName(id))}</span></div>`;
 }
 
 function ShowToast(text)
@@ -205,7 +263,16 @@ function ShowScreen(screenId)
 
 window.ShowTab = function(tab)
 {
-  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  currentTab = tab;
+
+  document.querySelectorAll(".tab").forEach(b =>
+  {
+    const on = b.dataset.tab === tab;
+    b.classList.toggle("active", on);
+    if(on) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+
   document.querySelectorAll(".tabBody").forEach(b => b.classList.toggle("active", b.id === `tab-${tab}`));
 
   if(tab === "gossips")
@@ -213,7 +280,16 @@ window.ShowTab = function(tab)
     seenGossipCount = gossips.length;
     RenderGossips();
   }
+
+  UpdateCenaAlert();
 };
+
+// Aba Cena amarela: tenho uma decisão pendente e estou em outra aba.
+function UpdateCenaAlert()
+{
+  const tab = document.querySelector(".tab[data-tab='cena']");
+  if(tab) tab.classList.toggle("alert", currentTab !== "cena" && IsMyDecision());
+}
 
 
 // =========================
@@ -267,7 +343,7 @@ function RenderCharacterGrid()
   if(!el) return;
 
   const people = People();
-  if(!people.length) { el.innerHTML = `<p class="hint">Carregando o elenco...</p>`; return; }
+  if(!people.length) { el.innerHTML = `<p class="loadingText">Carregando o elenco...</p>`; return; }
 
   const mine = lobbyPlayers[currentPlayerId] ? lobbyPlayers[currentPlayerId].character : null;
   const takenBy = {};
@@ -280,9 +356,11 @@ function RenderCharacterGrid()
   el.innerHTML = people.map(p =>
   {
     const taken = takenBy[p.id];
-    const cls = `charItem ${mine === p.id ? "selected" : ""} ${taken ? "taken" : ""}`;
-    const click = taken ? "" : ` onclick="SelectCharacter('${p.id}')"`;
-    return `<button class="${cls}"${click}>${DotHTML(p.color)}<b>${Esc(p.name)}</b><small>${Esc(p.tagline || "")}</small>${taken ? `<span class="takenBy">${Esc(taken)}</span>` : ""}</button>`;
+    const selected = mine === p.id;
+    const cls = `charItem ${selected ? "selected" : ""} ${taken ? "taken" : ""}`;
+    const action = taken ? " disabled" : ` onclick="SelectCharacter('${p.id}')" aria-pressed="${selected}"`;
+    const sub = taken ? `com ${taken}` : (p.tagline || "");
+    return `<button class="${cls}"${action}><span class="charTop">${PawnHTML(p.id, 28)}<span class="charName">${Esc(p.name)}</span></span><span class="charSub">${Esc(sub)}</span></button>`;
   }).join("");
 
   document.getElementById("lobbyWaitingText").innerText = mine
@@ -322,19 +400,13 @@ window.SendTutorialAction = async function(action)
   await set(ref(db, `rooms/${currentRoomCode}/tutorialAction`), { action: action, t: Date.now() });
 };
 
+// Cada tela tem o seu botão do anfitrião, no fluxo da página, todos mandando
+// o mesmo hostCommand: "Começar Jogo" (lobby), "Pular decisão atual" (aba
+// Cena — mesmo efeito do timeout de quem está AFK) e "Jogar de Novo" (final).
 function UpdateHostButton(state)
 {
   if(!isHost) return;
-
-  const btn = document.getElementById("hostButton");
-
-  // Playing: o host pode "pular" a decisão de quem está AFK (mesmo efeito do timeout).
-  const labels = { "Lobby": "Começar Jogo", "Playing": "Pular decisão atual", "FinalScore": "Jogar de Novo" };
-  const label = labels[state];
-
-  btn.style.display = label ? "block" : "none";
-  btn.classList.toggle("btnGhost", state === "Playing");
-  if(label) btn.innerText = label;
+  document.querySelectorAll(".hostOnly").forEach(b => { b.style.display = ""; });
 }
 
 
@@ -429,6 +501,10 @@ window.SendGuess = function(needRoom)
 
 window.SendGossip = function(item) { SendAction("gossip", { item: item }); };
 
+// Chamado pra um cômodo: "Palpitar aqui" abre o formulário na mesma folha.
+window.OpenGuess = function() { guessOpen = true; panelKey = null; RenderActionPanel(); };
+window.CloseGuess = function() { guessOpen = false; panelKey = null; RenderActionPanel(); };
+
 
 // =========================
 // OPEN PLAYING
@@ -513,11 +589,12 @@ function RenderAll()
   RenderGossips();
   RenderMapTab();
   RenderMiniLog();
+  UpdateCenaAlert();
 }
 
 
 // =========================
-// MEU STATUS
+// TOPO (aba na cor do meu personagem)
 // =========================
 
 function RenderMe()
@@ -526,9 +603,9 @@ function RenderMe()
   if(!me) return;
 
   const color = PersonColor(me.character);
-  const dot = document.getElementById("meDot");
-  dot.style.background = color;
-  dot.className = `dot ${ToneClass(color)}`;
+  const topo = document.getElementById("celTopo");
+  topo.style.background = color;
+  topo.style.color = InkOn(color);
 
   document.getElementById("meName").innerText = `${me.name} · ${ItemName(me.character)}`;
   document.getElementById("meSub").innerText = WhereLabel(MyPawn()) + (table.finalRound ? " · RODADA FINAL" : "");
@@ -536,7 +613,7 @@ function RenderMe()
 
 
 // =========================
-// PAINEL DA FASE
+// PAINEL DA FASE (aba Cena)
 // =========================
 
 function RenderActionPanel()
@@ -560,19 +637,53 @@ function RenderActionPanel()
   panelKey = key;
 
   const situation = [phase, table.actorId, table.turnNumber, prompt.type, prompt.again, prompt.steps].join("#");
+  const sameSituation = situation === situationKey;
 
-  if(situation !== situationKey)
+  if(!sameSituation)
   {
     situationKey = situation;
     pick = { person: null, weapon: null, room: null };
+    guessOpen = false;
     StartCountdown(mine ? (table.phaseDuration || 0) : 0);
   }
 
-  el.classList.toggle("mine", mine && phase !== "Showing" && phase !== "Idle");
-  el.innerHTML = BuildPanelHTML(phase, prompt, mine);
+  // NOVA DECISÃO MINHA: pula pra aba Cena e vibra. Sem os passos na chave,
+  // pra não vibrar a cada casa andada.
+  const decision = [phase, table.actorId, table.turnNumber, prompt.type, prompt.again].join("#");
+
+  if(decision !== decisionKey)
+  {
+    decisionKey = decision;
+
+    if(IsMyDecision())
+    {
+      if(currentTab !== "cena") ShowTab("cena");
+      if(navigator.vibrate) navigator.vibrate(40);
+    }
+  }
+
+  // Rebuild do formulário (ao tocar num chip) mantém a rolagem do meio.
+  const oldBody = el.querySelector(".guessBody");
+  const scroll = oldBody && sameSituation ? oldBody.scrollTop : 0;
+
+  const view = BuildPanelHTML(phase, prompt, mine);
+  el.className = `panel ${view.cls}`;
+  el.innerHTML = view.html;
+
+  const cena = document.getElementById("tab-cena");
+  cena.classList.remove("mode-mine", "mode-watch", "mode-result");
+  cena.classList.add(`mode-${view.mode}`);
+
+  const newBody = el.querySelector(".guessBody");
+  if(newBody && scroll) newBody.scrollTop = scroll;
+
   AnimateDice(el);
 }
 
+// Devolve { mode, cls, html }:
+//   mode "mine"   → minha decisão, folha de papel
+//   mode "result" → resultado do palpite / fofoca
+//   mode "watch"  → vez de outra pessoa (carbono)
 function BuildPanelHTML(phase, prompt, mine)
 {
   const actor = PlayerName(table.actorId);
@@ -581,96 +692,143 @@ function BuildPanelHTML(phase, prompt, mine)
 
   if(phase === "Roll" && mine)
   {
-    let html = `<div class="phaseTitle">${prompt.again ? "Dupla! Rola de novo" : "Sua vez!"}</div>${rollHTML}`;
-    html += `<button class="btn btnSpot" onclick="Act('roll')">🎲 Rolar dados</button>`;
-    if(prompt.canPassage) html += `<button class="btn btnPassage" onclick="Act('passage')">Passagem secreta → ${Esc(ItemName(prompt.passageRoom))}</button>`;
+    if(prompt.canGuess && guessOpen)
+    {
+      return GuessPanel({
+        title: `Palpite em ${ItemName(prompt.room)}`,
+        fixedRoom: prompt.room,
+        needRoom: false,
+        primary: "Palpitar",
+        secondary: "Voltar",
+        secondaryClick: "CloseGuess()"
+      });
+    }
+
+    const again = !!prompt.again;
+    const dice = again && roll && roll.rollerId === table.actorId ? DiceHTML(roll, "big") : BlankDiceHTML();
+
+    let html = table.turnNumber ? `<div class="sceneNo">CENA ${table.turnNumber}</div>` : "";
+    html += `<h1 class="rollTitle ${again ? "small" : ""}">${again ? "Dupla! Rola de novo" : "Sua vez!"}</h1>${dice}`;
 
     if(prompt.canGuess)
     {
-      html += `<p class="hint">Você foi chamado pra ${Esc(ItemName(prompt.room))} — pode palpitar aqui sem sair.</p>`;
-      html += GuessFormHTML(prompt.room, false);
-      html += `<button class="btn" onclick="SendGuess(false)">Palpitar aqui</button>`;
+      html += `<p class="rollHint">Você foi chamado pra ${Esc(ItemName(prompt.room))} — pode palpitar aqui sem sair.</p>`;
+      html += `<button class="btn btnCalled" onclick="OpenGuess()">Palpitar aqui</button>`;
     }
 
-    return html;
+    html += `<button class="btn btnMarker btnRoll" onclick="Act('roll')">Rolar dados</button>`;
+
+    if(prompt.canPassage)
+    {
+      html += `<button class="btn btnInk btnPassage" onclick="Act('passage')"><span class="passKey" aria-hidden="true">${Esc(PassageKey(prompt.passageRoom))}</span><span>Passagem secreta → ${Esc(ItemName(prompt.passageRoom))}</span></button>`;
+    }
+
+    return { mode: "mine", cls: "sheet roll", html };
   }
 
-  if(phase === "Moving" && mine) return MovePanelHTML(prompt);
+  if(phase === "Moving" && mine) return { mode: "mine", cls: "sheet bleed", html: MovePanelHTML(prompt) };
 
   if(phase === "Guess" && mine)
   {
-    return `<div class="phaseTitle">Palpite em ${Esc(ItemName(prompt.room))}</div>
-      <p class="hint">Quem matou o Roteirista, e com o quê? O cômodo é este.</p>
-      ${GuessFormHTML(prompt.room, false)}
-      <button class="btn" onclick="SendGuess(false)">Palpitar</button>
-      <button class="btn btnGhost" onclick="Act('pass')">Encerrar turno sem palpitar</button>`;
+    return GuessPanel({
+      title: `Palpite em ${ItemName(prompt.room)}`,
+      fixedRoom: prompt.room,
+      needRoom: false,
+      primary: "Palpitar",
+      secondary: "Encerrar turno sem palpitar",
+      secondaryClick: "Act('pass')"
+    });
   }
 
   if(phase === "FinalGuess" && mine)
   {
-    return `<div class="phaseTitle">Seu último palpite</div>
-      <p class="hint">Acabou o tempo! Escolha pessoa, arma e cômodo — vale qualquer cômodo.</p>
-      ${GuessFormHTML(null, true)}
-      <button class="btn" onclick="SendGuess(true)">Dar o último palpite</button>
-      <button class="btn btnGhost" onclick="Act('pass')">Não arriscar</button>`;
+    return GuessPanel({
+      title: "Seu último palpite",
+      big: true,
+      hint: "Acabou o tempo! Escolha pessoa, arma e cômodo — vale qualquer cômodo.",
+      needRoom: true,
+      primary: "Dar o último palpite",
+      secondary: "Não arriscar",
+      secondaryClick: "Act('pass')"
+    });
   }
 
   if(phase === "Gossip" && mine)
   {
     const options = AsList(prompt.options);
-    return `<div class="phaseTitle">Fofoca da Produção!</div>
-      <p>${Esc(PlayerName(prompt.guessBy))} palpitou e você tem ${options.length} dessas cartas. Escolha UMA pra contar (só ${Esc(PlayerName(prompt.guessBy))} vê):</p>
-      <div class="guessSummary">${options.map(id => `<div onclick="SendGossip('${id}')" style="cursor:pointer">${ItemCardHTML(id)}</div>`).join("")}</div>
-      <p class="hint">Toque numa carta pra contar.</p>`;
+    const by = Esc(PlayerName(prompt.guessBy));
+
+    const buttons = options.map(id =>
+      `<button class="gpOption" onclick="SendGossip('${id}')">${BandHTML(id)}<span class="name">${Esc(ItemName(id))}</span></button>`).join("");
+
+    return {
+      mode: "mine",
+      cls: "gossipPick",
+      html: `<div class="gpHead"><h1>Fofoca da Produção!</h1></div>
+        <div class="gpBody">
+          <p>${by} palpitou e você tem ${options.length} dessas cartas. Escolha <b>UMA</b> pra contar (só ${by} vê):</p>
+          ${buttons}
+          <p class="gpFoot">Toque numa carta pra contar.</p>
+        </div>`
+    };
   }
 
-  // ===== ESPECTADOR / RESULTADO =====
-  let html = "";
+  // ===== RESULTADO DO PALPITE =====
   const guess = table.guess;
 
   if(guess && (phase === "Showing" || phase === "Gossip" || phase === "Idle"))
   {
-    const result = guess.result === "correct" ? ` <span class="yes">ACERTOU!</span>` : (guess.result === "wrong" ? ` <span class="no">errou</span>` : "");
-    html += `<div class="phaseTitle">Palpite #${guess.n} · ${Esc(PlayerName(guess.by))}${result}</div>`;
-    html += `<div class="guessSummary">${[guess.person, guess.weapon, guess.room].map(ItemCardHTML).join("")}</div>`;
+    const stamp = guess.result === "correct" ? `<span class="stamp ok">ACERTOU!</span>` : (guess.result === "wrong" ? `<span class="stamp">ERROU</span>` : "");
+
+    let html = `<div class="resultHead"><h1>Palpite #${guess.n} · ${Esc(PlayerName(guess.by))}</h1>${stamp}</div>`;
+    html += `<div class="miniCards">${[guess.person, guess.weapon, guess.room].map(MiniCardHTML).join("")}</div>`;
 
     const g = table.gossip;
 
     if(phase === "Gossip")
     {
-      html += `<p class="hint">${Esc(actor)} está escolhendo qual fofoca contar...</p>`;
+      html += `<p class="resultLine">${Esc(actor)} está escolhendo qual fofoca contar...</p>`;
     }
     else if(g && g.n === guess.n)
     {
       html += g.from
-        ? `<p><b>${Esc(PlayerName(g.from))}</b> contou uma fofoca pra <b>${Esc(PlayerName(g.to))}</b>.</p>`
-        : `<p class="hint">Ninguém tinha fofoca sobre esse palpite!</p>`;
+        ? `<p class="resultLine"><b>${Esc(PlayerName(g.from))}</b> contou uma fofoca pra <b>${Esc(PlayerName(g.to))}</b>.</p>`
+        : `<p class="resultLine">Ninguém tinha fofoca sobre esse palpite!</p>`;
 
-      // Quem palpitou vê a fofoca recebida (só no próprio celular).
+      // Quem palpitou vê a fofoca recebida (só no próprio dispositivo).
       if(g.to === currentPlayerId && g.from)
       {
         const mineGossip = gossips.filter(x => x.n === g.n).pop();
-        if(mineGossip) html += GossipCardHTML(mineGossip, true);
+        if(mineGossip) html += FreshGossipHTML(mineGossip);
       }
     }
 
-    return html;
+    return { mode: "result", cls: "result", html };
   }
 
+  // ===== ESPECTADOR =====
+  const who = Esc(actor);
   const labels = {
-    "Roll": `${actor} vai rolar os dados`,
-    "Moving": `${actor} está andando pelo estúdio${prompt.steps ? ` (${prompt.steps} passos)` : ""}`,
-    "Guess": `${actor} pensa no palpite...`,
-    "FinalGuess": `Último palpite de ${actor}`,
+    "Roll": `${who} vai rolar os dados`,
+    "Moving": `${who} está andando pelo estúdio${prompt.steps ? ` <span class="mk">(${prompt.steps} passos)</span>` : ""}`,
+    "Guess": `${who} pensa no palpite...`,
+    "FinalGuess": `Último palpite de ${who}`,
     "Showing": "Conferindo o envelope..."
   };
 
-  html += `<div class="phaseTitle">${labels[phase] || "Aguardando..."}</div>${rollHTML}`;
+  let html = `<h1 class="watchTitle">${labels[phase] || "Aguardando..."}</h1>${rollHTML}`;
 
   const turnChar = CharacterOf(table.currentTurnPlayerId);
-  if(turnChar) html += `<p class="hint">${DotHTML(PersonColor(turnChar))} ${Esc(PlayerName(table.currentTurnPlayerId))} é ${Esc(ItemName(turnChar))}.</p>`;
+  if(turnChar) html += `<p class="turnWho">${DotHTML(PersonColor(turnChar), 20, "onBg")}<span>${Esc(PlayerName(table.currentTurnPlayerId))} é ${Esc(ItemName(turnChar))}.</span></p>`;
 
-  return html;
+  return { mode: "watch", cls: "watch", html };
+}
+
+function PassageKey(roomId)
+{
+  const map = StudioMap();
+  const p = AsList(map && map.passages).find(x => x.a === roomId || x.b === roomId);
+  return p ? p.id : "";
 }
 
 // MOVIMENTO PASSO A PASSO: 4 setas no corredor (desabilitadas onde tem
@@ -682,56 +840,109 @@ function MovePanelHTML(prompt)
   const moves = AsList(prompt.moves);
   const roll = table.lastRoll;
 
-  let html = `<div class="phaseTitle">Ande pelo estúdio</div>${roll ? DiceHTML(roll) : ""}`;
-  html += `<p class="stepsLeft">${prompt.steps}<small>PASSOS RESTANTES</small></p>`;
+  let html = `<div class="moveTop">
+    <div class="stepsLeft"><span class="stepsNum">${prompt.steps}</span><span class="stepsLbl">PASSOS<br>RESTANTES</span></div>
+    ${roll ? DiceHTML(roll, "small") : ""}
+  </div>`;
 
   if(prompt.inRoom)
   {
-    html += `<p class="hint">Você está em ${Esc(ItemName(prompt.inRoom))}. Saia por uma porta:</p>`;
-    html += moves.map((m, i) => `<button class="btn btnSpot" onclick="ExitDoor(${m.door})">${Arrows[m.dir] || ""} Sair pela porta${moves.length > 1 ? ` ${i + 1}` : ""}</button>`).join("");
+    html += `<p class="moveHint">Você está em ${Esc(ItemName(prompt.inRoom))}. Saia por uma porta:</p>`;
+    html += moves.map((m, i) => `<button class="btn doorBtn" onclick="ExitDoor(${m.door})">${Arrows[m.dir] || ""} Sair pela porta${moves.length > 1 ? ` ${i + 1}` : ""}</button>`).join("");
   }
   else
   {
     const pad = ["up", "left", "right", "down"].map(dir =>
     {
       const m = moves.find(x => x.dir === dir);
-      if(m && m.room) return `<button class="arrow ${dir} enter" onclick="Step('${dir}')">${Arrows[dir]}<br>Entrar<br>${Esc(ItemName(m.room))}</button>`;
-      return `<button class="arrow ${dir}" ${m ? `onclick="Step('${dir}')"` : "disabled"}>${Arrows[dir]}</button>`;
+      if(m && m.room)
+      {
+        // Fonte pelo tamanho da maior palavra, pra não quebrar "Depósito" no
+        // meio (~58px úteis no botão; Courier = 0,6em por letra).
+        const label = `Entrar ${MapName(m.room)}`;
+        const longest = Math.max(...label.split(/\s+/).map(w => w.length));
+        const size = Math.max(10, Math.min(15, Math.floor(58 / (longest * 0.6))));
+        return `<button class="arrow ${dir} enter" style="font-size:${size}px" aria-label="Entrar em ${Esc(ItemName(m.room))}" onclick="Step('${dir}')">${Esc(label)}</button>`;
+      }
+      return `<button class="arrow ${dir}" aria-label="Andar ${ArrowWords[dir]}" ${m ? `onclick="Step('${dir}')"` : "disabled"}>${Arrows[dir]}</button>`;
     }).join("");
 
-    html += `<div class="dpad">${pad}<div class="dpadCenter">${DotHTML(PersonColor(CharacterOf(currentPlayerId)))}</div></div>`;
+    html += `<div class="dpad">${pad}<div class="dpadCenter">${PawnHTML(CharacterOf(currentPlayerId), 46)}</div></div>`;
   }
 
-  html += `<button class="btn btnGhost" onclick="Act('stop')">Parar aqui${prompt.steps ? ` (sobram ${prompt.steps})` : ""}</button>`;
-  html += MapHTML(true);
+  html += `<button class="btn btnGhostInk btnStop" onclick="Act('stop')">Parar aqui${prompt.steps ? ` (sobram ${prompt.steps})` : ""}</button>`;
+  html += `<div class="moveMap">${MapHTML(true)}</div>`;
   return html;
+}
+
+// FOLHA DE PALPITE em 3 zonas: cabeçalho fixo (título + frase montada),
+// meio rolável (chips) e rodapé fixo (botões).
+function GuessPanel(o)
+{
+  const complete = pick.person && pick.weapon && (!o.needRoom || pick.room);
+
+  const html = `<div class="guessHead">
+      <h1 class="${o.big ? "big" : ""}">${Esc(o.title)}</h1>
+      ${o.hint ? `<p class="hintLine">${Esc(o.hint)}</p>` : ""}
+      <p class="sentence">${SentenceHTML(o.fixedRoom, o.needRoom)}</p>
+    </div>
+    <div class="guessBody">${GuessFormHTML(o.needRoom)}</div>
+    <div class="guessFoot">
+      <button class="btn btnGuess" ${complete ? "" : "disabled"} onclick="SendGuess(${o.needRoom})">${Esc(o.primary)}</button>
+      <button class="btn btnGhostInk btnPass" onclick="${o.secondaryClick}">${Esc(o.secondary)}</button>
+    </div>`;
+
+  return { mode: "mine", cls: "sheet guess", html };
+}
+
+// "{quem}, com o/a {arma}, no/na {cômodo}" — lacunas "_______", escolhas no marca-texto.
+function SentenceHTML(fixedRoom, needRoom)
+{
+  const blank = "_______";
+  const mark = id => `<mark>${Esc(ItemName(id))}</mark>`;
+
+  const who = pick.person ? mark(pick.person) : blank;
+  const what = pick.weapon ? `${WithArticle(pick.weapon)} ${mark(pick.weapon)}` : `com ${blank}`;
+
+  let where = "";
+  if(needRoom) where = pick.room ? `${InArticle(pick.room)} ${mark(pick.room)}` : `em ${blank}`;
+  else if(fixedRoom) where = `${InArticle(fixedRoom)} ${Esc(ItemName(fixedRoom))}`;
+
+  return `${who}, ${what}${where ? `, ${where}` : ""}`;
 }
 
 // Pessoa + arma (+ cômodo na rodada final). Cartas suas/visíveis aparecem
 // riscadas (ainda dá pra escolher — blefar com carta própria é estratégia).
-function GuessFormHTML(fixedRoom, needRoom)
+function GuessFormHTML(needRoom)
 {
   const known = new Set([...hand, ...FaceUp()]);
 
   const chips = (list, kind) => list.map(it =>
   {
-    const dot = kind === "person" ? DotHTML(it.color) : "";
-    return `<button class="chip ${pick[kind] === it.id ? "selected" : ""} ${known.has(it.id) ? "known" : ""}" onclick="Pick('${kind}','${it.id}')">${dot}${Esc(it.name)}</button>`;
+    const dot = kind === "person" ? DotHTML(it.color, 14) : "";
+    const selected = pick[kind] === it.id;
+    return `<button class="chip ${selected ? "selected" : ""} ${known.has(it.id) ? "known" : ""}" aria-pressed="${selected}" onclick="Pick('${kind}','${it.id}')">${dot}<span>${Esc(it.name)}</span></button>`;
   }).join("");
 
-  let html = `<p class="label">Quem</p><div class="chipGroup">${chips(People(), "person")}</div>`;
-  html += `<p class="label">Com o quê</p><div class="chipGroup">${chips(Weapons(), "weapon")}</div>`;
+  let html = `<h2 class="groupLabel">QUEM</h2><div class="chipGroup">${chips(People(), "person")}</div>`;
+  html += `<h2 class="groupLabel">COM O QUÊ</h2><div class="chipGroup">${chips(Weapons(), "weapon")}</div>`;
 
-  if(needRoom) html += `<p class="label">Onde</p><div class="chipGroup">${chips(Rooms(), "room")}</div>`;
-  else if(fixedRoom) html += `<p class="label">Onde</p><p><b>${Esc(ItemName(fixedRoom))}</b></p>`;
+  if(needRoom) html += `<h2 class="groupLabel">ONDE</h2><div class="chipGroup">${chips(Rooms(), "room")}</div>`;
 
   return html;
 }
 
-function GossipCardHTML(g, fresh)
+// Fofoca recebida (só pra quem palpitou) + atalho pro bloquinho.
+function FreshGossipHTML(g)
 {
-  return `<div class="gossipCard ${fresh ? "fresh" : ""}"><span class="label">Fofoca #${g.n} · de ${Esc(g.fromName || PlayerName(g.from))}</span>
-    <b>${Esc(ItemName(g.item))}</b><span>${Esc(g.text)}</span></div>`;
+  const from = g.fromName || PlayerName(g.from);
+
+  return `<div class="gossipFresh">
+      <div class="head">FOFOCA #${g.n} · DE ${Esc(from.toUpperCase())}</div>
+      <div class="item">${Esc(ItemName(g.item))}</div>
+      <p class="text">${Esc(g.text)}</p>
+    </div>
+    <button class="btn btnMarker btnNote" onclick="MarkGossip('${g.item}','${g.from}')">Anotar: ${Esc(from)} tem ${Esc(ItemName(g.item))}</button>`;
 }
 
 
@@ -746,13 +957,26 @@ function DieFaceHTML(value)
   return Array.from({ length: 9 }, (_, i) => `<i class="${(PipPatterns[value] || []).includes(i) ? "pip" : ""}"></i>`).join("");
 }
 
-function DiceHTML(roll)
+// size: "" (espectador, 66px), "big" (sua vez, 104px), "small" (andando, ao lado dos passos).
+function DiceHTML(roll, size)
 {
   const values = AsList(roll && roll.values);
   if(!values.length) return "";
 
   const faces = values.map(v => `<span class="die" data-final="${v}">${DieFaceHTML(v)}</span>`).join("");
-  return `<div class="diceRow" data-serial="${roll.serial || 0}">${faces}<span class="diceTotal">${roll.total}${roll.doubles ? " · DUPLA!" : ""}</span></div>`;
+
+  let total = `${roll.total}${roll.doubles ? "<small>DUPLA!</small>" : ""}`;
+  if(size === "big") total = `${roll.total}${roll.doubles ? "<br>DUPLA!" : ""}`;
+  if(size === "small") total = `= ${roll.total}`;
+
+  return `<div class="diceRow ${size || ""}" role="img" aria-label="Dados: ${values.join(" e ")}, total ${roll.total}" data-serial="${roll.serial || 0}">${faces}<span class="diceTotal">${total}</span></div>`;
+}
+
+// Antes de rolar: dois dados com os pips apagados.
+function BlankDiceHTML()
+{
+  const die = `<span class="die blank">${DieFaceHTML(5)}</span>`;
+  return `<div class="diceRow big" aria-hidden="true">${die}${die}</div>`;
 }
 
 let lastAnimatedRollSerial = null;
@@ -816,8 +1040,6 @@ function MapHTML(interactive)
   }
 
   const rooms = AsList(map.rooms);
-  const doorSet = new Set();
-  rooms.forEach(r => AsList(r.doors).forEach(d => doorSet.add(`${d.x},${d.y}`)));
 
   const inside = (x, y) =>
   {
@@ -835,12 +1057,12 @@ function MapHTML(interactive)
   {
     const st = table.pawns ? table.pawns[p.id] : null;
     if(!st) return;
-    const html = `<span class="pawn ${ToneClass(p.color)} ${p.id === myChar ? "me" : ""}" style="background:${p.color}" title="${Esc(p.name)}"></span>`;
+    const html = PawnHTML(p.id, 17, p.id === myChar ? "me" : "");
     if(st.room) (pawnsByRoom[st.room] = pawnsByRoom[st.room] || []).push(html);
     else pawnsByCell[`${st.x},${st.y}`] = html;
   });
 
-  let html = `<div class="map" style="grid-template-columns:repeat(${map.width},1fr);grid-template-rows:repeat(${map.height},1fr)">`;
+  let html = `<div class="map" style="grid-template-columns:repeat(${map.width},minmax(0,1fr));grid-template-rows:repeat(${map.height},minmax(0,1fr));aspect-ratio:${map.width}/${map.height}">`;
 
   for(let y = 0; y < map.height; y++)
   {
@@ -852,39 +1074,64 @@ function MapHTML(interactive)
       const reach = reachCells.has(k);
       const move = reach ? AsList(prompt.moves).find(m => !m.room && m.x === x && m.y === y) : null;
       const click = move ? (move.door >= 0 ? ` onclick="ExitDoor(${move.door})"` : ` onclick="Step('${move.dir}')"`) : "";
-      html += `<div class="mCell ${doorSet.has(k) ? "door" : ""} ${reach ? "reach" : ""}" style="grid-column:${x + 1};grid-row:${y + 1}"${click}>${pawnsByCell[k] || ""}</div>`;
+      html += `<div class="mCell ${reach ? "reach" : ""}" style="grid-column:${x + 1};grid-row:${y + 1}"${click}>${pawnsByCell[k] || ""}</div>`;
     }
   }
 
   if(map.stage)
   {
     const s = map.stage;
-    html += `<div class="mStage" style="grid-column:${s.x + 1}/span ${s.w};grid-row:${s.y + 1}/span ${s.h}">PALCO</div>`;
+    html += `<div class="mStage" style="grid-column:${s.x + 1}/span ${s.w};grid-row:${s.y + 1}/span ${s.h}">Palco</div>`;
   }
 
-  const myPawn = MyPawn();
   const passages = AsList(map.passages);
 
   rooms.forEach(r =>
   {
     const reach = reachRooms.has(r.id);
-    const here = myPawn && myPawn.room === r.id;
     const pass = passages.find(p => p.a === r.id || p.b === r.id);
     const enter = reach ? AsList(prompt.moves).find(m => m.room === r.id) : null;
-    const click = enter ? ` onclick="Step('${enter.dir}')"` : "";
-    const it = Item(r.id);
+    const click = enter ? ` onclick="Step('${enter.dir}')" role="button" aria-label="Entrar em ${Esc(ItemName(r.id))}"` : "";
+    const doors = AsList(r.doors).map(d => DoorHTML(r, d)).join("");
 
-    html += `<div class="mRoom ${reach ? "reach" : ""} ${here ? "here" : ""}" style="grid-column:${r.x + 1}/span ${r.w};grid-row:${r.y + 1}/span ${r.h}"${click}>
-      <span>${Esc(it ? it.name : r.id)}</span><div class="pawns">${(pawnsByRoom[r.id] || []).join("")}</div>${pass ? `<span class="pass">${pass.id}</span>` : ""}</div>`;
+    html += `<div class="mRoom ${reach ? "reach" : ""}" style="grid-column:${r.x + 1}/span ${r.w};grid-row:${r.y + 1}/span ${r.h}"${click}>`
+      + `<span class="mName">${Esc(MapName(r.id))}</span>${doors}`
+      + (pass ? `<span class="mPass">${Esc(pass.id)}</span>` : "")
+      + `<div class="pawns">${(pawnsByRoom[r.id] || []).join("")}</div></div>`;
   });
 
   return html + "</div>";
 }
 
+// Porta = traço de caneta sobre a parede. A porta do JSON é a casa de
+// corredor colada no cômodo; o lado vem da posição dela em relação ao
+// retângulo. Os -4px compensam a borda de 2px (o traço fica metade pra fora).
+function DoorHTML(r, d)
+{
+  const fx = (d.x - r.x + 0.5) / r.w * 100;
+  const fy = (d.y - r.y + 0.5) / r.h * 100;
+  const along = (f, n) => `${(f - 40 / n).toFixed(2)}%`;
+
+  if(d.y >= r.y + r.h) return `<i class="mDoor" style="bottom:-4px;height:4px;left:${along(fx, r.w)};width:${(80 / r.w).toFixed(2)}%"></i>`;
+  if(d.y < r.y) return `<i class="mDoor" style="top:-4px;height:4px;left:${along(fx, r.w)};width:${(80 / r.w).toFixed(2)}%"></i>`;
+  if(d.x >= r.x + r.w) return `<i class="mDoor" style="right:-4px;width:4px;top:${along(fy, r.h)};height:${(80 / r.h).toFixed(2)}%"></i>`;
+  return `<i class="mDoor" style="left:-4px;width:4px;top:${along(fy, r.h)};height:${(80 / r.h).toFixed(2)}%"></i>`;
+}
+
 function RenderMapTab()
 {
-  document.getElementById("mapView").innerHTML = MapHTML(false) +
-    `<p class="hint">Bolinha amarela = você. A e B = passagens secretas (Elevador de Carga, Túnel dos Bastidores).</p>`;
+  const map = StudioMap();
+  const me = Me();
+  const myColor = me ? PersonColor(me.character) : "var(--paper)";
+
+  const legend = [`<div><span class="legendMe" aria-hidden="true" style="background:${myColor}"></span><span>Bolinha amarela = você</span></div>`]
+    .concat(AsList(map && map.passages).map(p =>
+      `<div><span class="legendKey" aria-hidden="true">${Esc(p.id)}</span><span>${Esc(p.name || "Passagem secreta")}: ${Esc(MapName(p.a))} ↔ ${Esc(MapName(p.b))}</span></div>`))
+    .join("");
+
+  document.getElementById("mapView").innerHTML = `<div class="mapFrame">${MapHTML(false)}</div>`
+    + `<div class="legend">${legend}</div>`
+    + `<div id="mapLog" class="miniLog">${LogHTML()}</div>`;
 }
 
 
@@ -892,13 +1139,23 @@ function RenderMapTab()
 // BLOQUINHO (GDD §5)
 // =========================
 
-// Colunas: você + os outros na ordem da mesa a partir de você.
+// Colunas: só os OUTROS jogadores, na ordem da mesa a partir de você. (A
+// coluna "Você" era toda automática; suas cartas viram linha "sua carta".)
 function NoteColumns()
 {
   const seats = Seating();
   const i = seats.indexOf(currentPlayerId);
   const others = i < 0 ? seats : seats.slice(i + 1).concat(seats.slice(0, i));
-  return [currentPlayerId, ...others.filter(id => id !== currentPlayerId)];
+  return others.filter(id => id !== currentPlayerId);
+}
+
+// Símbolos em SVG inline (não dependem da fonte).
+function NoteSymbolHTML(s)
+{
+  if(s === 1) return `<svg aria-hidden="true" width="20" height="18" viewBox="0 0 20 18"><path d="M3 10 L8 15 L17 3" style="fill:none;stroke:var(--yes);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round"></path></svg>`;
+  if(s === 2) return `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M3 3 L15 15 M15 3 L3 15" style="fill:none;stroke:var(--pen);stroke-width:3.5;stroke-linecap:round"></path></svg>`;
+  if(s === 3) return `<span class="q" aria-hidden="true">?</span>`;
+  return "";
 }
 
 function NoteOf(itemId, colId)
@@ -918,45 +1175,29 @@ function RenderNotes()
   const faceUp = new Set(FaceUp());
   const mine = new Set(hand);
 
-  const header = `<tr><th class="itemCol">Item</th>${cols.map(id =>
-  {
-    const c = CharacterOf(id);
-    const name = id === currentPlayerId ? "Você" : (PlayerName(id) || "?").slice(0, 6);
-    return `<th>${DotHTML(PersonColor(c))}${Esc(name)}</th>`;
-  }).join("")}</tr>`;
+  const header = `<div class="nHead"><div class="nItemCol"></div>${cols.map(id =>
+    `<div class="nCol">${PawnHTML(CharacterOf(id), 26)}<span class="nName">${Esc((PlayerName(id) || "?").slice(0, 5))}</span></div>`).join("")}</div>`;
 
-  const section = (title, list) =>
+  const section = (title, list) => `<h2 class="nSection">${title}</h2>` + list.map(it =>
   {
-    let rows = `<tr class="section"><td colspan="${cols.length + 1}">${title}</td></tr>`;
-
-    list.forEach(it =>
+    // CONHECIDAS (minha mão ou na mesa): uma linha só, sem células.
+    if(mine.has(it.id) || faceUp.has(it.id))
     {
-      const isFace = faceUp.has(it.id);
       const isMine = mine.has(it.id);
+      return `<div class="nKnown ${isMine ? "mine" : "face"}"><span class="nKnownName">${Esc(it.name)}</span><span class="why">${isMine ? "sua carta" : "na mesa"}</span></div>`;
+    }
 
-      rows += `<tr class="${isFace ? "faceUp" : ""} ${isMine ? "mine" : ""}"><td class="itemCol">${Esc(it.name)}</td>`;
+    const cells = cols.map(colId =>
+    {
+      const n = NoteOf(it.id, colId);
+      const label = `${it.name}, ${PlayerName(colId)}: ${NoteWords[n.s]}${n.tag ? ` ${n.tag}` : ""}`;
+      return `<button class="cell" aria-label="${Esc(label)}" onclick="TapNote('${it.id}','${colId}')">${NoteSymbolHTML(n.s)}${n.tag ? `<small>${Esc(n.tag)}</small>` : ""}</button>`;
+    }).join("");
 
-      cols.forEach(colId =>
-      {
-        // AUTOMÁTICO: a sua coluna (suas cartas) e as cartas visíveis a todos.
-        if(colId === currentPlayerId || isFace)
-        {
-          const s = colId === currentPlayerId && isMine ? 1 : 2;
-          rows += `<td><button class="cell auto s${s}" disabled>${NoteSymbols[s]}</button></td>`;
-          return;
-        }
+    return `<div class="nRow"><div class="nItem">${Esc(it.name)}</div>${cells}</div>`;
+  }).join("");
 
-        const n = NoteOf(it.id, colId);
-        rows += `<td><button class="cell s${n.s}" onclick="TapNote('${it.id}','${colId}')">${NoteSymbols[n.s]}${n.tag ? `<small>${Esc(n.tag)}</small>` : ""}</button></td>`;
-      });
-
-      rows += "</tr>";
-    });
-
-    return rows;
-  };
-
-  el.innerHTML = `<table class="notes">${header}${section("PESSOAS", People())}${section("ARMAS", Weapons())}${section("CÔMODOS", Rooms())}</table>`;
+  el.innerHTML = header + section("PESSOAS", People()) + section("ARMAS", Weapons()) + section("CÔMODOS", Rooms());
 
   RenderTagBar();
 }
@@ -981,7 +1222,7 @@ function RenderTagBar()
   el.innerHTML = recent.map(h =>
   {
     const label = `#${h.n}: ${PlayerName(h.from).slice(0, 8)} → ${h.to === currentPlayerId ? "você" : PlayerName(h.to).slice(0, 8)}`;
-    return `<button class="chip" onclick="ApplyTag(${h.n})">Etiquetar ${Esc(label)}</button>`;
+    return `<button class="tagChip" onclick="ApplyTag(${h.n})">Etiquetar ${Esc(label)}</button>`;
   }).join("");
 }
 
@@ -1021,8 +1262,8 @@ function RenderHand()
 
   const faceUp = FaceUp();
 
-  el.innerHTML = `<p class="label">Suas cartas (inocentes)</p><div class="handGrid">${hand.map(ItemCardHTML).join("")}</div>` +
-    (faceUp.length ? `<p class="label" style="margin-top:14px">Na mesa (todo mundo sabe)</p><div class="handGrid">${faceUp.map(ItemCardHTML).join("")}</div>` : "");
+  el.innerHTML = `<h1 class="cardsTitle">Suas cartas <span>(inocentes)</span></h1><div class="cardsGrid">${hand.map(HandCardHTML).join("")}</div>` +
+    (faceUp.length ? `<h2 class="cardsTitle second">Na mesa <span>(todo mundo sabe)</span></h2><div class="cardsGrid">${faceUp.map(TableCardHTML).join("")}</div>` : "");
 }
 
 function RenderGossips()
@@ -1031,25 +1272,37 @@ function RenderGossips()
   if(!el) return;
 
   const badge = document.getElementById("gossipBadge");
-  const onTab = document.querySelector(".tab[data-tab='gossips']").classList.contains("active");
-  if(onTab) seenGossipCount = gossips.length;
+  if(currentTab === "gossips") seenGossipCount = gossips.length;
   badge.innerText = gossips.length > seenGossipCount ? gossips.length - seenGossipCount : "";
 
   if(!gossips.length)
   {
-    el.innerHTML = `<p class="hint">Nenhuma fofoca ainda. Dê um palpite num cômodo pra alguém te contar uma!</p>`;
+    el.innerHTML = `<p class="emptyText">Nenhuma fofoca ainda. Dê um palpite num cômodo pra alguém te contar uma!</p>`;
     return;
   }
 
   el.innerHTML = gossips.slice().reverse().map(g =>
-    GossipCardHTML(g, false) + `<button class="btn btnGhost" style="margin-top:-4px" onclick="MarkGossip('${g.item}','${g.from}')">Anotar: ${Esc(g.fromName || PlayerName(g.from))} tem ${Esc(ItemName(g.item))}</button>`
-  ).join("");
+  {
+    const from = g.fromName || PlayerName(g.from);
+    return `<div class="gossipItem">
+        <div class="body">
+          <div class="head">FOFOCA #${g.n} · DE ${Esc(from.toUpperCase())}</div>
+          <div class="item">${Esc(ItemName(g.item))}</div>
+          <p class="text">${Esc(g.text)}</p>
+        </div>
+        <button class="btnNoteRow" onclick="MarkGossip('${g.item}','${g.from}')">Anotar: ${Esc(from)} tem ${Esc(ItemName(g.item))}</button>
+      </div>`;
+  }).join("");
+}
+
+function LogHTML()
+{
+  return AsList(table && table.log).slice(-4).reverse().map(l => `<p>${Esc(l)}</p>`).join("");
 }
 
 function RenderMiniLog()
 {
-  const log = AsList(table.log);
-  document.getElementById("miniLog").innerHTML = log.slice(-4).reverse().map(l => `<p>${Esc(l)}</p>`).join("");
+  document.getElementById("miniLog").innerHTML = LogHTML();
 }
 
 
@@ -1105,8 +1358,10 @@ async function OpenFinalScore()
     ? (won ? "Você resolveu o caso!" : `${final.winnerName} resolveu o caso!`)
     : "Caso sem solução...";
 
-  document.getElementById("finalSolution").innerHTML = [final.person, final.weapon, final.room].map(ItemCardHTML).join("");
-  document.getElementById("finalLine").innerText = final.line || "";
+  document.getElementById("finalSolution").innerHTML = [final.person, final.weapon, final.room].map(StripCardHTML).join("");
+
+  // A fala do culpado (entre “ ”) vai no marca-texto.
+  document.getElementById("finalLine").innerHTML = Esc(final.line || "").replace(/“[^”]*”/, m => `<mark>${m}</mark>`);
 
   if(won && navigator.vibrate) navigator.vibrate([60, 40, 120]);
 }
