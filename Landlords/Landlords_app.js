@@ -68,11 +68,9 @@ const RejectedReasonLabels = {
   "invalid-picks": "Escolha exatamente 2 dados.",
   "invalid-pos": "Local inválido.",
   "not-yours": "Esse local não é seu.",
-  "need-full-group": "Complete o grupo pra construir.",
+  "not-here": "Só dá pra construir no terreno onde você acabou de parar.",
   "max-level": "Já tem hotel aí.",
-  "build-evenly": "Construa por igual no grupo.",
   "no-building": "Não há construção pra vender.",
-  "sell-evenly": "Venda por igual no grupo (comece pelo mais construído).",
   "busy": "Espere o leilão/votação terminar.",
   "no-bidders": "Não tem ninguém pra dar lance.",
   "not-available": "Esse local é de outro jogador.",
@@ -224,19 +222,17 @@ function CanBuild(space)
   const me = Me();
   if(!me || space.type !== "property") return false;
   const st = SpaceState(space.pos);
+
+  // As 3 condições (ver ValidateBuild no host):
+  //   1. o terreno é meu;
   if(st.ownerId !== currentPlayerId || st.level >= HotelLevel) return false;
 
-  // Parou na própria casa neste turno: 1 construção ali sem grupo completo
-  // nem construção por igual (prompt.canBuildHere, ver ValidateBuild no host).
-  const landedHere = table && table.phase === "Manage" && table.prompt && table.prompt.canBuildHere && table.prompt.pos === space.pos;
+  //   2. acabei de me movimentar e parei em cima dele (o host manda
+  //      prompt.pos + canBuildHere na fase Manage; 1 construção por parada);
+  const p = table && table.prompt;
+  if(!IsMyAction() || table.phase !== "Manage" || !p || !p.canBuildHere || p.pos !== space.pos || me.position !== space.pos) return false;
 
-  if(!landedHere)
-  {
-    if(!OwnsFullGroup(currentPlayerId, space.group)) return false;
-    const minLevel = Math.min(...GroupSpaces(space.group).map(s => SpaceState(s.pos).level || 0));
-    if((st.level || 0) > minLevel) return false;
-  }
-
+  //   3. tenho dinheiro pra construir.
   return me.cash >= NextBuildCost(space, st.level || 0);
 }
 
@@ -244,9 +240,7 @@ function CanSellBuilding(space)
 {
   if(space.type !== "property") return false;
   const st = SpaceState(space.pos);
-  if(st.ownerId !== currentPlayerId || !st.level) return false;
-  const maxLevel = Math.max(...GroupSpaces(space.group).map(s => SpaceState(s.pos).level || 0));
-  return st.level >= maxLevel;
+  return st.ownerId === currentPlayerId && !!st.level;
 }
 
 function IsTradable(playerId, pos)
@@ -1040,10 +1034,11 @@ function BuildPanelHTML(phase, prompt, mine)
       if(!mine) return out(Head(`Vez de ${actor}`, gray) + Line("Construindo ou negociando...", "hint"));
       const again = prompt.type === "manageRollAgain";
 
-      // Parou na própria casa: atalho pra construir lá (sem precisar do grupo).
-      const here = prompt.canBuildHere ? Space(prompt.pos) : null;
+      // Parou num terreno seu e tem dinheiro: botão de construir lá.
+      const spot = prompt.pos >= 0 ? Space(prompt.pos) : null;
+      const here = spot && CanBuild(spot) ? spot : null;
       const hereSt = here ? SpaceState(here.pos) : null;
-      const hereBtn = here && CanBuild(here)
+      const hereBtn = here
         ? Btn(`+ ${(hereSt.level || 0) >= 3 ? "Hotel" : "Casa"} em ${Esc(here.name)} $${NextBuildCost(here, hereSt.level || 0)}`, `Act('build', ${here.pos})`)
         : "";
 
@@ -1059,8 +1054,7 @@ function BuildPanelHTML(phase, prompt, mine)
 
       return out(
         Head(ManageTitle())
-        + (here ? Line(`Você parou em ${Esc(here.name)}: pode construir lá agora, mesmo sem o grupo completo.`, "warn") : "")
-        + (CanBuildAny() ? Line("Construção e hipoteca em Locais.", "hint") : "")
+        + (here ? Line(`Você parou em ${Esc(here.name)}: pode construir lá agora.`, "warn") : "")
         + (canBuy ? Line(`Quer ${Esc(Space(trade.pos).name)}? Faça uma proposta de compra a ${Esc(PlayerName(trade.ownerId))}.`, "hint") : ""),
         hereBtn
         + (canBuy ? Btn("Fazer proposta", "OpenBuyProposal()", { kind: "ghost" }) : "")

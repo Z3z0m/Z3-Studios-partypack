@@ -609,7 +609,7 @@ export default
       const here = Q(`#dock-agora ${OnclickSel(`Act('build', ${space.pos})`)}`);
       if(here && ctx.bot.isTappable(here) && ActiveTab() === "agora") { await ctx.bot.tap(here); return { built: space.name }; }
 
-      return { tapped: await TapIn(ctx, "locais", `#placesList ${OnclickSel(`Act('build', ${space.pos})`)}`, "não dá pra construir aí agora (grupo, por igual, caixa ou fase)"), built: space.name };
+      return { tapped: await TapIn(ctx, "locais", `#placesList ${OnclickSel(`Act('build', ${space.pos})`)}`, "não dá pra construir aí agora (não é seu, não parou nele, caixa ou fase)"), built: space.name };
     },
 
     async mortgage(ctx, args = {})
